@@ -1,0 +1,34 @@
+{
+  "name": "frmidi",
+  "version": "1.0.14",
+  "description": "Functional reactive MIDI library",
+  "main": "lib/index.js",
+  "module": "lib/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "prepublish": "rollup -c",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jordipbou/frMIDI.git"
+  },
+  "keywords": [],
+  "author": "Jordi P. Bou",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jordipbou/frMIDI/issues"
+  },
+  "homepage": "https://github.com/jordipbou/frMIDI#readme",
+  "devDependencies": {
+    "@babel/core": "^7.11.4",
+    "@rollup/plugin-node-resolve": "^9.0.0",
+    "ramda": "^0.27.1",
+    "rollup": "^2.26.6",
+    "rollup-plugin-babel": "^4.4.0",
+    "rxjs": "^6.6.2"
+  },
+  "dependencies": {}
+}
