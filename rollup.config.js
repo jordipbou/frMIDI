@@ -1,10 +1,22 @@
 import babel from "rollup-plugin-babel";
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 
-export default {
+export default [{
   input: "./src/index.js",
   output: {
-    file: "./lib/index.js",
+    file: "./es/frmidi.js",
+    format: "es",
+    name: "frmidi"
+  },
+  plugins: [
+    babel ({
+      exclude: "node_modules/**"
+    }),
+    nodeResolve ()
+]}, {
+  input: "./src/index.js",
+  output: {
+    file: "./umd/frmidi.js",
     format: "umd",
     name: "frmidi"
   },
@@ -13,5 +25,5 @@ export default {
       exclude: "node_modules/**"
     }),
     nodeResolve ()
-  ]
-};
+]}]
+  

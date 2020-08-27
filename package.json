@@ -1,9 +1,10 @@
 {
   "name": "frmidi",
-  "version": "1.0.14",
+  "version": "1.0.24",
   "description": "Functional reactive MIDI library",
-  "main": "lib/index.js",
-  "module": "lib/index.js",
+  "main": "umd/frmidi.js",
+  "module": "es/frmidi.js",
+  "browser": "es/frmidi.js",
   "directories": {
     "test": "test"
   },
