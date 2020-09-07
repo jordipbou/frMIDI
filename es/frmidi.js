@@ -5653,16 +5653,20 @@ const output = (n = '') => head(pipe(map(([k, v]) => v), filter(({
   output.version = v.version;
   return output;
 }))([...midiAccess.outputs.entries()])); // ---------------------- MIDI File loading ------------------------
-// TODO: This will not work with efimera as it is.
+// Opens a file selection dialog to load a MIDI file and then parse
+// it using midi-parser-js library. Converts messages to be
+// compatible with rest of library.
+//
+// Returns a promise that returns parsed MIDI file as object.
 
-const loadMidiFile = (sel = '#preview') => {
-  let id = 'local-midi-file-browser';
-  var e = document.querySelector(sel);
-  e.innerHTML = e.innerHTML + '<input type="file" id="' + id + '" style="display: none">';
-  let promise = new Promise((s, r) => MidiParser.parse(document.querySelector('#' + id), o => {
-    document.querySelector('#' + id).remove(); // Convert data from each event to a format compatible
+const loadMidiFile = () => {
+  let input_file_element = document.createElement('input');
+  let type = document.createAttribute('type');
+  type.value = 'file';
+  input_file_element.setAttributeNode(type);
+  let promise = new Promise((s, r) => _MidiParser.parse(input_file_element, o => {
+    // Convert data from each event to a format compatible
     // with rest of library
-
     for (let t of o.track) {
       for (let e of t.event) {
         e.timeStamp = 0;
@@ -5684,7 +5688,7 @@ const loadMidiFile = (sel = '#preview') => {
 
     return s(o);
   }));
-  document.querySelector('#' + id).click();
+  input_file_element.click();
   return promise;
 }; // ------------------------ MIDI Clock -----------------------------
 // TODO: Make this part better
@@ -5711,7 +5715,9 @@ const MIDIPlayer = midifile => {
   }, [null, 0]), map$1(([events, tick]) => events));
 };
 
+const version = '1.0.26'; //// --------------------- Other utilities -------------------------
+
 let QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
 let midiToHzs = (n, tuning = 440) => tuning / 32 * Math.pow((n - 9) / 12, 2);
 
-export { MIDIClock, MIDIFilePlayer$1 as MIDIFilePlayer, MIDIPlayer, _MidiParser as MidiParser, QNPM2BPM, as, asNoteOff, asNoteOn, byteEq, byteEqBy, cc, channel, cont, control, controlEq, cp, createLoop, createMIDIFile, createTimer, dataEq, dataEqBy, deltaTime, filterTracks, from, getByte, hasNote, hasPressure, hasVelocity, initialize, input, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelModeMessage, isChannelPressure, isChannelVoice, isChannelVoiceMessageOfType, isContinue, isControlChange, isEndOfExclusive, isLocalControlOff, isLocalControlOn, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTuneRequest, loadMidiFile, logPorts, lookAheadClock$1 as lookAheadClock, mc, mergeTracks, metaTypeEq, midiToHzs, msg, note, noteEq, nrpn, off, on, output, panic, pb, pc, pitchBend, pitchBendEq, pp, pressure, pressureEq, program, programEq, rpn, rst, seemsArrayOfMIDIMessagesAsArrays, seemsArrayOfMIDIMessagesAsObjects, seemsMIDIFile, seemsMIDILoop, seemsMIDIMessage, seemsMIDIMessageAsArray, seemsMIDIMessageAsObject, seemsMIDIMetaEvent, seemsMIDIMetaEventArray, seemsMIDIMetaEventObject, send, setByte, sortEvents, spp, ss, start, stop, syx, tc, timeStamp, tun, value, valueEq, velocity, velocityEq, withAbsoluteDeltaTimes };
+export { MIDIClock, MIDIFilePlayer$1 as MIDIFilePlayer, MIDIPlayer, _MidiParser as MidiParser, QNPM2BPM, as, asNoteOff, asNoteOn, byteEq, byteEqBy, cc, channel, cont, control, controlEq, cp, createLoop, createMIDIFile, createTimer, dataEq, dataEqBy, deltaTime, filterTracks, from, getByte, hasNote, hasPressure, hasVelocity, initialize, input, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelModeMessage, isChannelPressure, isChannelVoice, isChannelVoiceMessageOfType, isContinue, isControlChange, isEndOfExclusive, isLocalControlOff, isLocalControlOn, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTuneRequest, loadMidiFile, logPorts, lookAheadClock$1 as lookAheadClock, mc, mergeTracks, metaTypeEq, midiToHzs, msg, note, noteEq, nrpn, off, on, output, panic, pb, pc, pitchBend, pitchBendEq, pp, pressure, pressureEq, program, programEq, rpn, rst, seemsArrayOfMIDIMessagesAsArrays, seemsArrayOfMIDIMessagesAsObjects, seemsMIDIFile, seemsMIDILoop, seemsMIDIMessage, seemsMIDIMessageAsArray, seemsMIDIMessageAsObject, seemsMIDIMetaEvent, seemsMIDIMetaEventArray, seemsMIDIMetaEventObject, send, setByte, sortEvents, spp, ss, start, stop, syx, tc, timeStamp, tun, value, valueEq, velocity, velocityEq, version, withAbsoluteDeltaTimes };

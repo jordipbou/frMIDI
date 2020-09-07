@@ -5659,16 +5659,20 @@
     output.version = v.version;
     return output;
   }))([...midiAccess.outputs.entries()])); // ---------------------- MIDI File loading ------------------------
-  // TODO: This will not work with efimera as it is.
+  // Opens a file selection dialog to load a MIDI file and then parse
+  // it using midi-parser-js library. Converts messages to be
+  // compatible with rest of library.
+  //
+  // Returns a promise that returns parsed MIDI file as object.
 
-  const loadMidiFile = (sel = '#preview') => {
-    let id = 'local-midi-file-browser';
-    var e = document.querySelector(sel);
-    e.innerHTML = e.innerHTML + '<input type="file" id="' + id + '" style="display: none">';
-    let promise = new Promise((s, r) => MidiParser.parse(document.querySelector('#' + id), o => {
-      document.querySelector('#' + id).remove(); // Convert data from each event to a format compatible
+  const loadMidiFile = () => {
+    let input_file_element = document.createElement('input');
+    let type = document.createAttribute('type');
+    type.value = 'file';
+    input_file_element.setAttributeNode(type);
+    let promise = new Promise((s, r) => _MidiParser.parse(input_file_element, o => {
+      // Convert data from each event to a format compatible
       // with rest of library
-
       for (let t of o.track) {
         for (let e of t.event) {
           e.timeStamp = 0;
@@ -5690,7 +5694,7 @@
 
       return s(o);
     }));
-    document.querySelector('#' + id).click();
+    input_file_element.click();
     return promise;
   }; // ------------------------ MIDI Clock -----------------------------
   // TODO: Make this part better
@@ -5716,6 +5720,8 @@
       return player(tick, midi_clocks);
     }, [null, 0]), map$1(([events, tick]) => events));
   };
+
+  const version = '1.0.26'; //// --------------------- Other utilities -------------------------
 
   let QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
   let midiToHzs = (n, tuning = 440) => tuning / 32 * Math.pow((n - 9) / 12, 2);
@@ -5840,6 +5846,7 @@
   exports.valueEq = valueEq;
   exports.velocity = velocity;
   exports.velocityEq = velocityEq;
+  exports.version = version;
   exports.withAbsoluteDeltaTimes = withAbsoluteDeltaTimes;
 
   Object.defineProperty(exports, '__esModule', { value: true });

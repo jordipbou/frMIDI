@@ -13,6 +13,10 @@ import {
   seemsMIDIMessageAsObject
 } from './predicates.js'
 
+import { 
+  MidiParser 
+  } from '../node_modules/midi-parser-js/src/midi-parser.js'
+
 export { 
   MidiParser 
   } from '../node_modules/midi-parser-js/src/midi-parser.js'
@@ -119,16 +123,21 @@ export const output = (n = '') =>
 
 // ---------------------- MIDI File loading ------------------------
 
-// TODO: This will not work with efimera as it is.
+// Opens a file selection dialog to load a MIDI file and then parse
+// it using midi-parser-js library. Converts messages to be
+// compatible with rest of library.
+//
+// Returns a promise that returns parsed MIDI file as object.
 
-export const loadMidiFile =	(sel = '#preview') => {
-	let id = 'local-midi-file-browser'
-	var e = document.querySelector(sel)
-	e.innerHTML = e.innerHTML + '<input type="file" id="' + id + '" style="display: none">'
+export const loadMidiFile =	() => {
+  let input_file_element = document.createElement ('input')
+  let type = document.createAttribute ('type')
+  type.value = 'file'
+  input_file_element.setAttributeNode (type)
+
 	let promise = 
 		new Promise((s, r) => 
-			MidiParser.parse(document.querySelector('#' + id), o => { 
-				document.querySelector('#' + id).remove()
+			MidiParser.parse(input_file_element, o => { 
 				// Convert data from each event to a format compatible
 				// with rest of library
 				for (let t of o.track) {
@@ -148,9 +157,11 @@ export const loadMidiFile =	(sel = '#preview') => {
 					}
 				}
 
-				return s(o)
+				return s (o)
 			}))
-	document.querySelector('#' + id).click()
+
+	input_file_element.click()
+
 	return promise
 }
 

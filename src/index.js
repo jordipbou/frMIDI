@@ -5,6 +5,8 @@ export * from './clock.js'
 export * from './midifile.js'
 export * from './io.js'
 
+export const version = '1.0.27'
+
 //// --------------------- Other utilities -------------------------
 
 export let QNPM2BPM = (qnpm) => 60 * 1000000 / qnpm
