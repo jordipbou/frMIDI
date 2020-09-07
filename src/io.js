@@ -13,51 +13,74 @@ import {
   seemsMIDIMessageAsObject
 } from './predicates.js'
 
+export { 
+  MidiParser 
+  } from '../node_modules/midi-parser-js/src/midi-parser.js'
+
 let midiAccess
 
 // ------------------- WebMidi initialization ----------------------
 
-export let initialize = 
-	(sysex = false, 
-	 custom_navigator = window.navigator) =>
-		custom_navigator
-			.requestMIDIAccess({ sysex: sysex })
-			.then(m => { 
-				midiAccess = m; 
-				return midiAccess; 
-			})
+// Initializes WebMIDI API and saves midiAccess object for later
+// use of frMIDI library.
+// MidiAccess object is also returned in the case it's needed by
+// the user.
+// 
+// A custom_navigator parameter is used to allow testing without
+// a defined window object.
 
-export let logPorts = () => {
-	forEach(
-		i => console.log(i[1].name + '  -in->'), 
-		[...midiAccess.inputs.entries()])
-	forEach(
-		o => console.log('-out->  ' + o[1].name), 
-		[...midiAccess.outputs.entries()])
+export const initialize = 
+  (sysex = false, custom_navigator = window.navigator) =>
+		custom_navigator
+			.requestMIDIAccess ({ sysex: sysex })
+			.then (m => midiAccess = m)
+
+// Writes every input and output port name to the console for reference
+// when instatiating input and output objects.
+//
+// Parameter logfn is used to pass a different logger for testing
+// purposes.
+
+export const logPorts = (logfn = console.log) => {
+	forEach (
+		i => logfn (i [1].name + '  -in->'), 
+		[...midiAccess.inputs.entries ()])
+	forEach (
+		o => logfn ('-out->  ' + o [1].name), 
+		[...midiAccess.outputs.entries ()])
 }
 
 // ------------------------- MIDI Input ----------------------------
 
-export let input = n => 
-	head(
-		pipe(
-			filter(i => i[1].name.includes(n)),
-			map(v => {
-				let input = rx.fromEvent(
-								v[1], 'midimessage'
-              )
-				input.name = v[1].name
-				input.id = v[1].id
-				input.manufacturer = v[1].manufacturer
-				input.version = v[1].version
+// Return an observable created from WebMIDI input onmidimessage event.
+// Name is matched against available input ports and first one that
+// contains it is used.
+
+export const input = (n = '') => 
+	head (
+		pipe (
+			filter ( ([id, i]) => i.name.includes (n)),
+			map ( ([id, i]) => {
+				let input = rx.fromEvent (i, 'midimessage')
+				input.name = i.name
+				input.id = i.id
+				input.manufacturer = i.manufacturer
+				input.version = i.version
 
 				return input
 			})
-		)([...midiAccess.inputs.entries()]))
+		) ([...midiAccess.inputs.entries()]))
 
 // ------------------------- MIDI Output ---------------------------
 
-export let send = out => msg => 
+// Send function accepts midi messages as:
+// - byte array
+// - MIDIMessage object
+// - array of byte arrays
+// - array of MIDIMessage objects
+// - observable emitting any of the above
+
+export const send = (out) => (msg) => 
   seemsArrayOfMIDIMessagesAsObjects (msg) ?
     forEach (m => out.send (m.data, m.timeStamp)) (msg)
     : seemsArrayOfMIDIMessagesAsArrays (msg) ?
@@ -70,15 +93,19 @@ export let send = out => msg =>
             msg.subscribe (send (out))
             : null
 
-export let output = n => 
-	head(
-		pipe(
-			map( ([k, v]) => v ),
-			filter( ({ name }) => name.includes(n) ),
-			map( v => { v.open(); return v; } ),
-			map( v => {
-				let output = send(v)
-				Object.defineProperty(
+// Sends first output that matches indicated name as argument and
+// returns send function instantiated with selected output.
+// Some properties are added for inspection purposes.
+
+export const output = (n = '') => 
+	head (
+		pipe (
+			map ( ([k, v]) => v ),
+			filter ( ({ name }) => name.includes (n) ),
+			map ( v => { v.open(); return v; } ),
+			map ( v => {
+				let output = send (v)
+				Object.defineProperty (
 					output, 
 					'name', 
 					{ value: v.name })
@@ -88,54 +115,55 @@ export let output = n =>
 
 				return output
 			}) 
-		)([...midiAccess.outputs.entries()]))
+		) ([ ...midiAccess.outputs.entries () ]))
 
 // ---------------------- MIDI File loading ------------------------
 
-export let loadMidiFile =
-	(sel = '#preview') => {
-		let id = 'local-midi-file-browser'
-		var e = document.querySelector(sel)
-		e.innerHTML = e.innerHTML + '<input type="file" id="' + id + '" style="display: none">'
-		let promise = 
-			new Promise((s, r) => 
-				MidiParser.parse(document.querySelector('#' + id), o => { 
-					document.querySelector('#' + id).remove()
-					// Convert data from each event to a format compatible
-					// with rest of library
-					for (let t of o.track) {
-						for (let e of t.event) {
-							e.timeStamp = 0
-							if (e.type > 7 && e.type < 14) {
-								if (e.data instanceof Array) {
-									e.data = [(e.type << 4) + e.channel, ...e.data]
-								} else {
-									e.data = [(e.type << 4) + e.channel, e.data]
-								}
-								e.type = 'midimessage'
-							} else if (e.type === 255) {
-								e.type = 'metaevent'
-                e.data = [ e.data ]
+// TODO: This will not work with efimera as it is.
+
+export const loadMidiFile =	(sel = '#preview') => {
+	let id = 'local-midi-file-browser'
+	var e = document.querySelector(sel)
+	e.innerHTML = e.innerHTML + '<input type="file" id="' + id + '" style="display: none">'
+	let promise = 
+		new Promise((s, r) => 
+			MidiParser.parse(document.querySelector('#' + id), o => { 
+				document.querySelector('#' + id).remove()
+				// Convert data from each event to a format compatible
+				// with rest of library
+				for (let t of o.track) {
+					for (let e of t.event) {
+						e.timeStamp = 0
+						if (e.type > 7 && e.type < 14) {
+							if (e.data instanceof Array) {
+								e.data = [(e.type << 4) + e.channel, ...e.data]
+							} else {
+								e.data = [(e.type << 4) + e.channel, e.data]
 							}
+							e.type = 'midimessage'
+						} else if (e.type === 255) {
+							e.type = 'metaevent'
+              e.data = [ e.data ]
 						}
 					}
+				}
 
-					return s(o)
-				}))
-		document.querySelector('#' + id).click()
-		return promise
-	}
+				return s(o)
+			}))
+	document.querySelector('#' + id).click()
+	return promise
+}
 
 // ------------------------ MIDI Clock -----------------------------
 
 // TODO: Make this part better
 
-export let createTimer = (resolution, look_ahead) =>
+export const createTimer = (resolution = 25, look_ahead = 150) =>
   rx.timer (0, resolution).pipe (
     rxo.map(v => [performance.now (), look_ahead])
   )
 
-export let MIDIClock = curry ((time_division, bpm) => {
+export const MIDIClock = curry ((time_division, bpm) => {
   let timeDivisionSubject = new rx.BehaviorSubject (time_division)
   let bpmSubject = new rx.BehaviorSubject (bpm)
   
@@ -162,7 +190,7 @@ export let MIDIClock = curry ((time_division, bpm) => {
   return op
 })
 
-export let MIDIPlayer = (midifile) => {
+export const MIDIPlayer = (midifile) => {
   let player = MIDIFilePlayer (midifile)
 
   return rx.pipe (

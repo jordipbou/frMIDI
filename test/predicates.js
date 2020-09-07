@@ -1,5 +1,5 @@
 const test = require ('ava')
-const P = require ('../../src/frMIDI/predicates.js')
+import * as P from '../src/predicates.js'
 
 let msg = (data) => 
   ({ type: 'midimessage', data: data })

@@ -1,13 +1,13 @@
 const test = require ('ava')
-const { 
+import { 
   isNoteOn, isNoteOff,
   seemsMIDIMessage 
-} = require ('../../src/frMIDI/predicates.js')
-const { on, off, mc } = require ('../../src/frMIDI/messages.js')
-const { 
+} from '../src/predicates.js'
+import { on, off, mc } from '../src/messages.js'
+import { 
   deltaTime, note, timeStamp
-} = require ('../../src/frMIDI/lenses.js')
-const { 
+} from '../src/lenses.js'
+import { 
   createMIDIFile,
   createLoop,
   filterTracks,
@@ -16,8 +16,8 @@ const {
   seemsMIDIFile,
   sortEvents,
   withAbsoluteDeltaTimes
-} = require ('../../src/frMIDI/midifile.js')
-const { identical, is, set, view } = require ('ramda')
+} from '../src/midifile.js'
+import { identical, is, set, view } from 'ramda'
 
 let midifile = {
   formatType: 1,

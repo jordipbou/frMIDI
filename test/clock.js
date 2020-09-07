@@ -1,6 +1,8 @@
 const test = require ('ava')
-const { map, prop } = require ('ramda')
-const { lookAheadTicks, lookAheadClock } = require ('../../src/frMIDI/clock.js')
+import { map, prop } from 'ramda'
+import { 
+  lookAheadTicks, lookAheadClock 
+  } from '../src/clock.js'
 
 test ('lookAheadClock', t => {
   t.deepEqual 

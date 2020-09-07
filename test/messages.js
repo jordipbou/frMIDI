@@ -1,9 +1,9 @@
 const test = require ('ava')
-const {
+import {
   as, cc, cont, cp, from, mc, msg, nrpn, off, on, 
   pb, pc, pp, rpn, rst, spp, ss, start, stop, tc, tun, syx
-} = require ('../../src/frMIDI/messages.js')
-const {
+} from '../src/messages.js'
+import {
   controlEq, isActiveSensing,
   isContinue, isControlChange, isChannelPressure, 
   isMIDIClock, isMIDITimeCodeQuarterFrame, isNoteOff, 
@@ -12,9 +12,9 @@ const {
   isSongSelect, isStart, isStop,
   isSystemExclusive, isTuneRequest,
   noteEq, pitchBendEq, pressureEq, programEq, valueEq, velocityEq
-} = require ('../../src/frMIDI/predicates.js')
-const { channel } = require ('../../src/frMIDI/lenses.js')
-const { allPass, both, set } = require ('ramda')
+} from '../src/predicates.js'
+import { channel } from '../src/lenses.js'
+import { allPass, both, set } from 'ramda'
 
 // =================== MIDI Message creation =======================
 

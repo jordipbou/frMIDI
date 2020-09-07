@@ -1,11 +1,11 @@
 const test = require ('ava')
-const { add, view, set, over } = require ('ramda')
-const { 
+import { add, view, set, over } from 'ramda'
+import { 
   cc, cp, mc, off, on, pp 
-} = require ('../../src/frMIDI/messages.js')
-const { 
+} from '../src/messages.js'
+import { 
   channel, control, deltaTime, note, pressure, timeStamp, velocity
-} = require ('../../src/frMIDI/lenses.js')
+} from '../src/lenses.js'
 
 test ('timeStamp lens', t => {
   t.is (view (timeStamp) (on (64)), 0)
