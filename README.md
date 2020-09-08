@@ -1,8 +1,8 @@
 # frMIDI
 
-Functional reactive MIDI ES6 library.
+JavaScript functional reactive MIDI library.
 
-Functions are curried.
+Functions are curried and parameters ordered for correct composing of functions.
 
 # Modules
 
@@ -15,88 +15,88 @@ They are mainly used for filtering.
 
 ### Generic MIDI Message predicates
 
-seemsMIDIMessageAsArray (msg) : boolean
-seemsMIDIMessageAsObject (msg) : boolean
-seemsMIDIMessage (msg) : boolean
-seemsArrayOfMIDIMessagesAsArrays (msg) : boolean
-seemsArrayOfMIDIMessagesAsObjects (msg) : boolean
-dataEq (data, msg) : boolean
-byteEq (n, data, msg) : boolean
-dataEqBy (pred, msg) : boolean
-byteEqBy (n, pred, msg) : boolean
+* seemsMIDIMessageAsArray (msg) : boolean
+* seemsMIDIMessageAsObject (msg) : boolean
+* seemsMIDIMessage (msg) : boolean
+* seemsArrayOfMIDIMessagesAsArrays (msg) : boolean
+* seemsArrayOfMIDIMessagesAsObjects (msg) : boolean
+* dataEq (data, msg) : boolean
+* byteEq (n, data, msg) : boolean
+* dataEqBy (pred, msg) : boolean
+* byteEqBy (n, pred, msg) : boolean
 
 ### Channel Voice Messages
 
-isChannelVoiceMessageOfType (type, msg) : boolean
-isNoteOff (msg) : boolean
-isNoteOn (msg) : boolean
-asNoteOn (msg) : boolean
-asNoteOff (msg) : boolean
-isNote (msg) : boolean
-hasVelocity (msg) : boolean
-velocityEq (v, msg) : boolean
-isPolyPressure (msg) : boolean
-hasNote (msg) : boolean
-noteEq (n, msg) : boolean
-isControlChange (msg) : boolean
-controlEq (c, msg) : boolean
-valueEq (v, msg) : boolean
-isProgramChange (msg) : boolean
-programEq (p, msg) : boolean
-isChannelPressure (msg) : boolean
-hasPressure (msg) : boolean
-pressureEq (p, msg) : boolean
-isPitchBend (msg) : boolean
-pitchBendEq (pb, msg) : boolean
+* isChannelVoiceMessageOfType (type, msg) : boolean
+* isNoteOff (msg) : boolean
+* isNoteOn (msg) : boolean
+* asNoteOn (msg) : boolean
+* asNoteOff (msg) : boolean
+* isNote (msg) : boolean
+* hasVelocity (msg) : boolean
+* velocityEq (v, msg) : boolean
+* isPolyPressure (msg) : boolean
+* hasNote (msg) : boolean
+* noteEq (n, msg) : boolean
+* isControlChange (msg) : boolean
+* controlEq (c, msg) : boolean
+* valueEq (v, msg) : boolean
+* isProgramChange (msg) : boolean
+* programEq (p, msg) : boolean
+* isChannelPressure (msg) : boolean
+* hasPressure (msg) : boolean
+* pressureEq (p, msg) : boolean
+* isPitchBend (msg) : boolean
+* pitchBendEq (pb, msg) : boolean
 
 ### Channel Mode Messages
 
-isChannelModeMessage
-isAllSoundOff
-isResetAll
-isLocalControlOff
-isLocalControlOn
-isAllNotesOff
-isOmniModeOff
-isOmniModeOn
-isMonoModeOn
-isPolyModeOn
-isChannelMode
-isChannelVoice
+* isChannelModeMessage
+* isAllSoundOff
+* isResetAll
+* isLocalControlOff
+* isLocalControlOn
+* isAllNotesOff
+* isOmniModeOff
+* isOmniModeOn
+* isMonoModeOn
+* isPolyModeOn
+* isChannelMode
+* isChannelVoice
 
 ### RPN & NRPN predicates
 
-isRPN
-isNRPN
-isChannelMessage
-isOnChannel
-isOnChannels
+* isRPN
+* isNRPN
+* isChannelMessage
+* isOnChannel
+* isOnChannels
 
 ### System Common message predicates
 
-isSystemExclusive
-isMIDITimeCodeQuarterFrame
-isSongPositionPointer
-isSongSelect
-isTuneRequest
-isEndOfExclusive
+* isSystemExclusive
+* isMIDITimeCodeQuarterFrame
+* isSongPositionPointer
+* isSongSelect
+* isTuneRequest
+* isEndOfExclusive
 
 ### System Real Time message predicates
 
-isMIDIClock
-isStart
-isContinue
-isStop
-isActiveSensing
-isReset
+* isMIDIClock
+* isStart
+* isContinue
+* isStop
+* isActiveSensing
+* isReset
 
 ### MIDI File Meta Events predicates
 
-seemsMIDIMetaEventArray
-seemsMIDIMetaEventObject
-seemsMIDIMetaEvent
-metaTypeEq
-isTempoChange
+* seemsMIDIMetaEventArray
+* seemsMIDIMetaEventObject
+* seemsMIDIMetaEvent
+* metaTypeEq
+* isTempoChange
 
 ## Messages
 
