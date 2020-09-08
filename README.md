@@ -2,45 +2,52 @@
 
 Functional reactive MIDI ES6 library.
 
+Functions are curried.
+
 # Modules
 
 ## Predicates
 
+Predicates can be used for checking if a MIDI message is of some type
+or has some characteristic equal to some value.
+
+They are mainly used for filtering.
+
 ### Generic MIDI Message predicates
 
-seemsMIDIMessageAsArray
-seemsMIDIMessageAsObject
-seemsMIDIMessage 
-seemsArrayOfMIDIMessagesAsArrays
-seemsArrayOfMIDIMessagesAsObjects
-dataEq
-byteEq
-dataEqBy
-byteEqBy
+seemsMIDIMessageAsArray (msg) : boolean
+seemsMIDIMessageAsObject (msg) : boolean
+seemsMIDIMessage (msg) : boolean
+seemsArrayOfMIDIMessagesAsArrays (msg) : boolean
+seemsArrayOfMIDIMessagesAsObjects (msg) : boolean
+dataEq (data, msg) : boolean
+byteEq (n, data, msg) : boolean
+dataEqBy (pred, msg) : boolean
+byteEqBy (n, pred, msg) : boolean
 
 ### Channel Voice Messages
 
-isChannelVoiceMessageOfType
-isNoteOff
-isNoteOn
-asNoteOn
-asNoteOff
-isNote 
-hasVelocity
-velocityEq
-isPolyPressure
-hasNote
-noteEq
-isControlChange
-controlEq
-valueEq
-isProgramChange
-programEq
-isChannelPressure
-hasPressure
-pressureEq
-isPitchBend
-pitchBendEq
+isChannelVoiceMessageOfType (type, msg) : boolean
+isNoteOff (msg) : boolean
+isNoteOn (msg) : boolean
+asNoteOn (msg) : boolean
+asNoteOff (msg) : boolean
+isNote (msg) : boolean
+hasVelocity (msg) : boolean
+velocityEq (v, msg) : boolean
+isPolyPressure (msg) : boolean
+hasNote (msg) : boolean
+noteEq (n, msg) : boolean
+isControlChange (msg) : boolean
+controlEq (c, msg) : boolean
+valueEq (v, msg) : boolean
+isProgramChange (msg) : boolean
+programEq (p, msg) : boolean
+isChannelPressure (msg) : boolean
+hasPressure (msg) : boolean
+pressureEq (p, msg) : boolean
+isPitchBend (msg) : boolean
+pitchBendEq (pb, msg) : boolean
 
 ### Channel Mode Messages
 

@@ -59,12 +59,12 @@ export const byteEqBy = curry ((n, pred, msg) =>
 
 // ------------------ Channel Voice Messages -----------------------
 
-export const isChannelVoiceMessageOfType = (type) => (msg) =>
+export const isChannelVoiceMessageOfType = curry((type, msg) =>
   both (seemsMIDIMessage)
        (dataEqBy 
          (p => includes (type, [8, 9, 10, 11, 14]) ?
                  length (p) === 3 && p [0] >> 4 === type
-                 : length (p) === 2 && p [0] >> 4 === type)) (msg)
+                 : length (p) === 2 && p [0] >> 4 === type)) (msg))
 
 export const isNoteOff = (msg) =>
   isChannelVoiceMessageOfType (8) (msg)
@@ -84,10 +84,10 @@ export const isNote = (msg) =>
 export const hasVelocity = (msg) =>
   isNote (msg)
 
-export const velocityEq = (v) => (msg) =>
+export const velocityEq = curry((v, msg) =>
   both (hasVelocity)
        (byteEq (2) (v))
-       (msg)
+       (msg))
 
 export const isPolyPressure = (msg) =>
   isChannelVoiceMessageOfType (10) (msg)
@@ -95,31 +95,31 @@ export const isPolyPressure = (msg) =>
 export const hasNote = (msg) =>
   either (isNote) (isPolyPressure) (msg)
 
-export const noteEq = (n) => (msg) =>
+export const noteEq = curry((n, msg) =>
   both (hasNote)
        (byteEq (1) (n))
-       (msg)
+       (msg))
 
 export const isControlChange = (msg) =>
   isChannelVoiceMessageOfType (11) (msg)
 
-export const controlEq = (c) => (msg) =>
+export const controlEq = curry((c, msg) =>
   both (isControlChange)
        (byteEq (1) (c))
-       (msg)
+       (msg))
 
-export const valueEq = (v) => (msg) =>
+export const valueEq = curry((v, msg) =>
   both (isControlChange)
        (byteEq (2) (v))
-       (msg)
+       (msg))
 
 export const isProgramChange = (msg) =>
   isChannelVoiceMessageOfType (12) (msg)
 
-export const programEq = (p) => (msg) =>
+export const programEq = curry((p, msg) =>
   both (isProgramChange)
        (byteEq (1) (p))
-       (msg)
+       (msg))
 
 export const isChannelPressure = (msg) =>
   isChannelVoiceMessageOfType (13) (msg)
@@ -127,20 +127,20 @@ export const isChannelPressure = (msg) =>
 export const hasPressure = (msg) =>
   either (isPolyPressure) (isChannelPressure) (msg)
 
-export const pressureEq = (p) => (msg) =>
+export const pressureEq = curry((p, msg) =>
   cond ([[isPolyPressure, byteEq (2) (p)],
          [isChannelPressure, byteEq (1) (p)],
          [T, F]])
-       (msg)
+       (msg))
 
 export const isPitchBend = (msg) =>
   isChannelVoiceMessageOfType (14) (msg)
 
-export const pitchBendEq = (pb) => (msg) =>
+export const pitchBendEq = curry((pb, msg) =>
   allPass ([isPitchBend,
             byteEq (1) (pb & 0x7F),
             byteEq (2) (pb >> 7)])
-          (msg)
+          (msg))
 
 
 // ------------ Channel Mode Messages ----------------
@@ -230,15 +230,15 @@ export const isChannelMessage = (msg) =>
   anyPass ([ isChannelMode, isChannelVoice, isRPN, isNRPN ])
           (msg)
 
-export const isOnChannel = (ch) => (msg) =>
+export const isOnChannel = curry((ch, msg) =>
   both (isChannelMessage)
        (byteEqBy (0) (v => (v & 0xF) === ch))
-       (msg)
+       (msg))
 
-export const isOnChannels = (chs) => (msg) =>
+export const isOnChannels = curry((chs, msg) =>
   both (isChannelMessage)
        (byteEqBy (0) (v => includes (v & 0xF, chs)))
-       (msg)
+       (msg))
 
 // =============== System Common message predicates ================
 

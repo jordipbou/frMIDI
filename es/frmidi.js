@@ -3503,69 +3503,69 @@ _curry2(function sort(comparator, list) {
   return Array.prototype.slice.call(list, 0).sort(comparator);
 });
 
-let seemsMIDIMessageAsArray = allPass([either(is(Array))(is(Uint8Array)), complement(isEmpty), all(is(Number))]);
-let seemsMIDIMessageAsObject = allPass([is(Object), propEq('type', 'midimessage'), propSatisfies(seemsMIDIMessageAsArray, 'data')]);
-let seemsMIDIMessage = either(seemsMIDIMessageAsArray)(seemsMIDIMessageAsObject);
-let seemsArrayOfMIDIMessagesAsArrays = both(is(Array))(all(seemsMIDIMessageAsArray));
-let seemsArrayOfMIDIMessagesAsObjects = both(is(Array))(all(seemsMIDIMessageAsObject));
-let dataEq = curry((d, m) => seemsMIDIMessageAsArray(m) ? equals(d)(m) : seemsMIDIMessage(m) ? dataEq(d)(m.data) : false);
-let byteEq = curry((n, d, m) => seemsMIDIMessageAsArray(m) ? pathEq([n])(d)(m) : seemsMIDIMessage(m) ? byteEq(n)(d)(m.data) : false);
-let dataEqBy = curry((p, m) => seemsMIDIMessageAsArray(m) ? p(m) : seemsMIDIMessage(m) ? dataEqBy(p)(m.data) : false);
-let byteEqBy = curry((n, p, m) => seemsMIDIMessageAsArray(m) ? p(path([n])(m)) : seemsMIDIMessage(m) ? byteEqBy(n)(p)(m.data) : false); // ------------------ Channel Voice Messages -----------------------
+const seemsMIDIMessageAsArray = msg => allPass([either(is(Array))(is(Uint8Array)), complement(isEmpty), all(is(Number))])(msg);
+const seemsMIDIMessageAsObject = msg => allPass([is(Object), propEq('type', 'midimessage'), propSatisfies(seemsMIDIMessageAsArray, 'data')])(msg);
+const seemsMIDIMessage = msg => either(seemsMIDIMessageAsArray)(seemsMIDIMessageAsObject)(msg);
+const seemsArrayOfMIDIMessagesAsArrays = msg => both(is(Array))(all(seemsMIDIMessageAsArray))(msg);
+const seemsArrayOfMIDIMessagesAsObjects = both(is(Array))(all(seemsMIDIMessageAsObject));
+const dataEq = curry((data, msg) => seemsMIDIMessageAsArray(msg) ? equals(data)(msg) : seemsMIDIMessage(msg) ? dataEq(data)(msg.data) : false);
+const byteEq = curry((n, data, msg) => seemsMIDIMessageAsArray(msg) ? pathEq([n])(data)(msg) : seemsMIDIMessage(msg) ? byteEq(n)(data)(msg.data) : false);
+const dataEqBy = curry((pred, msg) => seemsMIDIMessageAsArray(msg) ? pred(msg) : seemsMIDIMessage(msg) ? dataEqBy(pred)(msg.data) : false);
+const byteEqBy = curry((n, pred, msg) => seemsMIDIMessageAsArray(msg) ? pred(path([n])(msg)) : seemsMIDIMessage(msg) ? byteEqBy(n)(pred)(msg.data) : false); // ------------------ Channel Voice Messages -----------------------
 
-let isChannelVoiceMessageOfType = t => both(seemsMIDIMessage)(dataEqBy(p => includes(t, [8, 9, 10, 11, 14]) ? length(p) === 3 && p[0] >> 4 === t : length(p) === 2 && p[0] >> 4 === t));
-let isNoteOff = isChannelVoiceMessageOfType(8);
-let isNoteOn = isChannelVoiceMessageOfType(9);
-let asNoteOn = both(isNoteOn)(complement(byteEq(2)(0)));
-let asNoteOff = either(isNoteOff)(both(isNoteOn)(byteEq(2)(0)));
-let isNote = either(isNoteOff)(isNoteOn);
-let hasVelocity = isNote;
-let velocityEq = v => both(hasVelocity)(byteEq(2)(v));
-let isPolyPressure = isChannelVoiceMessageOfType(10);
-let hasNote = either(isNote)(isPolyPressure);
-let noteEq = n => both(hasNote)(byteEq(1)(n));
-let isControlChange = isChannelVoiceMessageOfType(11);
-let controlEq = c => both(isControlChange)(byteEq(1)(c));
-let valueEq = v => both(isControlChange)(byteEq(2)(v));
-let isProgramChange = isChannelVoiceMessageOfType(12);
-let programEq = p => both(isProgramChange)(byteEq(1)(p));
-let isChannelPressure = isChannelVoiceMessageOfType(13);
-let hasPressure = either(isPolyPressure)(isChannelPressure);
-let pressureEq = p => cond([[isPolyPressure, byteEq(2)(p)], [isChannelPressure, byteEq(1)(p)], [T, F]]);
-let isPitchBend = isChannelVoiceMessageOfType(14);
-let pitchBendEq = pb => allPass([isPitchBend, byteEq(1)(pb & 0x7F), byteEq(2)(pb >> 7)]); // ------------ Channel Mode Messages ----------------
+const isChannelVoiceMessageOfType = type => msg => both(seemsMIDIMessage)(dataEqBy(p => includes(type, [8, 9, 10, 11, 14]) ? length(p) === 3 && p[0] >> 4 === type : length(p) === 2 && p[0] >> 4 === type))(msg);
+const isNoteOff = msg => isChannelVoiceMessageOfType(8)(msg);
+const isNoteOn = msg => isChannelVoiceMessageOfType(9)(msg);
+const asNoteOn = msg => both(isNoteOn)(complement(byteEq(2)(0)))(msg);
+const asNoteOff = msg => either(isNoteOff)(both(isNoteOn)(byteEq(2)(0)))(msg);
+const isNote = msg => either(isNoteOff)(isNoteOn)(msg);
+const hasVelocity = msg => isNote(msg);
+const velocityEq = v => msg => both(hasVelocity)(byteEq(2)(v))(msg);
+const isPolyPressure = msg => isChannelVoiceMessageOfType(10)(msg);
+const hasNote = msg => either(isNote)(isPolyPressure)(msg);
+const noteEq = n => msg => both(hasNote)(byteEq(1)(n))(msg);
+const isControlChange = msg => isChannelVoiceMessageOfType(11)(msg);
+const controlEq = c => msg => both(isControlChange)(byteEq(1)(c))(msg);
+const valueEq = v => msg => both(isControlChange)(byteEq(2)(v))(msg);
+const isProgramChange = msg => isChannelVoiceMessageOfType(12)(msg);
+const programEq = p => msg => both(isProgramChange)(byteEq(1)(p))(msg);
+const isChannelPressure = msg => isChannelVoiceMessageOfType(13)(msg);
+const hasPressure = msg => either(isPolyPressure)(isChannelPressure)(msg);
+const pressureEq = p => msg => cond([[isPolyPressure, byteEq(2)(p)], [isChannelPressure, byteEq(1)(p)], [T, F]])(msg);
+const isPitchBend = msg => isChannelVoiceMessageOfType(14)(msg);
+const pitchBendEq = pb => msg => allPass([isPitchBend, byteEq(1)(pb & 0x7F), byteEq(2)(pb >> 7)])(msg); // ------------ Channel Mode Messages ----------------
 
-let isChannelModeMessage = (d1, d2) => d2 === undefined ? both(isControlChange)(byteEq(1)(d1)) : allPass([isControlChange, byteEq(1)(d1), byteEq(2)(d2)]);
-let isAllSoundOff = isChannelModeMessage(120, 0);
-let isResetAll = isChannelModeMessage(121);
-let isLocalControlOff = isChannelModeMessage(122, 0);
-let isLocalControlOn = isChannelModeMessage(122, 127);
-let isAllNotesOff = isChannelModeMessage(123, 0);
-let isOmniModeOff = isChannelModeMessage(124, 0);
-let isOmniModeOn = isChannelModeMessage(125, 0);
-let isMonoModeOn = isChannelModeMessage(126);
-let isPolyModeOn = isChannelModeMessage(127, 0);
-let isChannelMode = anyPass([isAllSoundOff, isResetAll, isLocalControlOff, isLocalControlOn, isAllNotesOff, isOmniModeOff, isOmniModeOn, isMonoModeOn, isPolyModeOn]);
-let isChannelVoice = anyPass([isNote, isPolyPressure, both(isControlChange)(complement(isChannelMode)), isProgramChange, isChannelPressure, isPitchBend]); // -------------------- RPN & NRPN predicates ----------------------
+const isChannelModeMessage = (d1, d2) => msg => d2 === undefined ? both(isControlChange)(byteEq(1)(d1))(msg) : allPass([isControlChange, byteEq(1)(d1), byteEq(2)(d2)])(msg);
+const isAllSoundOff = msg => isChannelModeMessage(120, 0)(msg);
+const isResetAll = msg => isChannelModeMessage(121)(msg);
+const isLocalControlOff = msg => isChannelModeMessage(122, 0)(msg);
+const isLocalControlOn = msg => isChannelModeMessage(122, 127)(msg);
+const isAllNotesOff = msg => isChannelModeMessage(123, 0)(msg);
+const isOmniModeOff = msg => isChannelModeMessage(124, 0)(msg);
+const isOmniModeOn = msg => isChannelModeMessage(125, 0)(msg);
+const isMonoModeOn = msg => isChannelModeMessage(126)(msg);
+const isPolyModeOn = msg => isChannelModeMessage(127, 0)(msg);
+const isChannelMode = msg => anyPass([isAllSoundOff, isResetAll, isLocalControlOff, isLocalControlOn, isAllNotesOff, isOmniModeOff, isOmniModeOn, isMonoModeOn, isPolyModeOn])(msg);
+const isChannelVoice = msg => anyPass([isNote, isPolyPressure, both(isControlChange)(complement(isChannelMode)), isProgramChange, isChannelPressure, isPitchBend])(msg); // -------------------- RPN & NRPN predicates ----------------------
 
-let isRPN = allPass([seemsMIDIMessage, byteEq(1)(101), byteEq(4)(100), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)]);
-let isNRPN = allPass([seemsMIDIMessage, byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)]);
-let isChannelMessage = anyPass([isChannelMode, isChannelVoice, isRPN, isNRPN]);
-let isOnChannel = ch => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch));
-let isOnChannels = chs => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs))); // =============== System Common message predicates ================
+const isRPN = msg => allPass([seemsMIDIMessage, byteEq(1)(101), byteEq(4)(100), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
+const isNRPN = msg => allPass([seemsMIDIMessage, byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
+const isChannelMessage = msg => anyPass([isChannelMode, isChannelVoice, isRPN, isNRPN])(msg);
+const isOnChannel = ch => msg => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg);
+const isOnChannels = chs => msg => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg); // =============== System Common message predicates ================
 
-let isSystemExclusive = allPass([seemsMIDIMessage, byteEq(0)(240), byteEq(-1)(247)]);
-let isMIDITimeCodeQuarterFrame = both(seemsMIDIMessage)(byteEq(0)(241));
-let isSongPositionPointer = both(seemsMIDIMessage)(byteEq(0)(242));
-let isSongSelect = both(seemsMIDIMessage)(byteEq(0)(243));
-let isTuneRequest = both(seemsMIDIMessage)(dataEq([246]));
-let isEndOfExclusive = both(seemsMIDIMessage)(dataEq([247])); // ============= System Real Time message predicates ===============
+const isSystemExclusive = msg => allPass([seemsMIDIMessage, byteEq(0)(240), byteEq(-1)(247)])(msg);
+const isMIDITimeCodeQuarterFrame = msg => both(seemsMIDIMessage)(byteEq(0)(241))(msg);
+const isSongPositionPointer = msg => both(seemsMIDIMessage)(byteEq(0)(242))(msg);
+const isSongSelect = msg => both(seemsMIDIMessage)(byteEq(0)(243))(msg);
+const isTuneRequest = msg => both(seemsMIDIMessage)(dataEq([246]))(msg);
+const isEndOfExclusive = msg => both(seemsMIDIMessage)(dataEq([247]))(msg); // ============= System Real Time message predicates ===============
 
-let isMIDIClock = both(seemsMIDIMessage)(dataEq([248]));
-let isStart = both(seemsMIDIMessage)(dataEq([250]));
-let isContinue = both(seemsMIDIMessage)(dataEq([251]));
-let isStop = both(seemsMIDIMessage)(dataEq([252]));
-let isActiveSensing = both(seemsMIDIMessage)(dataEq([254])); // Reset and MIDI File Meta Events have the same value on
+const isMIDIClock = msg => both(seemsMIDIMessage)(dataEq([248]))(msg);
+const isStart = msg => both(seemsMIDIMessage)(dataEq([250]))(msg);
+const isContinue = msg => both(seemsMIDIMessage)(dataEq([251]))(msg);
+const isStop = msg => both(seemsMIDIMessage)(dataEq([252]))(msg);
+const isActiveSensing = msg => both(seemsMIDIMessage)(dataEq([254]))(msg); // Reset and MIDI File Meta Events have the same value on
 // their first byte: 0xFF.
 // Reset message is just one byte long and MIDI File Meta
 // Events are several bytes long. It's not possible to
@@ -3573,14 +3573,14 @@ let isActiveSensing = both(seemsMIDIMessage)(dataEq([254])); // Reset and MIDI F
 // programmer responsability to only use isReset outside
 // MIDI Files and seemsMIDIMetaEvent inside MIDI Files.
 
-let isReset = both(either(seemsMIDIMessage)(seemsMIDIMessageAsArray))(dataEq([255])); // ============== MIDI File Meta Events predicates =================
+const isReset = msg => both(either(seemsMIDIMessage)(seemsMIDIMessageAsArray))(dataEq([255]))(msg); // ============== MIDI File Meta Events predicates =================
 // TODO: Check that length is correct !!!
 
-let seemsMIDIMetaEventArray = allPass([is(Array), complement(isEmpty), all(is(Number)), pathEq([0])(255)]);
-let seemsMIDIMetaEventObject = allPass([is(Object), propEq('type', 'metaevent'), has('metaType'), has('data')]);
-let seemsMIDIMetaEvent = either(seemsMIDIMetaEventArray)(seemsMIDIMetaEventObject);
-let metaTypeEq = curry((t, m) => seemsMIDIMetaEventArray(m) ? pathEq([1])(t)(m) : seemsMIDIMetaEventObject(m) ? metaTypeEq(t, m.data) : false);
-let isTempoChange = both(seemsMIDIMetaEvent)(metaTypeEq(81));
+const seemsMIDIMetaEventArray = msg => allPass([is(Array), complement(isEmpty), all(is(Number)), pathEq([0])(255)])(msg);
+const seemsMIDIMetaEventObject = msg => allPass([is(Object), propEq('type', 'metaevent'), has('metaType'), has('data')])(msg);
+const seemsMIDIMetaEvent = msg => either(seemsMIDIMetaEventArray)(seemsMIDIMetaEventObject)(msg);
+const metaTypeEq = curry((type, msg) => seemsMIDIMetaEventArray(msg) ? pathEq([1])(type)(msg) : seemsMIDIMetaEventObject(msg) ? metaTypeEq(type, msg.data) : false);
+const isTempoChange = msg => both(seemsMIDIMetaEvent)(metaTypeEq(81))(msg);
 
 // Converts a byte array to a MIDIMessageEvent compatible object.
 
