@@ -49,6 +49,6 @@ In this example, I have connected input from 'Port-1' to output of 'Port-14'. Wh
     …   .then (() => output ('Port-14') 
     …                       (input ('Port-1')))
 
-[Load on Efimera](https://jordipbou.github.com/efimera/?json={"blocks":[{"lines":["import * from 'frmidi'"],"history":[],"completions":[],"autocompletion":"","cursor":[22,0]},{"lines":["initialize ()","  .then ( () => output ('Port-14') (input ('Port-1')) )"],"history":[],"completions":[],"autocompletion":"","cursor":[55,1]},{"lines":[""],"history":[],"completions":[],"autocompletion":"","cursor":[0,0]}],"focused":2})
+[Load on Efimera](https://jordipbou.github.com/efimera/?json=%7B%22blocks%22:%5B%7B%22lines%22:%5B%22import%20*%20from%20'frmidi'%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B22,0%5D%7D,%7B%22lines%22:%5B%22initialize%20()%22,%22%20%20.then%20(%20()%20=%3E%20output%20('Port-14')%20(input%20('Port-1'))%20)%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B55,1%5D%7D,%7B%22lines%22:%5B%22%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B0,0%5D%7D%5D,%22focused%22:2%7D)
 
 
