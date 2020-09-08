@@ -6,173 +6,181 @@ import {
 
 // ================= MIDI Messages predicates ======================
 
-export let seemsMIDIMessageAsArray =
+export const seemsMIDIMessageAsArray = (msg) => 
   allPass ([either (is (Array)) (is (Uint8Array)),
             complement (isEmpty),
-            all (is (Number))])
+            all (is (Number))]) (msg)
 
-export let seemsMIDIMessageAsObject =
+export const seemsMIDIMessageAsObject = (msg) =>
   allPass ([is (Object),
             propEq ('type', 'midimessage'),
-            propSatisfies (seemsMIDIMessageAsArray, 'data')])
+            propSatisfies (seemsMIDIMessageAsArray, 'data')]) (msg)
 
-export let seemsMIDIMessage = 
-  either (seemsMIDIMessageAsArray) (seemsMIDIMessageAsObject)
+export const seemsMIDIMessage = (msg) =>
+  either (seemsMIDIMessageAsArray) (seemsMIDIMessageAsObject) (msg)
 
-export let seemsArrayOfMIDIMessagesAsArrays =
+export const seemsArrayOfMIDIMessagesAsArrays = (msg) =>
   both (is (Array))
        (all (seemsMIDIMessageAsArray))
+       (msg)
 
-export let seemsArrayOfMIDIMessagesAsObjects = 
+export const seemsArrayOfMIDIMessagesAsObjects = 
   both (is (Array))
        (all (seemsMIDIMessageAsObject))
 
-export let dataEq = curry ((d, m) =>
-  seemsMIDIMessageAsArray (m) ?
-    equals (d) (m)
-    : seemsMIDIMessage (m) ?
-      dataEq (d) (m.data)
+export const dataEq = curry ((data, msg) =>
+  seemsMIDIMessageAsArray (msg) ?
+    equals (data) (msg)
+    : seemsMIDIMessage (msg) ?
+      dataEq (data) (msg.data)
       : false )
 
-export let byteEq = curry ((n, d, m) =>
-  seemsMIDIMessageAsArray (m) ?
-    pathEq ([n]) (d) (m)
-    : seemsMIDIMessage (m) ?
-      byteEq (n) (d) (m.data)
+export const byteEq = curry ((n, data, msg) =>
+  seemsMIDIMessageAsArray (msg) ?
+    pathEq ([n]) (data) (msg)
+    : seemsMIDIMessage (msg) ?
+      byteEq (n) (data) (msg.data)
       : false )
 
-export let dataEqBy = curry ((p, m) =>
-  seemsMIDIMessageAsArray (m) ?
-    p (m)
-    : seemsMIDIMessage (m) ?
-      dataEqBy (p) (m.data)
+export const dataEqBy = curry ((pred, msg) =>
+  seemsMIDIMessageAsArray (msg) ?
+    pred (msg)
+    : seemsMIDIMessage (msg) ?
+      dataEqBy (pred) (msg.data)
       : false )
 
-export let byteEqBy = curry ((n, p, m) =>
-  seemsMIDIMessageAsArray (m) ?
-    p (path ([n]) (m))
-    : seemsMIDIMessage (m) ?
-      byteEqBy (n) (p) (m.data)
+export const byteEqBy = curry ((n, pred, msg) =>
+  seemsMIDIMessageAsArray (msg) ?
+    pred (path ([n]) (msg))
+    : seemsMIDIMessage (msg) ?
+      byteEqBy (n) (pred) (msg.data)
       : false )
 
 
 // ------------------ Channel Voice Messages -----------------------
 
-export let isChannelVoiceMessageOfType = (t) =>
+export const isChannelVoiceMessageOfType = (type) => (msg) =>
   both (seemsMIDIMessage)
        (dataEqBy 
-         (p => includes (t, [8, 9, 10, 11, 14]) ?
-                 length(p) === 3 && p[0] >> 4 === t
-                 : length(p) === 2 && p[0] >> 4 === t))
+         (p => includes (type, [8, 9, 10, 11, 14]) ?
+                 length (p) === 3 && p [0] >> 4 === type
+                 : length (p) === 2 && p [0] >> 4 === type)) (msg)
 
-export let isNoteOff = 
-  isChannelVoiceMessageOfType (8)
+export const isNoteOff = (msg) =>
+  isChannelVoiceMessageOfType (8) (msg)
 
-export let isNoteOn = 
-  isChannelVoiceMessageOfType (9)
+export const isNoteOn = (msg) =>
+  isChannelVoiceMessageOfType (9) (msg)
 
-export let asNoteOn = 
-  both (isNoteOn) (complement (byteEq (2) (0)))
+export const asNoteOn = (msg) =>
+  both (isNoteOn) (complement (byteEq (2) (0))) (msg)
 
-export let asNoteOff =
-  either (isNoteOff) (both (isNoteOn) (byteEq (2) (0)))
+export const asNoteOff = (msg) =>
+  either (isNoteOff) (both (isNoteOn) (byteEq (2) (0))) (msg)
 
-export let isNote = 
-  either (isNoteOff) (isNoteOn)
+export const isNote = (msg) =>
+  either (isNoteOff) (isNoteOn) (msg)
 
-export let hasVelocity = 
-  isNote
+export const hasVelocity = (msg) =>
+  isNote (msg)
 
-export let velocityEq = (v) =>
+export const velocityEq = (v) => (msg) =>
   both (hasVelocity)
        (byteEq (2) (v))
+       (msg)
 
-export let isPolyPressure = 
-  isChannelVoiceMessageOfType (10)
+export const isPolyPressure = (msg) =>
+  isChannelVoiceMessageOfType (10) (msg)
 
-export let hasNote = 
-  either (isNote) (isPolyPressure)
+export const hasNote = (msg) =>
+  either (isNote) (isPolyPressure) (msg)
 
-export let noteEq = (n) => 
+export const noteEq = (n) => (msg) =>
   both (hasNote)
        (byteEq (1) (n))
+       (msg)
 
-export let isControlChange = 
-  isChannelVoiceMessageOfType (11)
+export const isControlChange = (msg) =>
+  isChannelVoiceMessageOfType (11) (msg)
 
-export let controlEq = (c) =>
+export const controlEq = (c) => (msg) =>
   both (isControlChange)
        (byteEq (1) (c))
+       (msg)
 
-export let valueEq = (v) =>
+export const valueEq = (v) => (msg) =>
   both (isControlChange)
        (byteEq (2) (v))
+       (msg)
 
-export let isProgramChange = 
-  isChannelVoiceMessageOfType (12)
+export const isProgramChange = (msg) =>
+  isChannelVoiceMessageOfType (12) (msg)
 
-export let programEq = (p) =>
+export const programEq = (p) => (msg) =>
   both (isProgramChange)
        (byteEq (1) (p))
+       (msg)
 
-export let isChannelPressure = 
-  isChannelVoiceMessageOfType (13)
+export const isChannelPressure = (msg) =>
+  isChannelVoiceMessageOfType (13) (msg)
 
-export let hasPressure =
-  either (isPolyPressure) (isChannelPressure)
+export const hasPressure = (msg) =>
+  either (isPolyPressure) (isChannelPressure) (msg)
 
-export let pressureEq = (p) =>
-  cond ([
-    [isPolyPressure, byteEq (2) (p)],
-    [isChannelPressure, byteEq (1) (p)],
-    [T, F]])
+export const pressureEq = (p) => (msg) =>
+  cond ([[isPolyPressure, byteEq (2) (p)],
+         [isChannelPressure, byteEq (1) (p)],
+         [T, F]])
+       (msg)
 
-export let isPitchBend = 
-  isChannelVoiceMessageOfType (14)
+export const isPitchBend = (msg) =>
+  isChannelVoiceMessageOfType (14) (msg)
 
-export let pitchBendEq = (pb) =>
+export const pitchBendEq = (pb) => (msg) =>
   allPass ([isPitchBend,
             byteEq (1) (pb & 0x7F),
             byteEq (2) (pb >> 7)])
+          (msg)
 
 
 // ------------ Channel Mode Messages ----------------
 
-export let isChannelModeMessage = (d1, d2) =>
+export const isChannelModeMessage = (d1, d2) => (msg) => 
   d2 === undefined ?
-    both (isControlChange) (byteEq (1) (d1))
+    both (isControlChange) (byteEq (1) (d1)) (msg)
     : allPass ([isControlChange,
                 byteEq (1) (d1),
                 byteEq (2) (d2)])
+              (msg)
 
-export let isAllSoundOff = 
-  isChannelModeMessage (120, 0)
+export const isAllSoundOff = (msg) =>
+  isChannelModeMessage (120, 0) (msg)
 
-export let isResetAll = 
-  isChannelModeMessage (121)
+export const isResetAll = (msg) =>
+  isChannelModeMessage (121) (msg)
 
-export let isLocalControlOff = 
-  isChannelModeMessage (122, 0)
+export const isLocalControlOff = (msg) =>
+  isChannelModeMessage (122, 0) (msg)
 
-export let isLocalControlOn = 
-  isChannelModeMessage (122, 127)
+export const isLocalControlOn = (msg) =>
+  isChannelModeMessage (122, 127) (msg)
 
-export let isAllNotesOff = 
-  isChannelModeMessage (123, 0)
+export const isAllNotesOff = (msg) =>
+  isChannelModeMessage (123, 0) (msg)
 
-export let isOmniModeOff =  
-  isChannelModeMessage (124, 0)
+export const isOmniModeOff = (msg) =>
+  isChannelModeMessage (124, 0) (msg)
 
-export let isOmniModeOn = 
-  isChannelModeMessage (125, 0)
+export const isOmniModeOn = (msg) =>
+  isChannelModeMessage (125, 0) (msg)
 
-export let isMonoModeOn = 
-  isChannelModeMessage (126)
+export const isMonoModeOn = (msg) =>
+  isChannelModeMessage (126) (msg)
 
-export let isPolyModeOn = 
-  isChannelModeMessage (127, 0)
+export const isPolyModeOn = (msg) =>
+  isChannelModeMessage (127, 0) (msg)
 
-export let isChannelMode =
+export const isChannelMode = (msg) =>
   anyPass ([isAllSoundOff,
             isResetAll,
             isLocalControlOff,
@@ -182,8 +190,9 @@ export let isChannelMode =
             isOmniModeOn,
             isMonoModeOn,
             isPolyModeOn])
+          (msg)
 
-export let isChannelVoice =
+export const isChannelVoice = (msg) =>
   anyPass ([isNote,
             isPolyPressure,
             both (isControlChange) 
@@ -191,10 +200,11 @@ export let isChannelVoice =
             isProgramChange,
             isChannelPressure,
             isPitchBend])
+          (msg)
 
 // -------------------- RPN & NRPN predicates ----------------------
 
-export let isRPN =
+export const isRPN = (msg) =>
   allPass ([seemsMIDIMessage,
             byteEq (1) (101),
             byteEq (4) (100),
@@ -203,8 +213,9 @@ export let isRPN =
             byteEq (-4) (127),
             byteEq (-2) (100),
             byteEq (-1) (127)])
+          (msg)
 
-export let isNRPN =
+export const isNRPN = (msg) =>
   allPass ([seemsMIDIMessage,
             byteEq (1) (99),
             byteEq (4) (98),
@@ -213,56 +224,61 @@ export let isNRPN =
             byteEq (-4) (127),
             byteEq (-2) (100),
             byteEq (-1) (127)])
+          (msg)
 
-export let isChannelMessage =
+export const isChannelMessage = (msg) =>
   anyPass ([ isChannelMode, isChannelVoice, isRPN, isNRPN ])
+          (msg)
 
-export let isOnChannel = (ch) =>
+export const isOnChannel = (ch) => (msg) =>
   both (isChannelMessage)
        (byteEqBy (0) (v => (v & 0xF) === ch))
+       (msg)
 
-export let isOnChannels = (chs) =>
+export const isOnChannels = (chs) => (msg) =>
   both (isChannelMessage)
        (byteEqBy (0) (v => includes (v & 0xF, chs)))
+       (msg)
 
 // =============== System Common message predicates ================
 
-export let isSystemExclusive = 
+export const isSystemExclusive = (msg) =>
   allPass ([seemsMIDIMessage,
             byteEq (0) (240),
             byteEq (-1) (247)])
+          (msg)
 
-export let isMIDITimeCodeQuarterFrame =
-  both (seemsMIDIMessage) (byteEq (0) (241))
+export const isMIDITimeCodeQuarterFrame = (msg) =>
+  both (seemsMIDIMessage) (byteEq (0) (241)) (msg)
 
-export let isSongPositionPointer =
-  both (seemsMIDIMessage) (byteEq (0) (242))
+export const isSongPositionPointer = (msg) =>
+  both (seemsMIDIMessage) (byteEq (0) (242)) (msg)
 
-export let isSongSelect =
-  both (seemsMIDIMessage) (byteEq (0) (243))
+export const isSongSelect = (msg) =>
+  both (seemsMIDIMessage) (byteEq (0) (243)) (msg)
 
-export let isTuneRequest =
-  both (seemsMIDIMessage) (dataEq ([246]))
+export const isTuneRequest = (msg) =>
+  both (seemsMIDIMessage) (dataEq ([246])) (msg)
 
-export let isEndOfExclusive =
-  both (seemsMIDIMessage) (dataEq ([247]))
+export const isEndOfExclusive = (msg) =>
+  both (seemsMIDIMessage) (dataEq ([247])) (msg)
 
 // ============= System Real Time message predicates ===============
 
-export let isMIDIClock =
-  both (seemsMIDIMessage) (dataEq ([248]))
+export const isMIDIClock = (msg) =>
+  both (seemsMIDIMessage) (dataEq ([248])) (msg)
 
-export let isStart =
-  both (seemsMIDIMessage) (dataEq ([250]))
+export const isStart = (msg) =>
+  both (seemsMIDIMessage) (dataEq ([250])) (msg)
 
-export let isContinue =
-  both (seemsMIDIMessage) (dataEq ([251]))
+export const isContinue = (msg) =>
+  both (seemsMIDIMessage) (dataEq ([251])) (msg)
 
-export let isStop =
-  both (seemsMIDIMessage) (dataEq ([252]))
+export const isStop = (msg) =>
+  both (seemsMIDIMessage) (dataEq ([252])) (msg)
 
-export let isActiveSensing =
-  both (seemsMIDIMessage) (dataEq ([254]))
+export const isActiveSensing = (msg) =>
+  both (seemsMIDIMessage) (dataEq ([254])) (msg)
 
 // Reset and MIDI File Meta Events have the same value on
 // their first byte: 0xFF.
@@ -271,35 +287,38 @@ export let isActiveSensing =
 // differentiate them based on first byte, it's the
 // programmer responsability to only use isReset outside
 // MIDI Files and seemsMIDIMetaEvent inside MIDI Files.
-export let isReset =
+export const isReset = (msg) =>
   both (either (seemsMIDIMessage) (seemsMIDIMessageAsArray))
        (dataEq ([255]))
+       (msg)
 
 
 // ============== MIDI File Meta Events predicates =================
 
 // TODO: Check that length is correct !!!
-export let seemsMIDIMetaEventArray =
+export const seemsMIDIMetaEventArray = (msg) =>
   allPass ([is (Array),
             complement (isEmpty),
             all (is (Number)),
             pathEq ([0]) (255)])
+          (msg)
 
-export let seemsMIDIMetaEventObject =
+export const seemsMIDIMetaEventObject = (msg) =>
   allPass ([is (Object),
             propEq ('type', 'metaevent'),
             has ('metaType'),
             has ('data')])
+          (msg)
 
-export let seemsMIDIMetaEvent =
-  either (seemsMIDIMetaEventArray) (seemsMIDIMetaEventObject)
+export const seemsMIDIMetaEvent = (msg) =>
+  either (seemsMIDIMetaEventArray) (seemsMIDIMetaEventObject) (msg)
 
-export let metaTypeEq = curry((t, m) => 
-  seemsMIDIMetaEventArray (m) ?
-    pathEq ([1]) (t) (m)
-    : seemsMIDIMetaEventObject (m) ?
-      metaTypeEq (t, m.data) 
+export const metaTypeEq = curry((type, msg) => 
+  seemsMIDIMetaEventArray (msg) ?
+    pathEq ([1]) (type) (msg)
+    : seemsMIDIMetaEventObject (msg) ?
+      metaTypeEq (type, msg.data) 
       : false)
 
-export let isTempoChange = 
-  both (seemsMIDIMetaEvent) (metaTypeEq (81))
+export const isTempoChange = (msg) =>
+  both (seemsMIDIMetaEvent) (metaTypeEq (81)) (msg)
