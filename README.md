@@ -36,3 +36,19 @@ output (name)
 
 # Recipes
 
+## Connect MIDI input to MIDI output
+
+As an input is an observable and and output accepts an observable as
+its parameter, we just need input function as parameter to output
+function.
+
+In this example, I have connected input from 'Port-1' to output of 'Port-14'. When I send MIDI from the outside to Port-1 its redirected to Port-14 directly.
+
+    > import * from 'frmidi'
+    > initialize ()
+    …   .then (() => output ('Port-14') 
+    …                       (input ('Port-1')))
+
+[Load on Efimera](https://jordipbou.github.com/efimera/?json={"blocks":[{"lines":["import * from 'frmidi'"],"history":[],"completions":[],"autocompletion":"","cursor":[22,0]},{"lines":["initialize ()","  .then ( () => output ('Port-14') (input ('Port-1')) )"],"history":[],"completions":[],"autocompletion":"","cursor":[55,1]},{"lines":[""],"history":[],"completions":[],"autocompletion":"","cursor":[0,0]}],"focused":2})
+
+
