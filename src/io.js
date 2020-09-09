@@ -1,7 +1,7 @@
 import * as rx from 'rxjs'
 import * as rxo from 'rxjs/operators'
 import { 
-  cond, curry, filter, forEach, head, is, last, 
+  bind, cond, curry, filter, forEach, head, is, last, 
   map, pipe, prop, propEq
 } from 'ramda'
 
@@ -65,11 +65,16 @@ export const input = (n = '') =>
 		pipe (
 			filter ( ([id, i]) => i.name.includes (n)),
 			map ( ([id, i]) => {
-				let input = rx.fromEvent (i, 'midimessage')
+        let emitter = new rx.Subject ()
+				let input = 
+          rx.merge (
+            rx.fromEvent (i, 'midimessage'),
+            emitter )
 				input.name = i.name
 				input.id = i.id
 				input.manufacturer = i.manufacturer
 				input.version = i.version
+        input.emit = bind (emitter.next, emitter)
 
 				return input
 			})
@@ -108,14 +113,19 @@ export const output = (n = '') =>
 			filter ( ({ name }) => name.includes (n) ),
 			map ( v => { v.open(); return v; } ),
 			map ( v => {
-				let output = send (v)
+        let receiver = new rx.Subject ()
+        receiver.subscribe (v.send)
+        receiver.send = bind (receiver.next, receiver)
+				let output = send (receiver)
 				Object.defineProperty (
 					output, 
 					'name', 
 					{ value: v.name })
+        //output.name = v.name
 				output.id = v.id
 				output.manufacturer = v.manufacturer
 				output.version = v.version
+        output.subscribe = bind (receiver.subscribe, receiver)
 
 				return output
 			}) 

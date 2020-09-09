@@ -82,7 +82,13 @@ test ('Input instatiation', async (t) => {
   Input1.emit ('midimessage', off (64))
   t.deepEqual (midi_input, [on (64), off (64)])
 
+  in1.emit (on (68))
+  t.deepEqual (midi_input, [on (64), off (64), on (68)])
+  
   in1x.unsubscribe ()
+
+  // Send thru input for testing purposes
+  
 })
 
 test ('Send function', (t) => {
@@ -132,4 +138,12 @@ test ('Output instantiation', async (t) => {
 
   out (on (64))
   t.deepEqual (midi_output, [[144, 64, 96]])
+
+  // Subscribing to a MIDI output (for testing)
+  let alt_midi_output = []
+  let receive = (msg) => alt_midi_output = concat (alt_midi_output) ([msg])
+  let ox = out.subscribe (receive)
+  out (off (64))
+  t.deepEqual (midi_output, [[144, 64, 96], [128, 64, 96]])
+  t.deepEqual (alt_midi_output, [[128, 64, 96]])
 })

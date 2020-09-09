@@ -4,6 +4,16 @@ JavaScript functional reactive MIDI library.
 
 Functions are curried and parameters ordered for correct composing of functions.
 
+# Installation
+
+## In node
+
+    npm install frmidi
+
+## In the browser
+
+    ...
+
 # Modules
 
 ## Predicates
@@ -174,3 +184,10 @@ To make it more clear how to use it with real MIDI inputs and outputs, see next 
 	> out0 (off (64))
  
 [Load on Efimera](https://jordipbou.github.com/efimera/?json=%7B%22blocks%22:%5B%7B%22lines%22:%5B%22import%20%7B%20cc,%20initialize,%20input,%20isNote,%20on,%20off,%20output%20%7D%20from%20'frmidi'%22,%22import%20%7B%20filter,%20tap%20%7D%20from%20'rxjs/operators'%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%22filter%22%5D,%22autocompletion%22:%22er%22,%22cursor%22:%5B13,1%5D%7D,%7B%22lines%22:%5B%22initialize%20()%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B13,0%5D%7D,%7B%22lines%22:%5B%22var%20in1%20=%20input%20('Port-1')%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B26,0%5D%7D,%7B%22lines%22:%5B%22var%20out14%20=%20output%20('Port-14')%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B30,0%5D%7D,%7B%22lines%22:%5B%22in1.pipe%20(filter%20(isNote),%20tap%20(console.log)).subscribe%20(out14)%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B63,0%5D%7D,%7B%22lines%22:%5B%22var%20out0%20=%20output%20('Port-0')%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B28,0%5D%7D,%7B%22lines%22:%5B%22out0%20(on%20(64))%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B14,0%5D%7D,%7B%22lines%22:%5B%22out0%20(cc%20(37))%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B14,0%5D%7D,%7B%22lines%22:%5B%22out0%20(off%20(64))%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B15,0%5D%7D,%7B%22lines%22:%5B%22%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B0,0%5D%7D%5D,%22focused%22:9%7D)
+
+## Merging MIDI streams
+
+# Changelog
+
+1.0.30 [2020/09/09] - Outputs are now subscribable for testing purposes
+1.0.29 [2020/09/09] - Inputs can now emit events programatically for testing purposes.
