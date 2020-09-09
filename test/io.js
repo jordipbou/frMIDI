@@ -1,10 +1,12 @@
 const test = require ('ava')
 const EventEmitter = require ('events')
 
-import { initialize, input, logPorts, output, send } from '../src/io.js'
+import { 
+  initialize, input, inputFrom, inputsAsText, output, outputsAsText, send 
+  } from '../src/io.js'
 import { on, off } from '../src/messages.js'
 
-import { concat } from 'ramda'
+import { bind, concat } from 'ramda'
 import { Subject } from 'rxjs'
 
 const MIDIInputs = new Map ()
@@ -47,48 +49,75 @@ test ('WebMIDI API initialization', async (t) => {
 
 test ('Log input/output ports to console', async (t) => {
   await initialize (false, custom_navigator)
-  let log_output = []
-  let log = (s) => log_output = concat (log_output) ([s])
-  logPorts (log)
+
   t.deepEqual (
-    log_output, 
-    ['Input 1  -in->', 'Input 2  -in->', '-out->  Output 1'])
+    inputsAsText (),
+    ['Input 1  -in->', 'Input 2  -in->'])
+
+  t.deepEqual (
+    outputsAsText (),
+    ['-out->  Output 1'])
 })
 
-test ('Input instatiation', async (t) => {
+test ('Input creation', (t) => {
+  let midi_input = []
+  let subscriber = (v) => midi_input = concat (midi_input) ([v])
+
+  let dummy = inputFrom ()
+  t.deepEqual (dummy.name, 'Dummy input')
+  t.deepEqual (dummy.id, 'DIn')
+  t.deepEqual (dummy.manufacturer, 'frMIDI')
+  t.deepEqual (dummy.version, 'dummy0.0')
+
+  let dummyX = dummy.subscribe (subscriber)
+
+  dummy.next (on (64))
+  t.deepEqual (midi_input, [on (64)])
+
+  dummyX.unsubscribe ()
+  midi_input = []
+
+  let in1 = inputFrom (Input1)
+  t.deepEqual (in1.name, 'Input 1')
+  t.deepEqual (in1.id, 'Input1')
+  t.deepEqual (in1.manufacturer, 'frmidi')
+  t.deepEqual (in1.version, 'mmiixx9')
+
+  let in1X = in1.subscribe (subscriber)
+
+  in1.next (on (67))
+  t.deepEqual (midi_input, [on (67)])
+
+  Input1.emit ('midimessage', on (68))
+  t.deepEqual (midi_input, [on (67), on (68)])
+
+  in1X.unsubscribe ()
+})
+
+test ('Create input by name', async (t) => {
   await initialize (false, custom_navigator)
 
   // Take default (first one)
   let in0 = input ()
   t.deepEqual (in0.name, 'Input 1')
 
+  // First that includes 2 in its name
   let in2 = input ('2')
   t.deepEqual (in2.name, 'Input 2')
 
+  // First that includes Input in its name
   let in1 = input ('Input')
   t.deepEqual (in1.name, 'Input 1')
   t.deepEqual (in1.id, 'Input1')
   t.deepEqual (in1.manufacturer, 'frmidi')
   t.deepEqual (in1.version, 'mmiixx9')
 
-  let midi_input = []
-  let subscriber = (v) => midi_input = concat (midi_input) ([v])
-
-  let in1x = in1.subscribe (subscriber)
-
-  Input1.emit ('midimessage', on (64))
-  t.deepEqual (midi_input, [on (64)])
-
-  Input1.emit ('midimessage', off (64))
-  t.deepEqual (midi_input, [on (64), off (64)])
-
-  in1.emit (on (68))
-  t.deepEqual (midi_input, [on (64), off (64), on (68)])
-  
-  in1x.unsubscribe ()
-
-  // Send thru input for testing purposes
-  
+  // Return dummy input
+  let d = input ('dummy')
+  t.deepEqual (d.name, 'Dummy input')
+  t.deepEqual (d.id, 'DIn')
+  t.deepEqual (d.manufacturer, 'frMIDI')
+  t.deepEqual (d.version, 'dummy0.0')
 })
 
 test ('Send function', (t) => {
@@ -99,27 +128,27 @@ test ('Send function', (t) => {
 
   // Sending an array
   midi_output = []
-  send (output) (on (64).data)
+  send (output.send) (on (64).data)
   t.deepEqual (midi_output, [[144, 64, 96]])
 
   // Sending midi object
   midi_output = []
-  send (output) (on (65))
+  send (output.send) (on (65))
   t.deepEqual (midi_output, [[144, 65, 96]])
 
   // Sending array of midi messages as arrays
   midi_output = []
-  send (output) ([on (66).data, off (66).data])
+  send (output.send) ([on (66).data, off (66).data])
   t.deepEqual (midi_output, [[144, 66, 96], [128, 66, 96]])
 
   // Sending array of midi messages as objects
   midi_output = []
-  send (output) ([on (67), off (67)])
+  send (output.send) ([on (67), off (67)])
   t.deepEqual (midi_output, [[144, 67, 96], [128, 67, 96]])
 
   // Sending (subscribing to) an observable
   let s = new Subject ()
-  let sx = send (output) (s)
+  let sx = send (output.send) (s)
   midi_output = []
   s.next (on (68))
   t.deepEqual (midi_output, [[144, 68, 96]])
@@ -139,11 +168,11 @@ test ('Output instantiation', async (t) => {
   out (on (64))
   t.deepEqual (midi_output, [[144, 64, 96]])
 
-  // Subscribing to a MIDI output (for testing)
+  //// Subscribing to a MIDI output (for testing)
   let alt_midi_output = []
   let receive = (msg) => alt_midi_output = concat (alt_midi_output) ([msg])
   let ox = out.subscribe (receive)
   out (off (64))
   t.deepEqual (midi_output, [[144, 64, 96], [128, 64, 96]])
-  t.deepEqual (alt_midi_output, [[128, 64, 96]])
+  t.deepEqual (alt_midi_output, [off (64)])
 })

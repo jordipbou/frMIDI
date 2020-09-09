@@ -5938,24 +5938,37 @@
   // Parameter logfn is used to pass a different logger for testing
   // purposes.
 
-  const logPorts = (logfn = console.log) => {
-    forEach(i => logfn(i[1].name + '  -in->'), [...midiAccess.inputs.entries()]);
-    forEach(o => logfn('-out->  ' + o[1].name), [...midiAccess.outputs.entries()]);
+  const inputsAsText = () => map(i => i[1].name + '  -in->', [...midiAccess.inputs.entries()]);
+  const outputsAsText = () => map(o => '-out->  ' + o[1].name, [...midiAccess.outputs.entries()]);
+  const logPorts = () => {
+    forEach(console.log)(inputsAsText());
+    forEach(console.log)(outputsAsText());
   }; // ------------------------- MIDI Input ----------------------------
   // Return an observable created from WebMIDI input onmidimessage event.
   // Name is matched against available input ports and first one that
   // contains it is used.
 
-  const input = (n = '') => head(pipe(filter(([id, i]) => i.name.includes(n)), map(([id, i]) => {
+  const inputFrom = i => {
     let emitter = new Subject();
-    let input = merge(fromEvent(i, 'midimessage'), emitter);
-    input.name = i.name;
-    input.id = i.id;
-    input.manufacturer = i.manufacturer;
-    input.version = i.version;
-    input.emit = bind(emitter.next, emitter);
-    return input;
-  }))([...midiAccess.inputs.entries()])); // ------------------------- MIDI Output ---------------------------
+
+    if (i) {
+      let input = merge(fromEvent(i, 'midimessage'), emitter);
+      input.name = i.name;
+      input.id = i.id;
+      input.manufacturer = i.manufacturer;
+      input.version = i.version;
+      input.next = bind(emitter.next, emitter);
+      return input;
+    } else {
+      let input = emitter;
+      input.name = 'Dummy input';
+      input.id = 'DIn';
+      input.manufacturer = 'frMIDI';
+      input.version = 'dummy0.0';
+      return input;
+    }
+  };
+  const input = (n = '') => n === 'dummy' ? inputFrom() : head(pipe(filter(([id, i]) => i.name.includes(n)), map(([id, i]) => inputFrom(i)))([...midiAccess.inputs.entries()])); // ------------------------- MIDI Output ---------------------------
   // Send function accepts midi messages as:
   // - byte array
   // - MIDIMessage object
@@ -5963,30 +5976,48 @@
   // - array of MIDIMessage objects
   // - observable emitting any of the above
 
-  const send = out => msg => seemsArrayOfMIDIMessagesAsObjects(msg) ? forEach(m => out.send(m.data, m.timeStamp))(msg) : seemsArrayOfMIDIMessagesAsArrays(msg) ? forEach(m => out.send(m))(msg) : seemsMIDIMessageAsObject(msg) ? out.send(msg.data) : seemsMIDIMessageAsArray(msg) ? out.send(msg) : is(Observable)(msg) ? msg.subscribe(send(out)) : null; // Sends first output that matches indicated name as argument and
+  const send = sendfn => msg => seemsArrayOfMIDIMessagesAsObjects(msg) ? forEach(m => sendfn(m.data, m.timeStamp))(msg) : seemsArrayOfMIDIMessagesAsArrays(msg) ? forEach(m => sendfn(m))(msg) : seemsMIDIMessageAsObject(msg) ? sendfn(msg.data, msg.timeStamp) : seemsMIDIMessageAsArray(msg) ? sendfn(msg) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
   // returns send function instantiated with selected output.
   // Some properties are added for inspection purposes.
 
-  const output = (n = '') => head(pipe(map(([k, v]) => v), filter(({
+  const outputFrom = o => {
+    let receiver = new Subject();
+
+    if (o) {
+      let sendfn = (d, t) => {
+        o.send(d, t);
+        receiver.next(msg(d, t));
+      };
+
+      let output = send(sendfn);
+      Object.defineProperty(output, 'name', {
+        value: o.name
+      });
+      output.id = o.id;
+      output.manufacturer = o.manufacturer;
+      output.version = o.version;
+      output.subscribe = bind(receiver.subscribe, receiver);
+      return output;
+    } else {
+      let sendfn = (d, t) => receiver.next(msg(d, t));
+
+      let output = send(sendfn);
+      Object.defineProperty(output, 'name', {
+        value: 'Dummy output'
+      });
+      output.id = 'DOut';
+      output.manufacturer = 'frMIDI';
+      output.version = 'dummy0.0';
+      output.subscribe = bind(receiver.subscribe, receiver);
+      return output;
+    }
+  };
+  const output = (n = '') => n === 'dummy' ? outputFrom() : head(pipe(map(([k, v]) => v), filter(({
     name
   }) => name.includes(n)), map(v => {
     v.open();
     return v;
-  }), map(v => {
-    let receiver = new Subject();
-    receiver.subscribe(v.send);
-    receiver.send = bind(receiver.next, receiver);
-    let output = send(receiver);
-    Object.defineProperty(output, 'name', {
-      value: v.name
-    }); //output.name = v.name
-
-    output.id = v.id;
-    output.manufacturer = v.manufacturer;
-    output.version = v.version;
-    output.subscribe = bind(receiver.subscribe, receiver);
-    return output;
-  }))([...midiAccess.outputs.entries()])); // ---------------------- MIDI File loading ------------------------
+  }), map(v => outputFrom(v)))([...midiAccess.outputs.entries()])); // ---------------------- MIDI File loading ------------------------
   // Opens a file selection dialog to load a MIDI file and then parse
   // it using midi-parser-js library. Converts messages to be
   // compatible with rest of library.
@@ -6049,7 +6080,7 @@
     }, [null, 0]), map$1(([events, tick]) => events));
   };
 
-  const version = '1.0.31'; //// --------------------- Other utilities -------------------------
+  const version = '1.0.34'; //// --------------------- Other utilities -------------------------
 
   let QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
   let midiToHzs = (n, tuning = 440) => tuning / 32 * Math.pow((n - 9) / 12, 2);
@@ -6084,6 +6115,8 @@
   exports.hasVelocity = hasVelocity;
   exports.initialize = initialize;
   exports.input = input;
+  exports.inputFrom = inputFrom;
+  exports.inputsAsText = inputsAsText;
   exports.isActiveSensing = isActiveSensing;
   exports.isAllNotesOff = isAllNotesOff;
   exports.isAllSoundOff = isAllSoundOff;
@@ -6137,6 +6170,8 @@
   exports.off = off;
   exports.on = on;
   exports.output = output;
+  exports.outputFrom = outputFrom;
+  exports.outputsAsText = outputsAsText;
   exports.panic = panic;
   exports.pb = pb;
   exports.pc = pc;

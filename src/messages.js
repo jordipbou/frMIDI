@@ -38,6 +38,8 @@ export let on = (n, v = 96, ch = 0) =>
 export let pp = (n, p = 96, ch = 0) => 
   msg([160 + ch, n, p])
 
+// TODO: If v is undefined (like in cc (37)) resulting message
+// is not a valid MIDI message !!
 export let cc = (c, v, ch = 0) => 
   msg([176 + ch, c, v])
 

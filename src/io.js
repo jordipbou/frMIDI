@@ -5,7 +5,7 @@ import {
   map, pipe, prop, propEq
 } from 'ramda'
 
-import { from } from './messages.js'
+import { msg, from } from './messages.js'
 import {
   seemsArrayOfMIDIMessagesAsArrays,
   seemsArrayOfMIDIMessagesAsObjects,
@@ -45,13 +45,19 @@ export const initialize =
 // Parameter logfn is used to pass a different logger for testing
 // purposes.
 
-export const logPorts = (logfn = console.log) => {
-	forEach (
-		i => logfn (i [1].name + '  -in->'), 
+export const inputsAsText = () =>
+	map (
+		i => i [1].name + '  -in->', 
 		[...midiAccess.inputs.entries ()])
-	forEach (
-		o => logfn ('-out->  ' + o [1].name), 
+
+export const outputsAsText = () =>
+	map (
+		o => '-out->  ' + o [1].name, 
 		[...midiAccess.outputs.entries ()])
+
+export const logPorts = () => {
+  forEach (console.log) (inputsAsText ())
+  forEach (console.log) (outputsAsText ())
 }
 
 // ------------------------- MIDI Input ----------------------------
@@ -60,25 +66,38 @@ export const logPorts = (logfn = console.log) => {
 // Name is matched against available input ports and first one that
 // contains it is used.
 
-export const input = (n = '') => 
-	head (
-		pipe (
-			filter ( ([id, i]) => i.name.includes (n)),
-			map ( ([id, i]) => {
-        let emitter = new rx.Subject ()
-				let input = 
-          rx.merge (
-            rx.fromEvent (i, 'midimessage'),
-            emitter )
-				input.name = i.name
-				input.id = i.id
-				input.manufacturer = i.manufacturer
-				input.version = i.version
-        input.emit = bind (emitter.next, emitter)
+export const inputFrom = (i) => {
+  let emitter = new rx.Subject ()
+  if (i) {
+    let input = rx.merge (
+      rx.fromEvent (i, 'midimessage'),
+      emitter )
+    input.name = i.name
+    input.id = i.id
+    input.manufacturer = i.manufacturer
+    input.version = i.version
+    input.next = bind (emitter.next, emitter)
 
-				return input
-			})
-		) ([...midiAccess.inputs.entries()]))
+    return input
+  } else {
+    let input = emitter
+    input.name = 'Dummy input'
+    input.id = 'DIn'
+    input.manufacturer = 'frMIDI'
+    input.version = 'dummy0.0'
+
+    return input
+  }
+}
+
+export const input = (n = '') => 
+  n === 'dummy' ?
+    inputFrom ()
+    : head (
+  	    pipe (
+  	    	filter ( ([id, i]) => i.name.includes (n) ),
+  	    	map ( ([id, i]) => inputFrom (i) )
+  	    ) ([...midiAccess.inputs.entries()]))
 
 // ------------------------- MIDI Output ---------------------------
 
@@ -89,47 +108,58 @@ export const input = (n = '') =>
 // - array of MIDIMessage objects
 // - observable emitting any of the above
 
-export const send = (out) => (msg) => 
+export const send = (sendfn) => (msg) => 
   seemsArrayOfMIDIMessagesAsObjects (msg) ?
-    forEach (m => out.send (m.data, m.timeStamp)) (msg)
+    forEach (m => sendfn (m.data, m.timeStamp)) (msg)
     : seemsArrayOfMIDIMessagesAsArrays (msg) ?
-      forEach (m => out.send (m)) (msg)
+      forEach (m => sendfn (m)) (msg)
       : seemsMIDIMessageAsObject (msg) ?
-        out.send (msg.data)
+        sendfn (msg.data, msg.timeStamp)
         : seemsMIDIMessageAsArray (msg) ?
-          out.send (msg)
+          sendfn (msg)
           : is (rx.Observable) (msg) ?
-            msg.subscribe (send (out))
+            msg.subscribe (send (sendfn))
             : null
 
 // Sends first output that matches indicated name as argument and
 // returns send function instantiated with selected output.
 // Some properties are added for inspection purposes.
 
-export const output = (n = '') => 
-	head (
-		pipe (
-			map ( ([k, v]) => v ),
-			filter ( ({ name }) => name.includes (n) ),
-			map ( v => { v.open(); return v; } ),
-			map ( v => {
-        let receiver = new rx.Subject ()
-        receiver.subscribe (v.send)
-        receiver.send = bind (receiver.next, receiver)
-				let output = send (receiver)
-				Object.defineProperty (
-					output, 
-					'name', 
-					{ value: v.name })
-        //output.name = v.name
-				output.id = v.id
-				output.manufacturer = v.manufacturer
-				output.version = v.version
-        output.subscribe = bind (receiver.subscribe, receiver)
+export const outputFrom = (o) => {
+  let receiver = new rx.Subject ()
+  if (o) {
+    let sendfn = (d, t) => { o.send (d, t); receiver.next (msg (d, t)); }
+    let output = send (sendfn)
+    Object.defineProperty (output, 'name', { value: o.name })
+    output.id = o.id
+    output.manufacturer = o.manufacturer
+    output.version = o.version
+    output.subscribe = bind (receiver.subscribe, receiver)
 
-				return output
-			}) 
-		) ([ ...midiAccess.outputs.entries () ]))
+    return output
+  } else {
+    let sendfn = (d, t) => receiver.next (msg (d, t))
+    let output = send (sendfn)
+    Object.defineProperty (output, 'name', { value: 'Dummy output' })
+    output.id = 'DOut'
+    output.manufacturer = 'frMIDI'
+    output.version = 'dummy0.0'
+    output.subscribe = bind (receiver.subscribe, receiver)
+
+    return output
+  }
+}
+
+export const output = (n = '') =>
+  n === 'dummy' ?
+    outputFrom ()
+    : head (
+		    pipe (
+		    	map ( ([k, v]) => v ),
+		    	filter ( ({ name }) => name.includes (n) ),
+		    	map ( v => { v.open(); return v; } ),
+		    	map ( v => outputFrom (v) )
+		    ) ([ ...midiAccess.outputs.entries () ]))
 
 // ---------------------- MIDI File loading ------------------------
 
