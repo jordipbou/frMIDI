@@ -6049,7 +6049,7 @@
     }, [null, 0]), map$1(([events, tick]) => events));
   };
 
-  const version = '1.0.27'; //// --------------------- Other utilities -------------------------
+  const version = '1.0.31'; //// --------------------- Other utilities -------------------------
 
   let QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
   let midiToHzs = (n, tuning = 440) => tuning / 32 * Math.pow((n - 9) / 12, 2);

@@ -189,5 +189,6 @@ To make it more clear how to use it with real MIDI inputs and outputs, see next 
 
 # Changelog
 
+1.0.31 [2020/09/09] - Version number was incorrect
 1.0.30 [2020/09/09] - Outputs are now subscribable for testing purposes
 1.0.29 [2020/09/09] - Inputs can now emit events programatically for testing purposes.

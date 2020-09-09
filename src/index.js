@@ -5,7 +5,7 @@ export * from './clock.js'
 export * from './midifile.js'
 export * from './io.js'
 
-export const version = '1.0.27'
+export const version = '1.0.31'
 
 //// --------------------- Other utilities -------------------------
 
