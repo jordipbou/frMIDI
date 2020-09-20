@@ -1,5 +1,8 @@
 const test = require ('ava')
 import * as P from '../src/predicates.js'
+import { allPas } from 'ramda'
+import { from } from 'rxjs'
+import { filter } from 'rxjs/operators'
 
 let msg = (data) => 
   ({ type: 'midimessage', data: data })

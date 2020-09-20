@@ -6,10 +6,6 @@ Functions are curried and parameters ordered for correct composing of functions.
 
 Package is ready for node and browser usage (although on node WebMIDI API is not present and input/output functions can not be used without a plugin like jzz library).
 
-# License
-
-Originally, MIT license was used but as [midi-parse-js](https://github.com/colxi/midi-parser-js) is integrated in the project and it uses GNU GPL-3.0 license was changed to that.
-
 # Installation
 
 ## In node
@@ -125,7 +121,18 @@ Here we are going to filter notes on input1 and control messages on input2 and t
 
 ## Loading a MIDI file
 
-frMIDI integrates midi-
+frMIDI integrates [colxi/midi-parser-js](https://github.com/colxi/midi-parser-js) for working with midi files.
+
+## More complex filtering
+
+Filtering note on/off that has velocity between 64 and 96.
+
+	> in.pipe (rxo.filter (R.allPass ([isNote, 
+	…                                  lensP (velocity, R.gte, 64), 
+	…                                  lensP (velocity, R.lte, 96)])))
+	…   .subscribe (console.log)
+
+
 
 # Modules
 
@@ -249,8 +256,16 @@ output (name)
 
   Returns first MIDI output that contains name as an observer
 
+# License
+
+frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
+
+(Originally, MIT license was used but it was not compatible with integrating [colxi/midi-parser-js](https://github.com/colxi/midi-parser-js) library, so it was changed to GNU GPL-3.0)
+
 # Changelog
 
+1.0.35 [2020/09/20] - Added toMPE helper. Allows sending one channel
+  inputs to MPE zone channels maintaining state of active notes.
 1.0.34 [2020/09/09] - When subscribing to an output, a correct MIDI message
   is now received instead of [msg_as_byte_array, timestamp].
 1.0.33 [2020/09/09] - Changed logPorts function

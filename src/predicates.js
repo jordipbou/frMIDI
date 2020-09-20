@@ -3,6 +3,7 @@ import {
   either, equals, F, has, includes, is, isEmpty, 
   length,path, pathEq, propEq, propSatisfies, T
 } from 'ramda'
+import { filter } from 'rxjs/operators'
 
 // ================= MIDI Messages predicates ======================
 
