@@ -7,10 +7,12 @@ import {
 
 import { msg, from } from './messages.js'
 import {
-  seemsArrayOfMIDIMessagesAsArrays,
-  seemsArrayOfMIDIMessagesAsObjects,
-  seemsMIDIMessageAsArray,
-  seemsMIDIMessageAsObject
+  //seemsArrayOfMIDIMessagesAsArrays,
+  //seemsArrayOfMIDIMessagesAsObjects,
+  //seemsMIDIMessageAsArray,
+  //seemsMIDIMessageAsObject
+  seemsArrayOfMIDIMessages,
+  seemsMIDIMessage
 } from './predicates.js'
 
 import { 
@@ -109,17 +111,24 @@ export const input = (n = '') =>
 // - observable emitting any of the above
 
 export const send = (sendfn) => (msg) => 
-  seemsArrayOfMIDIMessagesAsObjects (msg) ?
+//  seemsArrayOfMIDIMessagesAsObjects (msg) ?
+//    forEach (m => sendfn (m.data, m.timeStamp)) (msg)
+//    : seemsArrayOfMIDIMessagesAsArrays (msg) ?
+//      forEach (m => sendfn (m)) (msg)
+//      : seemsMIDIMessageAsObject (msg) ?
+//        sendfn (msg.data, msg.timeStamp)
+//        : seemsMIDIMessageAsArray (msg) ?
+//          sendfn (msg)
+//          : is (rx.Observable) (msg) ?
+//            msg.subscribe (send (sendfn))
+//            : null
+  seemsArrayOfMIDIMessages (msg) ?
     forEach (m => sendfn (m.data, m.timeStamp)) (msg)
-    : seemsArrayOfMIDIMessagesAsArrays (msg) ?
-      forEach (m => sendfn (m)) (msg)
-      : seemsMIDIMessageAsObject (msg) ?
-        sendfn (msg.data, msg.timeStamp)
-        : seemsMIDIMessageAsArray (msg) ?
-          sendfn (msg)
-          : is (rx.Observable) (msg) ?
-            msg.subscribe (send (sendfn))
-            : null
+    : seemsMIDIMessage (msg) ?
+      sendfn (msg.data, msg.timeStamp)
+      : is (rx.Observable) (msg) ?
+        msg.subscribe (send (sendfn))
+        : null
 
 // Sends first output that matches indicated name as argument and
 // returns send function instantiated with selected output.

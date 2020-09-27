@@ -2,29 +2,22 @@ import {
   isChannelMessage, isChannelPressure, isControlChange,
   isPitchBend, isPolyPressure, isProgramChange,
   hasNote, hasPressure, hasVelocity,
-  seemsMIDIMessageAsArray, seemsMIDIMessageAsObject
+  seemsMIDIMessage
 } from './predicates.js'
 import { 
-  assoc, clone, curry, ifElse, lens,
+  assoc, clone, curry, evolve, ifElse, lens,
   prop, slice 
 } from 'ramda'
 
 // ------------- Generic property modification helpers -------------
 
 export let getByte = curry ((n, msg) =>
-  seemsMIDIMessageAsArray (msg) ?
-    msg[n]
-    : msg.data [n] 
-)
+  msg.data [n])
 
 export let setByte = curry ((n, v, msg) => 
-  seemsMIDIMessageAsArray (msg) ?
-    [...slice (0, n, msg), v, ...slice (n + 1, Infinity, msg)]
-    : assoc ('data')
-            (setByte (n, v, msg.data))
-            (clone (msg))
-)
-
+  evolve ({
+    data: ((d) => [...slice (0, n, d), v, ...slice (n + 1, Infinity, d)])
+  }) (msg))
 
 // --------------------------- Lenses ------------------------------
 
@@ -35,12 +28,12 @@ let lensWhen = curry ((p, v, s) =>
 )
 
 export let timeStamp =
-  lensWhen (seemsMIDIMessageAsObject) 
+  lensWhen (seemsMIDIMessage)
            (prop ('timeStamp')) 
            (assoc ('timeStamp'))
 
 export let deltaTime =
-  lensWhen (seemsMIDIMessageAsObject)
+  lensWhen (seemsMIDIMessage)
            (prop ('deltaTime'))
            (assoc ('deltaTime'))
 
@@ -73,6 +66,6 @@ export let program =
 
 export let pitchBend =
   lensWhen (isPitchBend)
-           ((m) => { /* TODO */ })
-           ((v, m) => { /* TODO */ })
+           ((m) => (getByte (2) (m) << 7) + getByte (1) (m))
+           ((v, m) => setByte (1) (v & 0x7F) (setByte (2) (v >> 7) (m)))
 

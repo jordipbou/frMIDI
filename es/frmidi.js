@@ -5482,14 +5482,12 @@ var WithLatestFromSubscriber = /*@__PURE__*/ (function (_super) {
 }(OuterSubscriber));
 
 const seemsMIDIMessageAsArray = msg => allPass([either(is(Array))(is(Uint8Array)), complement(isEmpty), all(is(Number))])(msg);
-const seemsMIDIMessageAsObject = msg => allPass([is(Object), propEq('type', 'midimessage'), propSatisfies(seemsMIDIMessageAsArray, 'data')])(msg);
-const seemsMIDIMessage = msg => either(seemsMIDIMessageAsArray)(seemsMIDIMessageAsObject)(msg);
-const seemsArrayOfMIDIMessagesAsArrays = msg => both(is(Array))(all(seemsMIDIMessageAsArray))(msg);
-const seemsArrayOfMIDIMessagesAsObjects = both(is(Array))(all(seemsMIDIMessageAsObject));
-const dataEq = curry((data, msg) => seemsMIDIMessageAsArray(msg) ? equals(data)(msg) : seemsMIDIMessage(msg) ? dataEq(data)(msg.data) : false);
-const byteEq = curry((n, data, msg) => seemsMIDIMessageAsArray(msg) ? pathEq([n])(data)(msg) : seemsMIDIMessage(msg) ? byteEq(n)(data)(msg.data) : false);
-const dataEqBy = curry((pred, msg) => seemsMIDIMessageAsArray(msg) ? pred(msg) : seemsMIDIMessage(msg) ? dataEqBy(pred)(msg.data) : false);
-const byteEqBy = curry((n, pred, msg) => seemsMIDIMessageAsArray(msg) ? pred(path([n])(msg)) : seemsMIDIMessage(msg) ? byteEqBy(n)(pred)(msg.data) : false); // ------------------ Channel Voice Messages -----------------------
+const seemsMIDIMessage = msg => allPass([is(Object), propEq('type', 'midimessage'), propSatisfies(seemsMIDIMessageAsArray, 'data')])(msg);
+const seemsArrayOfMIDIMessages = both(is(Array))(all(seemsMIDIMessage));
+const dataEq = curry((data, msg) => seemsMIDIMessage(msg) ? equals(data)(msg.data) : false);
+const byteEq = curry((n, data, msg) => seemsMIDIMessage(msg) ? pathEq([n])(data)(msg.data) : false);
+const dataEqBy = curry((pred, msg) => seemsMIDIMessage(msg) ? pred(msg.data) : false);
+const byteEqBy = curry((n, pred, msg) => seemsMIDIMessage(msg) ? pred(path([n])(msg.data)) : false); // ------------------ Channel Voice Messages -----------------------
 
 const isChannelVoiceMessageOfType = curry((type, msg) => both(seemsMIDIMessage)(dataEqBy(p => includes(type, [8, 9, 10, 11, 14]) ? length(p) === 3 && p[0] >> 4 === type : length(p) === 2 && p[0] >> 4 === type))(msg));
 const isNoteOff = msg => isChannelVoiceMessageOfType(8)(msg);
@@ -5504,7 +5502,9 @@ const hasNote = msg => either(isNote)(isPolyPressure)(msg);
 const noteEq = curry((n, msg) => both(hasNote)(byteEq(1)(n))(msg));
 const isControlChange = msg => isChannelVoiceMessageOfType(11)(msg);
 const controlEq = curry((c, msg) => both(isControlChange)(byteEq(1)(c))(msg));
-const valueEq = curry((v, msg) => both(isControlChange)(byteEq(2)(v))(msg));
+const valueEq = curry((v, msg) => both(isControlChange)(byteEq(2)(v))(msg)); // Some CC messages by name
+
+const isTimbreChange = msg => both(isControlChange)(controlEq(74))(msg);
 const isProgramChange = msg => isChannelVoiceMessageOfType(12)(msg);
 const programEq = curry((p, msg) => both(isProgramChange)(byteEq(1)(p))(msg));
 const isChannelPressure = msg => isChannelVoiceMessageOfType(13)(msg);
@@ -5551,7 +5551,7 @@ const isActiveSensing = msg => both(seemsMIDIMessage)(dataEq([254]))(msg); // Re
 // programmer responsability to only use isReset outside
 // MIDI Files and seemsMIDIMetaEvent inside MIDI Files.
 
-const isReset = msg => both(either(seemsMIDIMessage)(seemsMIDIMessageAsArray))(dataEq([255]))(msg); // ============== MIDI File Meta Events predicates =================
+const isReset = msg => both(seemsMIDIMessage)(dataEq([255]))(msg); // ============== MIDI File Meta Events predicates =================
 // TODO: Check that length is correct !!!
 
 const seemsMIDIMetaEventArray = msg => allPass([is(Array), complement(isEmpty), all(is(Number)), pathEq([0])(255)])(msg);
@@ -5611,12 +5611,14 @@ let panic = () => {
   return from$1(panic_msgs);
 };
 
-let getByte = curry((n, msg) => seemsMIDIMessageAsArray(msg) ? msg[n] : msg.data[n]);
-let setByte = curry((n, v, msg) => seemsMIDIMessageAsArray(msg) ? [...slice(0, n, msg), v, ...slice(n + 1, Infinity, msg)] : assoc('data')(setByte(n, v, msg.data))(clone(msg))); // --------------------------- Lenses ------------------------------
+let getByte = curry((n, msg) => msg.data[n]);
+let setByte = curry((n, v, msg) => evolve({
+  data: d => [...slice(0, n, d), v, ...slice(n + 1, Infinity, d)]
+})(msg)); // --------------------------- Lenses ------------------------------
 
 let lensWhen = curry((p, v, s) => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg));
-let timeStamp = lensWhen(seemsMIDIMessageAsObject)(prop('timeStamp'))(assoc('timeStamp'));
-let deltaTime = lensWhen(seemsMIDIMessageAsObject)(prop('deltaTime'))(assoc('deltaTime'));
+let timeStamp = lensWhen(seemsMIDIMessage)(prop('timeStamp'))(assoc('timeStamp'));
+let deltaTime = lensWhen(seemsMIDIMessage)(prop('deltaTime'))(assoc('deltaTime'));
 let channel = lensWhen(isChannelMessage)(m => getByte(0)(m) & 0xF)((v, m) => setByte(0)((getByte(0, m) & 0xF0) + v)(m));
 let note = lensWhen(hasNote)(getByte(1))(setByte(1));
 let velocity = lensWhen(hasVelocity)(getByte(2))(setByte(2));
@@ -5624,11 +5626,73 @@ let pressure = lensWhen(hasPressure)(ifElse(isPolyPressure)(getByte(2))(getByte(
 let control = lensWhen(isControlChange)(getByte(1))(setByte(1));
 let value = lensWhen(isControlChange)(getByte(2))(setByte(2));
 let program = lensWhen(isProgramChange)(getByte(1))(setByte(1));
-let pitchBend = lensWhen(isPitchBend)(m => {
-  /* TODO */
-})((v, m) => {
-  /* TODO */
+let pitchBend = lensWhen(isPitchBend)(m => (getByte(2)(m) << 7) + getByte(1)(m))((v, m) => setByte(1)(v & 0x7F)(setByte(2)(v >> 7)(m)));
+
+const mpeNote = msg => ({
+  note: view(note)(msg),
+  channel: view(channel)(msg),
+  velocity: view(velocity)(msg),
+  pitchBend: 0,
+  timbre: 0,
+  pressure: view(velocity)(msg)
 });
+const mpeZone = (m, n) => m === 0 && n < 16 ? {
+  // Lower Zone
+  masterChannel: 0,
+  memberChannels: n,
+  zoneSize: n + 1,
+  channels: range(1, n + 1),
+  activeNotes: [] // In order as they arrive
+
+} : m === 15 && n < 16 ? {
+  // Upper zone
+  masterChannel: 15,
+  memberChannels: n,
+  zoneSize: n + 1,
+  channels: range(15 - n, 15),
+  activeNotes: []
+} : undefined; // ------------------------- MPE Predicates ------------------------------
+
+const isLowerZone = mpeZone => mpeZone.masterChannel === 0;
+const isUpperZone = mpeZone => mpeZone.masterChannel === 15;
+const isOnZone = mpeZone => msg => includes(view(channel)(msg))(mpeZone.channels);
+const isOnMasterChannel = mpeZone => msg => view(channel)(msg) === mpeZone.masterChannel;
+const isActiveNote = mpeZone => msg => isNote(msg) ? any(both(propEq('note')(view(note)(msg)))(propEq('channel')(view(channel)(msg))))(mpeZone.activeNotes) : false;
+const seemsActiveNote = mpeZone => msg => isNote(msg) ? any(propEq('note')(view(note)(msg)))(mpeZone.activeNotes) : false; // ---------------------- Processing functions ---------------------------
+
+const processNoteOnMessage = mpeZone => msg => isActiveNote(mpeZone)(msg) ? evolve({
+  activeNotes: map(n => n.note === view(note)(msg) && n.channel === view(channel)(msg) ? evolve({
+    velocity: always(view(velocity)(msg)),
+    pressure: always(view(velocity)(msg))
+  })(n) : n)
+})(mpeZone) : evolve({
+  activeNotes: append(mpeNote(msg))
+})(mpeZone);
+const processNoteOffMessage = mpeZone => msg => evolve({
+  activeNotes: without([head(filter(both(propEq('note')(view(note)(msg)))(propEq('channel')(view(channel)(msg))))(mpeZone.activeNotes))])
+})(mpeZone);
+const processChannelPressureMessage = mpeZone => msg => evolve({
+  activeNotes: map(n => n.channel === view(channel)(msg) ? evolve({
+    pressure: always(view(pressure)(msg))
+  })(n) : n)
+})(mpeZone);
+const processTimbreMessage = mpeZone => msg => evolve({
+  activeNotes: map(n => n.channel === view(channel)(msg) ? evolve({
+    timbre: always(view(value)(msg))
+  })(n) : n)
+})(mpeZone);
+const processPitchBendMessage = mpeZone => msg => evolve({
+  activeNotes: map(n => n.channel === view(channel)(msg) ? evolve({
+    pitchBend: always(view(pitchBend)(msg))
+  })(n) : n)
+})(mpeZone);
+
+const zonePred = mpeZone => predicate => allPass([isOnZone(mpeZone), complement(isOnMasterChannel(mpeZone)), predicate]);
+
+const processMessage = mpeZone => (msg, pred = zonePred(mpeZone)) => cond([[pred(isNoteOn), processNoteOnMessage(mpeZone)], [pred(asNoteOff), processNoteOffMessage(mpeZone)], [pred(isChannelPressure), processChannelPressureMessage(mpeZone)], [pred(isTimbreChange), processTimbreMessage(mpeZone)], [pred(isPitchBend), processPitchBendMessage(mpeZone)], [T, always(mpeZone)]])(msg); // ---------------------------- toMPE ------------------------------------
+// Sort channels by note usage (ascending) and use first one 
+
+const leastNotesChannel = mpeZone => head(head(sort((a, b) => a[1] - b[1])(map(c => [c, length(filter(n => n.channel === c)(mpeZone.activeNotes))])(mpeZone.channels))));
 
 /** PURE_IMPORTS_START _Observable,_util_isArray,_util_isFunction,_operators_map PURE_IMPORTS_END */
 function fromEvent(target, eventName, options, resultSelector) {
@@ -5688,75 +5752,21 @@ function isEventTarget(sourceObj) {
     return sourceObj && typeof sourceObj.addEventListener === 'function' && typeof sourceObj.removeEventListener === 'function';
 }
 
-const lensP = curry((lens, pred, v) => msg => pred(view(lens)(msg))(v)); // ============================= MPE =====================================
-// - current active notes 
-// - current used channels (total can be equal to total notes or less)
-// mpeNote:
-//   note: n
-//   channel: c
-//   velocity: v
-//   pitchBend: pb
-//   timbre: t
-//   pressure: p
-
-const mpeNote = m => ({
-  note: view(note)(m),
-  channel: view(channel)(m),
-  velocity: view(velocity)(m),
-  pitchBend: 0.0,
-  timbre: 0.0,
-  pressure: view(velocity)(m)
-});
-const mpeZone = (m, z) => ({
-  masterChannel: m,
-  zoneSize: z,
-  channels: range(m, m + z),
-  activeNotes: [] // In order as they arrive
-
-});
-const getNextChannel = mpeZone => {
-  let ch = head(without(map(n => n.channel)(mpeZone.activeNotes))(mpeZone.channels));
-
-  if (!ch) {
-    if (length(mpeZone.activeNotes) > 0) {
-      ch = head(mpeZone.activeNotes).channel;
-    } else {
-      ch = mpeZone.masterChannel;
-    }
+const lensP = curry((lens, pred, v) => msg => pred(view(lens)(msg))(v));
+const toMPE = curry((m, c, findChannel = leastNotesChannel) => pipe$1(scan$1(([z, _], msg) => {
+  if (isNoteOn(msg)) {
+    let ch = findChannel(z);
+    let mod_msg = set(channel)(ch)(msg);
+    return [processMessage(z)(mod_msg), mod_msg];
+  } else if (isNoteOff(msg)) {
+    let n = view(note)(msg);
+    let ch = prop('channel')(head(filter(an => an.note === n)(z.activeNotes)));
+    let mod_msg = set(channel)(ch)(msg);
+    return [processMessage(z)(mod_msg), mod_msg];
+  } else {
+    return [z, msg];
   }
-
-  return ch;
-};
-const addNote = mpeZone => m => {
-  let ch = getNextChannel(mpeZone);
-  let msg = set(channel)(ch)(m);
-  let n = mpeNote(msg);
-  let z = evolve({
-    activeNotes: append(n)
-  })(mpeZone);
-  return [z, msg];
-};
-const removeNote = mpeZone => m => {
-  let n = head(filter(v => v.note === view(note)(m))(mpeZone.activeNotes));
-  let msg = set(channel)(n.channel)(m);
-  let z = evolve({
-    activeNotes: without([n])
-  })(mpeZone);
-  return [z, msg];
-};
-const isActiveNote = mpeZone => m => any(n => n.note === view(note)(m))(mpeZone.activeNotes);
-const processNote = mpeZone => m => {
-  if (isNote(m)) {
-    if (isNoteOn(m) && !isActiveNote(mpeZone)(m)) {
-      return addNote(mpeZone)(m);
-    } else if (isNoteOff(m) && isActiveNote(mpeZone)(m)) {
-      return removeNote(mpeZone)(m);
-    }
-  }
-
-  return [mpeZone, m];
-};
-const toMPE = (masterChannel, zoneSize) => pipe$1(scan$1(([zone, _], msg) => processNote(zone)(msg), [mpeZone(masterChannel, zoneSize), null]), map$1(([_, msg]) => msg));
+}, [mpeZone(m, c), null]), map$1(([x, msg]) => msg)));
 
 let lookAheadClock$1 = curry((time_division, bpm, last_tick_time, now, look_ahead) => {
   let ms_per_tick = 60000 / (bpm * time_division);
@@ -6255,7 +6265,18 @@ const input = (n = '') => n === 'dummy' ? inputFrom() : head(pipe(filter(([id, i
 // - array of MIDIMessage objects
 // - observable emitting any of the above
 
-const send = sendfn => msg => seemsArrayOfMIDIMessagesAsObjects(msg) ? forEach(m => sendfn(m.data, m.timeStamp))(msg) : seemsArrayOfMIDIMessagesAsArrays(msg) ? forEach(m => sendfn(m))(msg) : seemsMIDIMessageAsObject(msg) ? sendfn(msg.data, msg.timeStamp) : seemsMIDIMessageAsArray(msg) ? sendfn(msg) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
+const send = sendfn => msg => //  seemsArrayOfMIDIMessagesAsObjects (msg) ?
+//    forEach (m => sendfn (m.data, m.timeStamp)) (msg)
+//    : seemsArrayOfMIDIMessagesAsArrays (msg) ?
+//      forEach (m => sendfn (m)) (msg)
+//      : seemsMIDIMessageAsObject (msg) ?
+//        sendfn (msg.data, msg.timeStamp)
+//        : seemsMIDIMessageAsArray (msg) ?
+//          sendfn (msg)
+//          : is (rx.Observable) (msg) ?
+//            msg.subscribe (send (sendfn))
+//            : null
+seemsArrayOfMIDIMessages(msg) ? forEach(m => sendfn(m.data, m.timeStamp))(msg) : seemsMIDIMessage(msg) ? sendfn(msg.data, msg.timeStamp) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
 // returns send function instantiated with selected output.
 // Some properties are added for inspection purposes.
 
@@ -6359,9 +6380,9 @@ const MIDIPlayer = midifile => {
   }, [null, 0]), map$1(([events, tick]) => events));
 };
 
-const version = '1.0.35'; //// --------------------- Other utilities -------------------------
+const version = '1.0.37'; //// --------------------- Other utilities -------------------------
 
 let QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
 let midiToHzs = (n, tuning = 440) => tuning / 32 * Math.pow((n - 9) / 12, 2);
 
-export { MIDIClock, MIDIFilePlayer$1 as MIDIFilePlayer, MIDIPlayer, _MidiParser as MidiParser, QNPM2BPM, addNote, as, asNoteOff, asNoteOn, byteEq, byteEqBy, cc, channel, cont, control, controlEq, cp, createLoop, createMIDIFile, createTimer, dataEq, dataEqBy, deltaTime, filterTracks, from$1 as from, getByte, getNextChannel, hasNote, hasPressure, hasVelocity, initialize, input, inputFrom, inputsAsText, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelModeMessage, isChannelPressure, isChannelVoice, isChannelVoiceMessageOfType, isContinue, isControlChange, isEndOfExclusive, isLocalControlOff, isLocalControlOn, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTuneRequest, lensP, loadMidiFile, logPorts, lookAheadClock$1 as lookAheadClock, mc, mergeTracks, metaTypeEq, midiToHzs, mpeNote, mpeZone, msg, note, noteEq, nrpn, off, on, output, outputFrom, outputsAsText, panic, pb, pc, pitchBend, pitchBendEq, pp, pressure, pressureEq, processNote, program, programEq, removeNote, rpn, rst, seemsArrayOfMIDIMessagesAsArrays, seemsArrayOfMIDIMessagesAsObjects, seemsMIDIFile, seemsMIDILoop, seemsMIDIMessage, seemsMIDIMessageAsArray, seemsMIDIMessageAsObject, seemsMIDIMetaEvent, seemsMIDIMetaEventArray, seemsMIDIMetaEventObject, send, setByte, sortEvents, spp, ss, start, stop, syx, tc, timeStamp, toMPE, tun, value, valueEq, velocity, velocityEq, version, withAbsoluteDeltaTimes };
+export { MIDIClock, MIDIFilePlayer$1 as MIDIFilePlayer, MIDIPlayer, _MidiParser as MidiParser, QNPM2BPM, as, asNoteOff, asNoteOn, byteEq, byteEqBy, cc, channel, cont, control, controlEq, cp, createLoop, createMIDIFile, createTimer, dataEq, dataEqBy, deltaTime, filterTracks, from$1 as from, getByte, hasNote, hasPressure, hasVelocity, initialize, input, inputFrom, inputsAsText, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelModeMessage, isChannelPressure, isChannelVoice, isChannelVoiceMessageOfType, isContinue, isControlChange, isEndOfExclusive, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTuneRequest, isUpperZone, leastNotesChannel, lensP, loadMidiFile, logPorts, lookAheadClock$1 as lookAheadClock, mc, mergeTracks, metaTypeEq, midiToHzs, mpeNote, mpeZone, msg, note, noteEq, nrpn, off, on, output, outputFrom, outputsAsText, panic, pb, pc, pitchBend, pitchBendEq, pp, pressure, pressureEq, processChannelPressureMessage, processMessage, processNoteOffMessage, processNoteOnMessage, processPitchBendMessage, processTimbreMessage, program, programEq, rpn, rst, seemsActiveNote, seemsArrayOfMIDIMessages, seemsMIDIFile, seemsMIDILoop, seemsMIDIMessage, seemsMIDIMessageAsArray, seemsMIDIMetaEvent, seemsMIDIMetaEventArray, seemsMIDIMetaEventObject, send, setByte, sortEvents, spp, ss, start, stop, syx, tc, timeStamp, toMPE, tun, value, valueEq, velocity, velocityEq, version, withAbsoluteDeltaTimes };

@@ -6,6 +6,14 @@ Functions are curried and parameters ordered for correct composing of functions.
 
 Package is ready for node and browser usage (although on node WebMIDI API is not present and input/output functions can not be used without a plugin like jzz library).
 
+## Why reactive?
+
+It's difficult with current tools to process MIDI in the time-domain. Using rxjs (or other reactive frameworks) allows using already created and tested functions that work in time-domain in an easier way.
+
+## Why functional?
+
+Testing.
+
 # Installation
 
 ## In node
@@ -264,6 +272,9 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+1.0.36 [2020/09/21] - Arrays are not accepted as MIDI messages now,
+  only correct objects. It makes library easier and takes out a lot
+  of checks for correct MIDI messages.
 1.0.35 [2020/09/20] - Added toMPE helper. Allows sending one channel
   inputs to MPE zone channels maintaining state of active notes.
 1.0.34 [2020/09/09] - When subscribing to an output, a correct MIDI message

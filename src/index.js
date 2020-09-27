@@ -4,9 +4,10 @@ export * from './lenses.js'
 export * from './helpers.js'
 export * from './clock.js'
 export * from './midifile.js'
+export * from './mpe.js'
 export * from './io.js'
 
-export const version = '1.0.35'
+export const version = '1.0.37'
 
 //// --------------------- Other utilities -------------------------
 

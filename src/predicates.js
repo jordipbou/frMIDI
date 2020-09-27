@@ -12,50 +12,34 @@ export const seemsMIDIMessageAsArray = (msg) =>
             complement (isEmpty),
             all (is (Number))]) (msg)
 
-export const seemsMIDIMessageAsObject = (msg) =>
+export const seemsMIDIMessage = (msg) =>
   allPass ([is (Object),
             propEq ('type', 'midimessage'),
             propSatisfies (seemsMIDIMessageAsArray, 'data')]) (msg)
 
-export const seemsMIDIMessage = (msg) =>
-  either (seemsMIDIMessageAsArray) (seemsMIDIMessageAsObject) (msg)
-
-export const seemsArrayOfMIDIMessagesAsArrays = (msg) =>
+export const seemsArrayOfMIDIMessages =
   both (is (Array))
-       (all (seemsMIDIMessageAsArray))
-       (msg)
-
-export const seemsArrayOfMIDIMessagesAsObjects = 
-  both (is (Array))
-       (all (seemsMIDIMessageAsObject))
+       (all (seemsMIDIMessage))
 
 export const dataEq = curry ((data, msg) =>
-  seemsMIDIMessageAsArray (msg) ?
-    equals (data) (msg)
-    : seemsMIDIMessage (msg) ?
-      dataEq (data) (msg.data)
-      : false )
+  seemsMIDIMessage (msg) ?
+    equals (data) (msg.data)
+    : false)
 
 export const byteEq = curry ((n, data, msg) =>
-  seemsMIDIMessageAsArray (msg) ?
-    pathEq ([n]) (data) (msg)
-    : seemsMIDIMessage (msg) ?
-      byteEq (n) (data) (msg.data)
-      : false )
+  seemsMIDIMessage (msg) ?
+    pathEq ([n]) (data) (msg.data)
+    : false)
 
 export const dataEqBy = curry ((pred, msg) =>
-  seemsMIDIMessageAsArray (msg) ?
-    pred (msg)
-    : seemsMIDIMessage (msg) ?
-      dataEqBy (pred) (msg.data)
-      : false )
+  seemsMIDIMessage (msg) ? 
+    pred (msg.data)
+    : false)
 
 export const byteEqBy = curry ((n, pred, msg) =>
-  seemsMIDIMessageAsArray (msg) ?
-    pred (path ([n]) (msg))
-    : seemsMIDIMessage (msg) ?
-      byteEqBy (n) (pred) (msg.data)
-      : false )
+  seemsMIDIMessage (msg) ?
+    pred (path ([n]) (msg.data))
+    : false)
 
 
 // ------------------ Channel Voice Messages -----------------------
@@ -113,6 +97,12 @@ export const valueEq = curry((v, msg) =>
   both (isControlChange)
        (byteEq (2) (v))
        (msg))
+
+// Some CC messages by name
+export const isTimbreChange = (msg) =>
+  both (isControlChange)
+       (controlEq (74))
+       (msg)
 
 export const isProgramChange = (msg) =>
   isChannelVoiceMessageOfType (12) (msg)
@@ -289,7 +279,7 @@ export const isActiveSensing = (msg) =>
 // programmer responsability to only use isReset outside
 // MIDI Files and seemsMIDIMetaEvent inside MIDI Files.
 export const isReset = (msg) =>
-  both (either (seemsMIDIMessage) (seemsMIDIMessageAsArray))
+  both (seemsMIDIMessage)
        (dataEq ([255]))
        (msg)
 
