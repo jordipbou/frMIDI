@@ -127,9 +127,11 @@ Here we are going to filter notes on input1 and control messages on input2 and t
 
 [Load on Efimera](https://jordipbou.github.com/efimera/?json=%7B%22blocks%22:%5B%7B%22lines%22:%5B%22import%20%7B%20input,%20output,%20isNote,%20isControlChange,%20on,%20off,%20cc%20%7D%20from%20'frmidi'%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B76,0%5D%7D,%7B%22lines%22:%5B%22import%20%7B%20merge%20%7D%20from%20'rxjs'%22,%22import%20%7B%20filter%20%7D%20from%20'rxjs/operators'%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B39,1%5D%7D,%7B%22lines%22:%5B%22var%20input1%20=%20input%20('dummy')%22,%22var%20input2%20=%20input%20('dummy')%22,%22var%20output1%20=%20output%20('dummy')%22,%22output1.subscribe%20(console.log)%22,%22merge%20(%20input1.pipe%20(filter%20(isNote)),%20input2.pipe%20(filter%20(isControlChange))%20).subscribe%20(output1)%22,%22input1.next%20(on%20(64))%22,%22input1.next%20(cc%20(37,%20127))%22,%22input2.next%20(off%20(67))%22,%22input2.next%20(cc%20(47,%200))%22,%22%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B21,5%5D%7D,%7B%22lines%22:%5B%22%22%5D,%22history%22:%5B%5D,%22completions%22:%5B%5D,%22autocompletion%22:%22%22,%22cursor%22:%5B0,0%5D%7D%5D,%22focused%22:2%7D)
 
-## Loading a MIDI file
+## Loading and playing MIDI file
 
 frMIDI integrates [colxi/midi-parser-js](https://github.com/colxi/midi-parser-js) for working with midi files.
+
+
 
 ## More complex filtering
 
@@ -272,6 +274,8 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+1.0.41 [2020/09/30] - Added playMIDIFile function.
+1.0.40 [2020/09/29] - Working MIDI file playing functionality.
 1.0.39 [2020/09/29] - Added default values for most message creation
   functions to not end with an invalid MIDI message in any case.
 1.0.38 [2020/09/29] - Added channelByKeyRange algorithm. Allows selection

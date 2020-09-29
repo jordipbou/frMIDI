@@ -7,11 +7,9 @@ export * from './midifile.js'
 export * from './mpe.js'
 export * from './io.js'
 
-export const version = '1.0.39'
+export const version = '1.0.41'
 
 //// --------------------- Other utilities -------------------------
 
-export let QNPM2BPM = (qnpm) => 60 * 1000000 / qnpm
-
-export let midiToHzs = (n, tuning = 440) => 
+export const midiToHzs = (n, tuning = 440) => 
 	((tuning / 32) * (Math.pow(((n - 9) / 12), 2)))

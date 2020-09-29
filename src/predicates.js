@@ -287,29 +287,17 @@ export const isReset = (msg) =>
 // ============== MIDI File Meta Events predicates =================
 
 // TODO: Check that length is correct !!!
-export const seemsMIDIMetaEventArray = (msg) =>
-  allPass ([is (Array),
-            complement (isEmpty),
-            all (is (Number)),
-            pathEq ([0]) (255)])
-          (msg)
-
-export const seemsMIDIMetaEventObject = (msg) =>
+export const seemsMIDIMetaEvent = (msg) =>
   allPass ([is (Object),
             propEq ('type', 'metaevent'),
             has ('metaType'),
             has ('data')])
           (msg)
 
-export const seemsMIDIMetaEvent = (msg) =>
-  either (seemsMIDIMetaEventArray) (seemsMIDIMetaEventObject) (msg)
-
-export const metaTypeEq = curry((type, msg) => 
-  seemsMIDIMetaEventArray (msg) ?
-    pathEq ([1]) (type) (msg)
-    : seemsMIDIMetaEventObject (msg) ?
-      metaTypeEq (type, msg.data) 
-      : false)
+export const metaTypeEq = curry ((type, msg) => 
+  seemsMIDIMetaEvent (msg) ?
+    propEq ('metaType') (type) (msg)
+    : false)
 
 export const isTempoChange = (msg) =>
-  both (seemsMIDIMetaEvent) (metaTypeEq (81)) (msg)
+  metaTypeEq (81) (msg)

@@ -205,7 +205,7 @@ test ('createLoop', t => {
 test ('MIDIFilePlayer', t => {
   let mc1 = set (timeStamp) (10.5) (mc ())
 
-  let [events, tick] = MIDIFilePlayer (midifile, 0, [mc1])
+  let [events, tick] = MIDIFilePlayer (midifile) (0, [mc1])
 
   t.is (tick, 1)
   t.is (events.length, 2)

@@ -1,19 +1,18 @@
 import * as rx from 'rxjs'
 import * as rxo from 'rxjs/operators'
 import { 
-  bind, cond, curry, filter, forEach, head, is, last, 
+  bind, complement, cond, curry, filter, forEach, 
+  head, is, isEmpty, last, 
   map, pipe, prop, propEq
 } from 'ramda'
 
 import { msg, from } from './messages.js'
-import {
-  //seemsArrayOfMIDIMessagesAsArrays,
-  //seemsArrayOfMIDIMessagesAsObjects,
-  //seemsMIDIMessageAsArray,
-  //seemsMIDIMessageAsObject
-  seemsArrayOfMIDIMessages,
-  seemsMIDIMessage
-} from './predicates.js'
+import { 
+  seemsArrayOfMIDIMessages, seemsMIDIMessage,
+  isTempoChange
+  } from './predicates.js'
+import { lookAheadClock } from './clock.js'
+import { MIDIFilePlayer, QNPM2BPM } from './midifile.js'
 
 import { 
   MidiParser 
@@ -220,10 +219,11 @@ export const loadMidiFile =	() => {
 
 export const createTimer = (resolution = 25, look_ahead = 150) =>
   rx.timer (0, resolution).pipe (
+    // TODO: performance.now will not work on node
     rxo.map(v => [performance.now (), look_ahead])
   )
 
-export const MIDIClock = curry ((time_division, bpm) => {
+export const MIDIClock = curry ((time_division = 1, bpm = 120) => {
   let timeDivisionSubject = new rx.BehaviorSubject (time_division)
   let bpmSubject = new rx.BehaviorSubject (bpm)
   
@@ -232,16 +232,22 @@ export const MIDIClock = curry ((time_division, bpm) => {
       timeDivisionSubject,
       bpmSubject
     ),
-    rxo.scan ((events, [[now, look_ahead], time_division, bpm]) => {
-      let last_tick_time = prop ('timeStamp', last (events)) || now
+    rxo.scan (([past_events, last_tick_time], 
+               [[now, look_ahead], time_division, bpm]) => {
+      last_tick_time = 
+        prop ('timeStamp') (last (past_events)) || last_tick_time
   
-      return lookAheadClock (
-        time_division, 
-        bpm, 
+      let next_events = lookAheadClock (
+        time_division,
+        bpm,
         last_tick_time,
         now,
         look_ahead)
-    }, [[], null])
+      return [next_events, last_tick_time]
+    }, [[], performance.now ()]), // TODO: performance.now () will not work
+                                  // on node
+    rxo.map (([events, last_tick_time]) => events),
+    rxo.filter (complement (isEmpty))
   )
 
   op.timeDivision = (v) => timeDivisionSubject.next (v)
@@ -260,3 +266,16 @@ export const MIDIPlayer = (midifile) => {
     rxo.map(([events, tick]) => events)
   )
 }
+
+export const playMIDIFile = (midifile) => (output) => {
+    let t = createTimer ()
+    let clock = MIDIClock (midifile.timeDivision, 30)
+
+    return t.pipe (
+      clock,
+      MIDIPlayer (midifile),
+      rxo.tap ((events) => 
+        forEach ((m) => clock.bpm (QNPM2BPM (m.data [0])))
+                (filter (isTempoChange) (events)))
+    ).subscribe (output)
+  }

@@ -5110,6 +5110,47 @@ function mergeAll(concurrent) {
     return mergeMap(identity, concurrent);
 }
 
+/** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
+function filter$1(predicate, thisArg) {
+    return function filterOperatorFunction(source) {
+        return source.lift(new FilterOperator(predicate, thisArg));
+    };
+}
+var FilterOperator = /*@__PURE__*/ (function () {
+    function FilterOperator(predicate, thisArg) {
+        this.predicate = predicate;
+        this.thisArg = thisArg;
+    }
+    FilterOperator.prototype.call = function (subscriber, source) {
+        return source.subscribe(new FilterSubscriber(subscriber, this.predicate, this.thisArg));
+    };
+    return FilterOperator;
+}());
+var FilterSubscriber = /*@__PURE__*/ (function (_super) {
+    __extends(FilterSubscriber, _super);
+    function FilterSubscriber(destination, predicate, thisArg) {
+        var _this = _super.call(this, destination) || this;
+        _this.predicate = predicate;
+        _this.thisArg = thisArg;
+        _this.count = 0;
+        return _this;
+    }
+    FilterSubscriber.prototype._next = function (value) {
+        var result;
+        try {
+            result = this.predicate.call(this.thisArg, value, this.count++);
+        }
+        catch (err) {
+            this.destination.error(err);
+            return;
+        }
+        if (result) {
+            this.destination.next(value);
+        }
+    };
+    return FilterSubscriber;
+}(Subscriber));
+
 /** PURE_IMPORTS_START  PURE_IMPORTS_END */
 var ObjectUnsubscribedErrorImpl = /*@__PURE__*/ (function () {
     function ObjectUnsubscribedErrorImpl() {
@@ -5432,6 +5473,80 @@ var BehaviorSubject = /*@__PURE__*/ (function (_super) {
     return BehaviorSubject;
 }(Subject));
 
+/** PURE_IMPORTS_START  PURE_IMPORTS_END */
+function noop() { }
+
+/** PURE_IMPORTS_START tslib,_Subscriber,_util_noop,_util_isFunction PURE_IMPORTS_END */
+function tap(nextOrObserver, error, complete) {
+    return function tapOperatorFunction(source) {
+        return source.lift(new DoOperator(nextOrObserver, error, complete));
+    };
+}
+var DoOperator = /*@__PURE__*/ (function () {
+    function DoOperator(nextOrObserver, error, complete) {
+        this.nextOrObserver = nextOrObserver;
+        this.error = error;
+        this.complete = complete;
+    }
+    DoOperator.prototype.call = function (subscriber, source) {
+        return source.subscribe(new TapSubscriber(subscriber, this.nextOrObserver, this.error, this.complete));
+    };
+    return DoOperator;
+}());
+var TapSubscriber = /*@__PURE__*/ (function (_super) {
+    __extends(TapSubscriber, _super);
+    function TapSubscriber(destination, observerOrNext, error, complete) {
+        var _this = _super.call(this, destination) || this;
+        _this._tapNext = noop;
+        _this._tapError = noop;
+        _this._tapComplete = noop;
+        _this._tapError = error || noop;
+        _this._tapComplete = complete || noop;
+        if (isFunction(observerOrNext)) {
+            _this._context = _this;
+            _this._tapNext = observerOrNext;
+        }
+        else if (observerOrNext) {
+            _this._context = observerOrNext;
+            _this._tapNext = observerOrNext.next || noop;
+            _this._tapError = observerOrNext.error || noop;
+            _this._tapComplete = observerOrNext.complete || noop;
+        }
+        return _this;
+    }
+    TapSubscriber.prototype._next = function (value) {
+        try {
+            this._tapNext.call(this._context, value);
+        }
+        catch (err) {
+            this.destination.error(err);
+            return;
+        }
+        this.destination.next(value);
+    };
+    TapSubscriber.prototype._error = function (err) {
+        try {
+            this._tapError.call(this._context, err);
+        }
+        catch (err) {
+            this.destination.error(err);
+            return;
+        }
+        this.destination.error(err);
+    };
+    TapSubscriber.prototype._complete = function () {
+        try {
+            this._tapComplete.call(this._context);
+        }
+        catch (err) {
+            this.destination.error(err);
+            return;
+        }
+        return this.destination.complete();
+    };
+    return TapSubscriber;
+}(Subscriber));
+
 /** PURE_IMPORTS_START tslib,_OuterSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
 function withLatestFrom() {
     var args = [];
@@ -5585,11 +5700,9 @@ const isActiveSensing = msg => both(seemsMIDIMessage)(dataEq([254]))(msg); // Re
 const isReset = msg => both(seemsMIDIMessage)(dataEq([255]))(msg); // ============== MIDI File Meta Events predicates =================
 // TODO: Check that length is correct !!!
 
-const seemsMIDIMetaEventArray = msg => allPass([is(Array), complement(isEmpty), all(is(Number)), pathEq([0])(255)])(msg);
-const seemsMIDIMetaEventObject = msg => allPass([is(Object), propEq('type', 'metaevent'), has('metaType'), has('data')])(msg);
-const seemsMIDIMetaEvent = msg => either(seemsMIDIMetaEventArray)(seemsMIDIMetaEventObject)(msg);
-const metaTypeEq = curry((type, msg) => seemsMIDIMetaEventArray(msg) ? pathEq([1])(type)(msg) : seemsMIDIMetaEventObject(msg) ? metaTypeEq(type, msg.data) : false);
-const isTempoChange = msg => both(seemsMIDIMetaEvent)(metaTypeEq(81))(msg);
+const seemsMIDIMetaEvent = msg => allPass([is(Object), propEq('type', 'metaevent'), has('metaType'), has('data')])(msg);
+const metaTypeEq = curry((type, msg) => seemsMIDIMetaEvent(msg) ? propEq('metaType')(type)(msg) : false);
+const isTempoChange = msg => metaTypeEq(81)(msg);
 
 // Converts a byte array to a MIDIMessageEvent compatible object.
 
@@ -5822,11 +5935,26 @@ const toMPE = curry((m, c, findChannel = leastNotesChannel) => pipe$1(scan$1(([z
   }
 }, [mpeZone(m, c), null]), map$1(([x, msg]) => msg)));
 
-let lookAheadClock$1 = curry((time_division, bpm, last_tick_time, now, look_ahead) => {
+// Creates an array of MIDI Clock events with correct future timestamps
+// having into account current time (now) and look ahead 
+// window (look_ahead) for indicated bpm and time_division (pulses
+// per quarter note).
+// A time division of 1 and bpm of 60 will generate 1 tick per second.
+// A time division of 2 and bpm of 60 will generate 2 ticks per second.
+// A time division of 4 and bpm of 120 will generate 2 ticks per second.
+// last_tick_time is starting point and no message is generated for
+// it as it will repeat the last message from previous call.
+
+let lookAheadClock = curry((time_division, bpm, last_tick_time, now, look_ahead) => {
   let ms_per_tick = 60000 / (bpm * time_division);
   let look_ahead_end = now + look_ahead;
   let events = [];
-  last_tick_time = last_tick_time + ms_per_tick;
+
+  if (last_tick_time === null) {
+    last_tick_time = now;
+  } else {
+    last_tick_time = last_tick_time + ms_per_tick;
+  }
 
   while (last_tick_time < look_ahead_end) {
     if (last_tick_time >= now) {
@@ -5881,19 +6009,17 @@ let createLoop = midifile => ({ ...midifile,
 }); // TODO: MIDIPlayer should have state, extract inner function
 // to be easily testeable.
 
-let MIDIFilePlayer$1 = (midifile, tick, midi_clocks) => {
+const MIDIFilePlayer = midifile => {
   let playable = pipe(withAbsoluteDeltaTimes, mergeTracks, sortEvents)(midifile);
   let track = playable.track[0].event;
   let loop = playable.loop;
   let maxTick = last(track).absoluteDeltaTime;
-
-  let func = (tick, midi_clocks) => slice(0, 2)(reduceWhile(([events, tick, bpm_not_found], midi_clock) => bpm_not_found)(([events, tick, bpm_not_found], midi_clock) => {
+  return (tick, midi_clocks) => slice(0, 2)(reduceWhile(([events, tick, bpm_not_found], midi_clock) => bpm_not_found)(([events, tick, bpm_not_found], midi_clock) => {
     let tick_events = pipe(filter(e => e.absoluteDeltaTime === tick || loop && e.absoluteDeltaTime === tick % maxTick), map(set(timeStamp)(midi_clock.timeStamp)))(track);
     return [concat(events, tick_events), loop ? (tick + 1) % maxTick : tick + 1, isEmpty(filter(isTempoChange)(tick_events))];
   })([[], tick, true])(midi_clocks));
-
-  if (tick === undefined || midi_clocks === undefined) return func;else return func(tick, midi_clocks);
 };
+const QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
 
 /*
     Project Name : midi-parser-js
@@ -6412,14 +6538,18 @@ const loadMidiFile = () => {
 }; // ------------------------ MIDI Clock -----------------------------
 // TODO: Make this part better
 
-const createTimer = (resolution = 25, look_ahead = 150) => timer(0, resolution).pipe(map$1(v => [performance.now(), look_ahead]));
-const MIDIClock = curry((time_division, bpm) => {
+const createTimer = (resolution = 25, look_ahead = 150) => timer(0, resolution).pipe( // TODO: performance.now will not work on node
+map$1(v => [performance.now(), look_ahead]));
+const MIDIClock = curry((time_division = 1, bpm = 120) => {
   let timeDivisionSubject = new BehaviorSubject(time_division);
   let bpmSubject = new BehaviorSubject(bpm);
-  let op = pipe$1(withLatestFrom(timeDivisionSubject, bpmSubject), scan$1((events, [[now, look_ahead], time_division, bpm]) => {
-    let last_tick_time = prop('timeStamp', last(events)) || now;
-    return lookAheadClock(time_division, bpm, last_tick_time, now, look_ahead);
-  }, [[], null]));
+  let op = pipe$1(withLatestFrom(timeDivisionSubject, bpmSubject), scan$1(([past_events, last_tick_time], [[now, look_ahead], time_division, bpm]) => {
+    last_tick_time = prop('timeStamp')(last(past_events)) || last_tick_time;
+    let next_events = lookAheadClock(time_division, bpm, last_tick_time, now, look_ahead);
+    return [next_events, last_tick_time];
+  }, [[], performance.now()]), // TODO: performance.now () will not work
+  // on node
+  map$1(([events, last_tick_time]) => events), filter$1(complement(isEmpty)));
 
   op.timeDivision = v => timeDivisionSubject.next(v);
 
@@ -6433,10 +6563,14 @@ const MIDIPlayer = midifile => {
     return player(tick, midi_clocks);
   }, [null, 0]), map$1(([events, tick]) => events));
 };
+const playMIDIFile = midifile => output => {
+  let t = createTimer();
+  let clock = MIDIClock(midifile.timeDivision, 30);
+  return t.pipe(clock, MIDIPlayer(midifile), tap(events => forEach(m => clock.bpm(QNPM2BPM(m.data[0])))(filter(isTempoChange)(events)))).subscribe(output);
+};
 
-const version = '1.0.39'; //// --------------------- Other utilities -------------------------
+const version = '1.0.41'; //// --------------------- Other utilities -------------------------
 
-let QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
-let midiToHzs = (n, tuning = 440) => tuning / 32 * Math.pow((n - 9) / 12, 2);
+const midiToHzs = (n, tuning = 440) => tuning / 32 * Math.pow((n - 9) / 12, 2);
 
-export { MIDIClock, MIDIFilePlayer$1 as MIDIFilePlayer, MIDIPlayer, _MidiParser as MidiParser, QNPM2BPM, addNotes, as, asNoteOff, asNoteOn, byNotesAndWeight, byteEq, byteEqBy, cc, channel, channelByKeyRange, cont, control, controlEq, cp, createLoop, createMIDIFile, createTimer, dataEq, dataEqBy, deltaTime, filterTracks, from$1 as from, getByte, hasNote, hasPressure, hasVelocity, initialize, input, inputFrom, inputsAsText, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelModeMessage, isChannelPressure, isChannelVoice, isChannelVoiceMessageOfType, isContinue, isControlChange, isEndOfExclusive, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTuneRequest, isUpperZone, leastNotesChannel, lensP, loadMidiFile, logPorts, lookAheadClock$1 as lookAheadClock, mc, mergeTracks, metaTypeEq, midiToHzs, mpeNote, mpeZone, msg, note, noteEq, notesPerChannel, nrpn, off, on, output, outputFrom, outputsAsText, panic, pb, pc, pitchBend, pitchBendEq, pp, pressure, pressureEq, processChannelPressureMessage, processMessage, processNoteOffMessage, processNoteOnMessage, processPitchBendMessage, processTimbreMessage, program, programEq, rpn, rst, seemsActiveNote, seemsArrayOfMIDIMessages, seemsMIDIFile, seemsMIDILoop, seemsMIDIMessage, seemsMIDIMessageAsArray, seemsMIDIMetaEvent, seemsMIDIMetaEventArray, seemsMIDIMetaEventObject, send, setByte, sortEvents, spp, ss, start, stop, syx, tc, timeStamp, toMPE, tun, value, valueEq, velocity, velocityEq, version, withAbsoluteDeltaTimes };
+export { MIDIClock, MIDIFilePlayer, MIDIPlayer, _MidiParser as MidiParser, QNPM2BPM, addNotes, as, asNoteOff, asNoteOn, byNotesAndWeight, byteEq, byteEqBy, cc, channel, channelByKeyRange, cont, control, controlEq, cp, createLoop, createMIDIFile, createTimer, dataEq, dataEqBy, deltaTime, filterTracks, from$1 as from, getByte, hasNote, hasPressure, hasVelocity, initialize, input, inputFrom, inputsAsText, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelModeMessage, isChannelPressure, isChannelVoice, isChannelVoiceMessageOfType, isContinue, isControlChange, isEndOfExclusive, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTuneRequest, isUpperZone, leastNotesChannel, lensP, loadMidiFile, logPorts, lookAheadClock, mc, mergeTracks, metaTypeEq, midiToHzs, mpeNote, mpeZone, msg, note, noteEq, notesPerChannel, nrpn, off, on, output, outputFrom, outputsAsText, panic, pb, pc, pitchBend, pitchBendEq, playMIDIFile, pp, pressure, pressureEq, processChannelPressureMessage, processMessage, processNoteOffMessage, processNoteOnMessage, processPitchBendMessage, processTimbreMessage, program, programEq, rpn, rst, seemsActiveNote, seemsArrayOfMIDIMessages, seemsMIDIFile, seemsMIDILoop, seemsMIDIMessage, seemsMIDIMessageAsArray, seemsMIDIMetaEvent, send, setByte, sortEvents, spp, ss, start, stop, syx, tc, timeStamp, toMPE, tun, value, valueEq, velocity, velocityEq, version, withAbsoluteDeltaTimes };

@@ -103,7 +103,7 @@ export let createLoop =	(midifile) => ({
 
 // TODO: MIDIPlayer should have state, extract inner function
 // to be easily testeable.
-export let MIDIFilePlayer = (midifile, tick, midi_clocks) => {
+export const MIDIFilePlayer = (midifile) => {
   let playable = pipe (
     withAbsoluteDeltaTimes,
     mergeTracks,
@@ -114,7 +114,7 @@ export let MIDIFilePlayer = (midifile, tick, midi_clocks) => {
   let loop = playable.loop
   let maxTick = last (track).absoluteDeltaTime
 
-  let func = (tick, midi_clocks) => 
+  return (tick, midi_clocks) => 
     slice 
       (0, 2)
       (reduceWhile 
@@ -135,9 +135,7 @@ export let MIDIFilePlayer = (midifile, tick, midi_clocks) => {
         })
         ([[], tick, true])
         (midi_clocks))
-
-    if (tick === undefined || midi_clocks === undefined) 
-      return func
-    else
-      return func (tick, midi_clocks)
 }
+
+export const QNPM2BPM = (qnpm) => 60 * 1000000 / qnpm
+

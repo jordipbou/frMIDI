@@ -315,6 +315,5 @@ test ('isNRPN', (t) => {
 // ------------------ MIDI File Meta Events ------------------------
 
 test ('isTempoChange', (t) => {
-  t.true (P.isTempoChange ([255, 81]))
   t.true (P.isTempoChange (meta (81)))
 })
