@@ -272,6 +272,15 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+1.0.39 [2020/09/29] - Added default values for most message creation
+  functions to not end with an invalid MIDI message in any case.
+1.0.38 [2020/09/29] - Added channelByKeyRange algorithm. Allows selection
+  of mpe zone channel having into account predefined key ranges mapped
+  to different channels (can overlap) sorted by a predefined weight 
+  (priority) and by least notes on channel.
+1.0.37 [2020/09/25] - Better support to use mpe zones. Allows toMPE helper
+  to select algorithm for channel selection. Current implemented
+  algorithm selects channel sorting by least notes on channel.
 1.0.36 [2020/09/21] - Arrays are not accepted as MIDI messages now,
   only correct objects. It makes library easier and takes out a lot
   of checks for correct MIDI messages.

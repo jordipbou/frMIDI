@@ -6,9 +6,10 @@ import {
   channel, note, pitchBend, pressure, value, velocity 
   } from './lenses.js'
 import { 
-  always, allPass, any, anyPass, append, both, complement, cond, countBy,
-  evolve, filter, head, includes, length,
-  map, propEq, range, sort, T, view, without
+  always, allPass, any, anyPass, append, assoc,
+  both, complement, cond, countBy,
+  evolve, filter, fromPairs, head, includes, length,
+  map, path, propEq, range, sort, T, view, without, xprod, zip
   } from 'ramda'
 
 // ------------------------ MPE State Objects ----------------------------
@@ -146,14 +147,55 @@ export const processMessage = (mpeZone) =>
       [T, always (mpeZone)]
     ]) (msg)
 
-// ---------------------------- toMPE ------------------------------------
+// ------------------------ toMPE algorithms -----------------------------
+
+// Helper function to find notes per channel on mpe zone
+export const notesPerChannel = (mpeZone) =>
+  map ((c) => [c, length (filter ((n) => n.channel === c)
+                                 (mpeZone.activeNotes))])
+      (mpeZone.channels)
+
+// Algorithm: select channel on mpe zone as the one with least notes -----
 
 // Sort channels by note usage (ascending) and use first one 
-export const leastNotesChannel = (mpeZone) => 
+export const leastNotesChannel = (mpeZone) => (msg) =>
   head (
     head (
       sort ((a, b) => a [1] - b [1])
-           (map ((c) => [c, length (filter ((n) => n.channel === c)
-                                           (mpeZone.activeNotes))])
-                (mpeZone.channels))))
+           (notesPerChannel (mpeZone))))
 
+
+// Algorithm: select channel based on key ranges with priorities ---------
+
+// Uses the following data structure to define key ranges:
+// [{ channel: n, min: n, max: n, weight: n }]
+// Where:
+// - channel -> the channel of the mpe zone that this key range will
+//              be mapped to
+// - min -> minimum note value that this range represents (included)
+// - max -> maximum note value that this range represents (included)
+// - weight -> relative priority to sort key ranges 
+
+// Helper function to add notes per channel to key ranges
+export const addNotes = (notesxchannel) => (v) => 
+  assoc ('notes') 
+        (fromPairs (notesxchannel) [v.channel]) (v)
+
+// Always prefer empty channels to weight
+export const byNotesAndWeight = (a, b) =>
+  a.notes === b.notes ?
+    b.weight - a.weight
+    : a.notes - b.notes
+
+// Select channel filtering key ranges that the note belongs to and
+// then sort by weight and number of notes on the channel.
+export const channelByKeyRange = (keyRanges) => (mpeZone) => (msg) => {
+  let msg_note = view (note) (msg)
+  let noteInRange = (n) => (v) => v.min <= n && v.max >= n
+
+  return path ([0, 'channel'])
+              (sort (byNotesAndWeight)
+                    (map (addNotes (notesPerChannel (mpeZone)))
+                         (filter (noteInRange (msg_note)) 
+                                 (keyRanges))))
+}

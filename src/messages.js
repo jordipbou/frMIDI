@@ -29,30 +29,28 @@ export let from = (msg) =>
 
 // -------------- Channel Voice messages generation ----------------
 
-export let off = (n, v = 96, ch = 0) => 
-  msg([128 + ch, n, v])
+export let off = (n = 64, v = 96, ch = 0) => 
+  msg ([128 + ch, n, v])
 
-export let on = (n, v = 96, ch = 0) => 
-  msg([144 + ch, n, v])
+export let on = (n = 64, v = 96, ch = 0) => 
+  msg ([144 + ch, n, v])
 
-export let pp = (n, p = 96, ch = 0) => 
-  msg([160 + ch, n, p])
+export let pp = (n = 64, p = 96, ch = 0) => 
+  msg ([160 + ch, n, p])
 
-// TODO: If v is undefined (like in cc (37)) resulting message
-// is not a valid MIDI message !!
-export let cc = (c, v, ch = 0) => 
-  msg([176 + ch, c, v])
+export let cc = (c = 1, v = 127, ch = 0) => 
+  msg ([176 + ch, c, v])
 
-export let pc = (p, ch = 0) => 
-  msg([192 + ch, p])
+export let pc = (p = 0, ch = 0) => 
+  msg ([192 + ch, p])
 
-export let cp = (p, ch = 0) => 
-  msg([208 + ch, p])
+export let cp = (p = 96, ch = 0) => 
+  msg ([208 + ch, p])
 
-export let pb = (v, ch = 0) => 
-  msg([224 + ch, v & 0x7F, v >> 7])
+export let pb = (v = 8192, ch = 0) => 
+  msg ([224 + ch, v & 0x7F, v >> 7])
 
-export let rpn = (n, v, ch = 0) => 
+export let rpn = (n = 0, v = 8192, ch = 0) => 
   from ([
   	cc (101, n >> 7, ch),
   	cc (100, n % 128, ch), 
@@ -62,8 +60,8 @@ export let rpn = (n, v, ch = 0) =>
   	cc (100, 127, ch)
   ])
 
-export let nrpn = (n, v, ch = 0) => 
-from([
+export let nrpn = (n = 0, v = 8192, ch = 0) => 
+from ([
 	cc(99, n >> 7, ch),
 	cc(98, n % 128, ch),
 	cc(6, v >> 7, ch),
@@ -75,39 +73,39 @@ from([
 // -------------- System common messages generation ----------------
 
 export let syx = (b) => 
-  msg([240, ...b, 247])
+  msg ([240, ...b, 247])
 
 export let tc = (t, v) => 
-  msg([241, (t << 4) + v])
+  msg ([241, (t << 4) + v])
 
 export let spp = (b) => 
-  msg([242, b % 128, b >> 7])
+  msg ([242, b % 128, b >> 7])
 
 export let ss = (s) => 
-  msg([243, s])
+  msg ([243, s])
 
 export let tun = () => 
-  msg([246])
+  msg ([246])
 
 // ------------- System real time messages generation --------------
 
 export let mc = () => 
-  msg([248])
+  msg ([248])
 
 export let start = () => 
-  msg([250])
+  msg ([250])
 
 export let cont = () => 
-  msg([251])
+  msg ([251])
 
 export let stop = () => 
-  msg([252])
+  msg ([252])
 
 export let as = () => 
-  msg([254])
+  msg ([254])
 
 export let rst = () => 
-  msg([255])
+  msg ([255])
 
 export let panic = () => 
 {
@@ -121,5 +119,5 @@ export let panic = () =>
 		}
 	}
 
-	return from(panic_msgs)
+	return from (panic_msgs)
 }

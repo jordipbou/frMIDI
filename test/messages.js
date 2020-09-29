@@ -61,6 +61,8 @@ test ('Note Off message creation', t => {
   t.true (allPass (preds (77, 96, 0)) (off (77)))
   t.true (allPass (preds (77, 127, 0)) (off (77, 127)))
   t.true (allPass (preds (77, 127, 10)) (off (77, 127, 10)))
+  
+  t.true (allPass (preds (64, 96, 0)) (off ()))
 })
 
 test ('Note On message creation', t => {
@@ -70,6 +72,8 @@ test ('Note On message creation', t => {
   t.true (allPass (preds (77, 96, 0)) (on (77)))
   t.true (allPass (preds (77, 127, 0)) (on (77, 127)))
   t.true (allPass (preds (77, 127, 10)) (on (77, 127, 10)))
+
+  t.true (allPass (preds (64, 96, 0)) (on ()))
 })
 
 test ('Poly Pressure message creation', t => {
@@ -80,6 +84,8 @@ test ('Poly Pressure message creation', t => {
   t.true (allPass (preds (77, 96, 0)) (pp (77)))
   t.true (allPass (preds (77, 127, 0)) (pp (77, 127)))
   t.true (allPass (preds (77, 127, 10)) (pp (77, 127, 10)))
+
+  t.true (allPass (preds (64, 96, 0)) (pp ()))
 })
 
 test ('Control Change message creation', t => {
@@ -89,6 +95,9 @@ test ('Control Change message creation', t => {
 
   t.true (allPass (preds (32, 127, 0)) (cc (32, 127)))
   t.true (allPass (preds (32, 127, 10)) (cc (32, 127, 10)))
+
+  t.true (allPass (preds (1, 127, 0)) (cc ()))
+  t.true (allPass (preds (32, 127, 0)) (cc (32)))
 })
 
 test ('Program Change message creation', t => {
@@ -97,6 +106,8 @@ test ('Program Change message creation', t => {
 
   t.true (allPass (preds (18, 0)) (pc (18)))
   t.true (allPass (preds (18, 10)) (pc (18, 10)))
+
+  t.true (allPass (preds (0 ,0)) (pc ()))
 })
 
 test ('Channel Pressure message creation', t => {
@@ -105,6 +116,8 @@ test ('Channel Pressure message creation', t => {
 
   t.true (allPass (preds (96, 0)) (cp (96)))
   t.true (allPass (preds (96, 10)) (cp (96, 10)))
+
+  t.true (allPass (preds (96, 0)) (cp ()))
 })
 
 test ('Pitch Bend message creation', t => {
@@ -113,6 +126,8 @@ test ('Pitch Bend message creation', t => {
 
   t.true (allPass (preds (8192, 0)) (pb (8192)))
   t.true (allPass (preds (8192, 10)) (pb (8192, 10)))
+
+  t.true (allPass (preds (8192, 0)) (pb ()))
 })
 
 test ('RPN message creation', t => {
@@ -121,6 +136,8 @@ test ('RPN message creation', t => {
 
   t.true (allPass (preds (245, 1, 0)) (rpn (245, 1)))
   t.true (allPass (preds (245, 1, 3)) (rpn (245, 1, 3)))
+
+  t.true (allPass (preds (0, 8192, 0)) (rpn ()))
 })
 
 test ('NRPN message creation', t => {
@@ -129,6 +146,8 @@ test ('NRPN message creation', t => {
 
   t.true (allPass (preds (245, 1, 0)) (nrpn (245, 1)))
   t.true (allPass (preds (245, 1, 3)) (nrpn (245, 1, 3)))
+
+  t.true (allPass (preds (0, 8192, 0)) (nrpn ()))
 })
 
 // --------- Channel Voice messages modification helpers -----------

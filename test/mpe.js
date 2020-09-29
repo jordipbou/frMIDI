@@ -1,15 +1,20 @@
 const test = require ('ava')
 import { cc, cp, on, off, pb } from '../src/messages.js'
 import { 
+  addNotes,
+  byNotesAndWeight,
   isActiveNote, isLowerZone, isOnMasterChannel, isOnZone, isUpperZone,
+  channelByKeyRange,
   leastNotesChannel,
   mpeNote, mpeZone, 
+  notesPerChannel,
   processChannelPressureMessage,
   processNoteOnMessage, processNoteOffMessage,
   processPitchBendMessage,
   processTimbreMessage,
   seemsActiveNote
   } from '../src/mpe.js'
+import { sort, map } from 'ramda'
 
 test ('mpeNote', (t) => {
   let n = mpeNote (on (64))
@@ -190,13 +195,86 @@ test ('Process pitch bend message', (t) => {
 
 // ----------------------------- to MPE ----------------------------------
 
+test ('Get notes per channel', (t) => {
+  let z = mpeZone (0, 2)
+  t.deepEqual (notesPerChannel (z), [[1, 0], [2, 0]])
+  let z2 = processNoteOnMessage (z) (on (64, 96, 1))
+  t.deepEqual (notesPerChannel (z2), [[1, 1], [2, 0]])
+  let z3 = processNoteOnMessage (z2) (on (56, 96, 2))
+  t.deepEqual (notesPerChannel (z3), [[1, 1], [2, 1]])
+  let z4 = processNoteOnMessage (z3) (on (32, 96, 1))
+  t.deepEqual (notesPerChannel (z4), [[1, 2], [2, 1]])
+})
+
 test ('Least notes channel algorithm', (t) => {
   let z = mpeZone (0, 2)
-  t.deepEqual (1, leastNotesChannel (z))
+  t.deepEqual (1, leastNotesChannel (z) ())
   let z2 = processNoteOnMessage (z) (on (64, 96, 1))
-  t.deepEqual (2, leastNotesChannel (z2))
+  t.deepEqual (2, leastNotesChannel (z2) ())
   let z3 = processNoteOnMessage (z2) (on (64, 75, 2))
-  t.deepEqual (1, leastNotesChannel (z3))
+  t.deepEqual (1, leastNotesChannel (z3) ())
   let z4 = processNoteOffMessage (z3) (off (64, 12, 2))
-  t.deepEqual (2, leastNotesChannel (z4))
+  t.deepEqual (2, leastNotesChannel (z4) ())
+})
+
+test ('Channel by key range algorithm', (t) => {
+  let z = mpeZone (0, 3)
+  let keyRanges = [
+    { channel: 1, min: 28, max: 47, weight: 3 },
+    { channel: 1, min: 48, max: 65, weight: 0 },
+    { channel: 2, min: 40, max: 70, weight: 2 },
+    { channel: 3, min: 52, max: 82, weight: 1 }
+  ]
+
+  // Add notes function
+  let v = addNotes (notesPerChannel (z)) (keyRanges [0])
+  t.deepEqual (v, { channel: 1, min: 28, max: 47, weight: 3, notes: 0 })
+
+  v = sort (byNotesAndWeight) 
+           (map (addNotes (notesPerChannel (z))) (keyRanges))
+  t.deepEqual (
+    v,
+    [
+      { channel: 1, min: 28, max: 47, weight: 3, notes: 0 },
+      { channel: 2, min: 40, max: 70, weight: 2, notes: 0 },
+      { channel: 3, min: 52, max: 82, weight: 1, notes: 0 },
+      { channel: 1, min: 48, max: 65, weight: 0, notes: 0 },
+    ])
+
+  // Test preference of empty channels to weight on sorting
+  let z2 = processNoteOnMessage (z) (on (42, 96, 1))
+  v = sort (byNotesAndWeight) 
+           (map (addNotes (notesPerChannel (z2))) (keyRanges))
+  t.deepEqual (
+    v,
+    [
+      { channel: 2, min: 40, max: 70, weight: 2, notes: 0 },
+      { channel: 3, min: 52, max: 82, weight: 1, notes: 0 },
+      { channel: 1, min: 28, max: 47, weight: 3, notes: 1 },
+      { channel: 1, min: 48, max: 65, weight: 0, notes: 1 },
+    ])
+
+  t.deepEqual (1, channelByKeyRange (keyRanges) (z) (on (32)))
+  t.deepEqual (1, channelByKeyRange (keyRanges) (z) (on (45)))
+  t.deepEqual (2, channelByKeyRange (keyRanges) (z) (on (64)))
+  t.deepEqual (3, channelByKeyRange (keyRanges) (z) (on (75)))
+
+  t.deepEqual (2, channelByKeyRange (keyRanges) (z2) (on (43)))
+
+  let z3 = processNoteOnMessage (z2) (on (43, 96, 2))
+  v = sort (byNotesAndWeight)
+           (map (addNotes (notesPerChannel (z3))) (keyRanges))
+  t.deepEqual (
+    v,
+    [
+      { channel: 3, min: 52, max: 82, weight: 1, notes: 0 },
+      { channel: 1, min: 28, max: 47, weight: 3, notes: 1 },
+      { channel: 2, min: 40, max: 70, weight: 2, notes: 1 },
+      { channel: 1, min: 48, max: 65, weight: 0, notes: 1 },
+    ])
+
+  t.deepEqual (1, channelByKeyRange (keyRanges) (z3) (on (32)))
+  t.deepEqual (1, channelByKeyRange (keyRanges) (z3) (on (45)))
+  t.deepEqual (3, channelByKeyRange (keyRanges) (z3) (on (64)))
+  t.deepEqual (3, channelByKeyRange (keyRanges) (z3) (on (75)))
 })

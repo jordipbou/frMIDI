@@ -20,7 +20,7 @@ export const toMPE = curry((m, c, findChannel = leastNotesChannel) =>
   rx.pipe (
     rxo.scan (([z, _], msg) => {
       if (isNoteOn (msg)) {
-        let ch = findChannel (z)
+        let ch = findChannel (z) (msg)
         let mod_msg = set (channel) (ch) (msg)
         return [processMessage (z) (mod_msg), mod_msg]
       } else if (isNoteOff (msg)) {
