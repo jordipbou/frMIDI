@@ -1,5 +1,6 @@
 const test = require ('ava')
 const EventEmitter = require ('events')
+const { now } = require ('performance-now')
 
 import { 
   initialize, input, inputFrom, inputsAsText, output, outputsAsText, send 
@@ -126,20 +127,10 @@ test ('Send function', (t) => {
     send: (d) => midi_output = concat (midi_output) ([d])
   }
 
-  //// Sending an array
-  //midi_output = []
-  //send (output.send) (on (64).data)
-  //t.deepEqual (midi_output, [[144, 64, 96]])
-
   // Sending midi object
   midi_output = []
   send (output.send) (on (65))
   t.deepEqual (midi_output, [[144, 65, 96]])
-
-  //// Sending array of midi messages as arrays
-  //midi_output = []
-  //send (output.send) ([on (66).data, off (66).data])
-  //t.deepEqual (midi_output, [[144, 66, 96], [128, 66, 96]])
 
   // Sending array of midi messages as objects
   midi_output = []

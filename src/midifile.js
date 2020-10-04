@@ -11,7 +11,7 @@ import {
 
 // ------------------------- Predicates ----------------------------
 
-export let seemsMIDIFile = 
+export let seemsMIDIFile =
   allPass ([is (Object),
             has ('formatType'),
             has ('timeDivision'),
@@ -26,52 +26,52 @@ export let seemsMIDILoop =
 // -------------------------- Helpers ------------------------------
 
 export let withAbsoluteDeltaTimes =
-	evolve ({
-		track: map (
-			evolve ({
-				event: pipe (
-					scan 
+  evolve ({
+    track: map (
+      evolve ({
+        event: pipe (
+          scan
             (([tick, _], msg) => [tick + msg.deltaTime, msg])
             ([0, null]),
-					map
-            (([tick, msg]) => 
+          map
+            (([tick, msg]) =>
               msg !== null ?
                 from (mergeLeft ({ absoluteDeltaTime: tick }, msg))
                 : null),
-					tail)}))})
+              tail)}))})
 
 export let mergeTracks =
-	evolve ({
-		tracks: always (1),
-		track: pipe (
-			reduce ((acc, v) => concat(acc, v.event), []),
+  evolve ({
+    tracks: always (1),
+    track: pipe (
+      reduce ((acc, v) => concat(acc, v.event), []),
       map (v => from (v)),
-			objOf ('event'),
-			append (__, []))})
+      objOf ('event'),
+      append (__, []))})
 
-export let sortEvents = 
+export let sortEvents =
     evolve ({
-		track: pipe (
-			map (v => 
-        pipe (
-          sort ((a, b) => a.absoluteDeltaTime - b.absoluteDeltaTime),
-          map (v => from (v))
-        )(v.event)),
-			head,
-			objOf ('event'),
-			append (__, []))})
+  track: pipe (
+    map (v =>
+      pipe (
+        sort ((a, b) => a.absoluteDeltaTime - b.absoluteDeltaTime),
+        map (v => from (v))
+      )(v.event)),
+    head,
+    objOf ('event'),
+    append (__, []))})
 
 let filterIndexed = 
   addIndex (filter)
 
 export let filterTracks =	(tracks, midiFile) => 
-		evolve ({
-			tracks: () => tracks.length,
-			track: pipe (
+  evolve ({
+    tracks: () => tracks.length,
+    track: pipe (
         filterIndexed ((v, k) => tracks.includes (k)),
         map (v => objOf ('event', map (from, v.event)))
       )
-		}, midiFile)
+    }, midiFile)
 
 // TODO
 //export let addTrack/s = (midiFile, tracks) => 
@@ -84,9 +84,9 @@ export let filterTracks =	(tracks, midiFile) =>
 
 export let createMIDIFile =	(track, timeDivision = 24) => ({
   formatType: 1,
-	tracks: 1,
-	timeDivision: timeDivision,
-	track: [{ event: map (from, track) }]
+  tracks: 1,
+  timeDivision: timeDivision,
+  track: [{ event: map (from, track) }]
 })
 
 export let createLoop =	(midifile) => ({

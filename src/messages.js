@@ -89,8 +89,8 @@ export let tun = () =>
 
 // ------------- System real time messages generation --------------
 
-export let mc = () => 
-  msg ([248])
+export let mc = (timeStamp = 0) => 
+  msg ([248], timeStamp)
 
 export let start = () => 
   msg ([250])

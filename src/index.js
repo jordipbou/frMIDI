@@ -7,7 +7,7 @@ export * from './midifile.js'
 export * from './mpe.js'
 export * from './io.js'
 
-export const version = '1.0.41'
+export const version = '1.0.42'
 
 //// --------------------- Other utilities -------------------------
 

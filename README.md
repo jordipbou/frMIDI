@@ -2,23 +2,23 @@
 
 JavaScript functional reactive MIDI library.
 
-Functions are curried and parameters ordered for correct composing of functions.
-
-Package is ready for node and browser usage (although on node WebMIDI API is not present and input/output functions can not be used without a plugin like jzz library).
-
 ## Why reactive?
 
 It's difficult with current tools to process MIDI in the time-domain. Using rxjs (or other reactive frameworks) allows using already created and tested functions that work in time-domain in an easier way.
 
 ## Why functional?
 
-Testing.
+Functional programming allows easier testing and function composition.
+
+Functions are curried and parameters ordered for correct composing of functions.
 
 # Installation
 
 ## In node
 
     npm install frmidi
+
+For input/output in node it's necessary to use JZZ library navigator implementation.
 
 ## In the browser
 
@@ -274,27 +274,17 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
-1.0.41 [2020/09/30] - Added playMIDIFile function.
-1.0.40 [2020/09/29] - Working MIDI file playing functionality.
-1.0.39 [2020/09/29] - Added default values for most message creation
-  functions to not end with an invalid MIDI message in any case.
-1.0.38 [2020/09/29] - Added channelByKeyRange algorithm. Allows selection
-  of mpe zone channel having into account predefined key ranges mapped
-  to different channels (can overlap) sorted by a predefined weight 
-  (priority) and by least notes on channel.
-1.0.37 [2020/09/25] - Better support to use mpe zones. Allows toMPE helper
-  to select algorithm for channel selection. Current implemented
-  algorithm selects channel sorting by least notes on channel.
-1.0.36 [2020/09/21] - Arrays are not accepted as MIDI messages now,
-  only correct objects. It makes library easier and takes out a lot
-  of checks for correct MIDI messages.
-1.0.35 [2020/09/20] - Added toMPE helper. Allows sending one channel
-  inputs to MPE zone channels maintaining state of active notes.
-1.0.34 [2020/09/09] - When subscribing to an output, a correct MIDI message
-  is now received instead of [msg_as_byte_array, timestamp].
-1.0.33 [2020/09/09] - Changed logPorts function
-1.0.32 [2020/09/09] - A message can be sent thru an input and it's
-  also possible to subscribe to an output. Both for easy testing.
-1.0.31 [2020/09/09] - Version number was incorrect
-1.0.30 [2020/09/09] - Outputs are now subscribable for testing purposes
-1.0.29 [2020/09/09] - Inputs can now emit events programatically for testing purposes.
+* 1.0.42 [2020/10/04] - Moved clock functions from helper to clock.js. Added tests for rxjs based code. Reworked lookAheadClock.
+* 1.0.41 [2020/09/30] - Added playMIDIFile function.
+* 1.0.40 [2020/09/29] - Working MIDI file playing functionality.
+* 1.0.39 [2020/09/29] - Added default values for most message creation functions to not end with an invalid MIDI message in any case.
+* 1.0.38 [2020/09/29] - Added channelByKeyRange algorithm. Allows selection of mpe zone channel having into account predefined key ranges mapped to different channels (can overlap) sorted by a predefined weight (priority) and by least notes on channel.
+* 1.0.37 [2020/09/25] - Better support to use mpe zones. Allows toMPE helper to select algorithm for channel selection. Current implemented algorithm selects channel sorting by least notes on channel.
+* 1.0.36 [2020/09/21] - Arrays are not accepted as MIDI messages now, only correct objects. It makes library easier and takes out a lot of checks for correct MIDI messages.
+* 1.0.35 [2020/09/20] - Added toMPE helper. Allows sending one channel inputs to MPE zone channels maintaining state of active notes.
+* 1.0.34 [2020/09/09] - When subscribing to an output, a correct MIDI message is now received instead of [msg_as_byte_array, timestamp].
+* 1.0.33 [2020/09/09] - Changed logPorts function
+* 1.0.32 [2020/09/09] - A message can be sent thru an input and it's also possible to subscribe to an output. Both for easy testing.
+* 1.0.31 [2020/09/09] - Version number was incorrect
+* 1.0.30 [2020/09/09] - Outputs are now subscribable for testing purposes
+* 1.0.29 [2020/09/09] - Inputs can now emit events programatically for testing purposes.

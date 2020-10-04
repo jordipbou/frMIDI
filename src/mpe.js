@@ -167,6 +167,8 @@ export const leastNotesChannel = (mpeZone) => (msg) =>
 
 // Algorithm: select channel based on key ranges with priorities ---------
 
+// TODO: Add lower / higher note priority (weight)
+
 // Uses the following data structure to define key ranges:
 // [{ channel: n, min: n, max: n, weight: n }]
 // Where:

@@ -11,7 +11,7 @@ import {
   seemsArrayOfMIDIMessages, seemsMIDIMessage,
   isTempoChange
   } from './predicates.js'
-import { lookAheadClock } from './clock.js'
+import { createTimer, lookAheadClock, MIDIClock } from './clock.js'
 import { MIDIFilePlayer, QNPM2BPM } from './midifile.js'
 
 import { 
@@ -22,7 +22,23 @@ export {
   MidiParser 
   } from '../node_modules/midi-parser-js/src/midi-parser.js'
 
+import { isBrowser, isNode } from 'browser-or-node/src/index.js'
+
 let midiAccess
+let _navigator
+let _now
+
+if (isBrowser) {
+  _navigator = window.navigator
+  _now = window.performance.now.bind (window.performance)
+}
+
+if (isNode) {
+  _now = () => {
+    let hr = process.hrtime ()
+    return (hr [0] * 1e9 + hr [1]) / 1e9
+  }
+}
 
 // ------------------- WebMidi initialization ----------------------
 
@@ -34,11 +50,15 @@ let midiAccess
 // A custom_navigator parameter is used to allow testing without
 // a defined window object.
 
-export const initialize = 
-  (sysex = false, custom_navigator = window.navigator) =>
-		custom_navigator
+export const initialize = (sysex = false, custom_navigator = _navigator) => {
+    if (!custom_navigator) {
+      throw "On node environment, custom navigator is needed."
+    }
+
+		return custom_navigator
 			.requestMIDIAccess ({ sysex: sysex })
 			.then (m => midiAccess = m)
+}
 
 // Writes every input and output port name to the console for reference
 // when instatiating input and output objects.
@@ -110,17 +130,6 @@ export const input = (n = '') =>
 // - observable emitting any of the above
 
 export const send = (sendfn) => (msg) => 
-//  seemsArrayOfMIDIMessagesAsObjects (msg) ?
-//    forEach (m => sendfn (m.data, m.timeStamp)) (msg)
-//    : seemsArrayOfMIDIMessagesAsArrays (msg) ?
-//      forEach (m => sendfn (m)) (msg)
-//      : seemsMIDIMessageAsObject (msg) ?
-//        sendfn (msg.data, msg.timeStamp)
-//        : seemsMIDIMessageAsArray (msg) ?
-//          sendfn (msg)
-//          : is (rx.Observable) (msg) ?
-//            msg.subscribe (send (sendfn))
-//            : null
   seemsArrayOfMIDIMessages (msg) ?
     forEach (m => sendfn (m.data, m.timeStamp)) (msg)
     : seemsMIDIMessage (msg) ?
@@ -213,49 +222,6 @@ export const loadMidiFile =	() => {
 	return promise
 }
 
-// ------------------------ MIDI Clock -----------------------------
-
-// TODO: Make this part better
-
-export const createTimer = (resolution = 25, look_ahead = 150) =>
-  rx.timer (0, resolution).pipe (
-    // TODO: performance.now will not work on node
-    rxo.map(v => [performance.now (), look_ahead])
-  )
-
-export const MIDIClock = curry ((time_division = 1, bpm = 120) => {
-  let timeDivisionSubject = new rx.BehaviorSubject (time_division)
-  let bpmSubject = new rx.BehaviorSubject (bpm)
-  
-  let op = rx.pipe(
-    rxo.withLatestFrom (
-      timeDivisionSubject,
-      bpmSubject
-    ),
-    rxo.scan (([past_events, last_tick_time], 
-               [[now, look_ahead], time_division, bpm]) => {
-      last_tick_time = 
-        prop ('timeStamp') (last (past_events)) || last_tick_time
-  
-      let next_events = lookAheadClock (
-        time_division,
-        bpm,
-        last_tick_time,
-        now,
-        look_ahead)
-      return [next_events, last_tick_time]
-    }, [[], performance.now ()]), // TODO: performance.now () will not work
-                                  // on node
-    rxo.map (([events, last_tick_time]) => events),
-    rxo.filter (complement (isEmpty))
-  )
-
-  op.timeDivision = (v) => timeDivisionSubject.next (v)
-  op.bpm = (v) => bpmSubject.next (v)
-
-  return op
-})
-
 export const MIDIPlayer = (midifile) => {
   let player = MIDIFilePlayer (midifile)
 
@@ -267,7 +233,7 @@ export const MIDIPlayer = (midifile) => {
   )
 }
 
-export const playMIDIFile = (midifile) => (output) => {
+export const play = (midifile) => {
     let t = createTimer ()
     let clock = MIDIClock (midifile.timeDivision, 30)
 
@@ -277,5 +243,5 @@ export const playMIDIFile = (midifile) => (output) => {
       rxo.tap ((events) => 
         forEach ((m) => clock.bpm (QNPM2BPM (m.data [0])))
                 (filter (isTempoChange) (events)))
-    ).subscribe (output)
+    )
   }
