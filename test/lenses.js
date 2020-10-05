@@ -1,12 +1,14 @@
 const test = require ('ava')
-import { add, view, set, over } from 'ramda'
+import { add, gt, lt, view, set, over } from 'ramda'
 import { 
   cc, cp, mc, off, on, pb, pp 
-} from '../src/messages.js'
+} from '../src/messages'
 import { 
-  channel, control, deltaTime, note, 
+  channel, control, deltaTime, lensP, note, 
   pitchBend, pressure, timeStamp, velocity
-} from '../src/lenses.js'
+} from '../src/lenses/lenses.js'
+
+// TODO: Test getByte, setByte and lensWhen
 
 test ('timeStamp lens', (t) => {
   t.is (view (timeStamp) (on (64)), 0)
@@ -90,4 +92,10 @@ test ('control lens', (t) => {
 test ('pitch bend lens', (t) => {
   t.is (view (pitchBend) (pb (3520)), 3520)
   t.is (view (pitchBend) (on (64)), undefined)
+})
+
+test ('lens predicates', (t) => {
+  t.true (lensP (velocity, gt, 64) (on (54, 96)))
+  t.true (lensP (velocity, lt, 100) (on (54, 96)))
+  t.false (lensP (velocity, lt, 64) (on (54, 96)))
 })

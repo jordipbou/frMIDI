@@ -1,7 +1,9 @@
 const test = require ('ava')
 import { map, prop } from 'ramda'
-import { mc } from '../src/messages.js'
-import { createTimer, lookAheadClock, MIDIClock } from '../src/clock.js'
+import { mc } from '../src/messages'
+import { 
+  createTimer, lookAheadClock, MIDIClock 
+  } from '../src/clock/clock.js'
 import { of } from 'rxjs'
 import { take } from 'rxjs/operators'
 import { TestScheduler } from 'rxjs/testing'

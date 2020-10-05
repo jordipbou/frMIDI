@@ -1,19 +1,19 @@
 const test = require ('ava')
 import {
-  as, cc, cont, cp, from, mc, msg, nrpn, off, on, 
-  pb, pc, pp, rpn, rst, spp, ss, start, stop, tc, tun, syx
-} from '../src/messages.js'
+    as, cc, cont, cp, from, mc, msg, nrpn, off, on, 
+    pb, pc, pp, rpn, rst, spp, ss, start, stop, tc, tun, syx
+  } from '../src/messages'
 import {
-  controlEq, isActiveSensing,
-  isContinue, isControlChange, isChannelPressure, 
-  isMIDIClock, isMIDITimeCodeQuarterFrame, isNoteOff, 
-  isNoteOn, isNRPN, isOnChannel, isPolyPressure, isPitchBend, 
-  isProgramChange, isReset, isRPN, isSongPositionPointer, 
-  isSongSelect, isStart, isStop,
-  isSystemExclusive, isTuneRequest,
-  noteEq, pitchBendEq, pressureEq, programEq, valueEq, velocityEq
-} from '../src/predicates.js'
-import { channel } from '../src/lenses.js'
+    controlEq, isActiveSensing,
+    isContinue, isControlChange, isChannelPressure, 
+    isMIDIClock, isMIDITimeCodeQuarterFrame, isNoteOff, 
+    isNoteOn, isNRPN, isOnChannel, isPolyPressure, isPitchBend, 
+    isProgramChange, isReset, isRPN, isSongPositionPointer, 
+    isSongSelect, isStart, isStop,
+    isSystemExclusive, isTuneRequest,
+    noteEq, pitchBendEq, pressureEq, programEq, valueEq, velocityEq
+  } from '../src/predicates'
+import { channel } from '../src/lenses'
 import { allPass, both, set } from 'ramda'
 
 // =================== MIDI Message creation =======================

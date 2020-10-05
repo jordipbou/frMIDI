@@ -1,5 +1,5 @@
 const test = require ('ava')
-import * as P from '../src/predicates.js'
+import * as P from '../src/predicates/predicates.js'
 import { allPas } from 'ramda'
 import { from } from 'rxjs'
 import { filter } from 'rxjs/operators'
@@ -10,19 +10,19 @@ let msg = (data) =>
 let meta = (t, data = []) => 
   ({ type: 'metaevent', metaType: t, data: [255, t, ...data] })
 
-test ('seemsMIDIMessage', (t) => {
-  t.false (P.seemsMIDIMessage (null))
-  t.false (P.seemsMIDIMessage (undefined))
-  t.false (P.seemsMIDIMessage ({}))
-  t.false (P.seemsMIDIMessage ({ type: 'midimessage' }))
-  t.false (P.seemsMIDIMessage ({ data: [144, 64, 96] }))
-  t.false (P.seemsMIDIMessage (msg ([])))
-  t.false (P.seemsMIDIMessage (['test']))
-  t.false (P.seemsMIDIMessage ([248, 'test']))
-  t.false (P.seemsMIDIMessage ([{}]))
-  t.false (P.seemsMIDIMessage ([248, {}]))
-  t.true (P.seemsMIDIMessage (msg ([248])))
-  t.true (P.seemsMIDIMessage (msg ([144, 64, 96])))
+test ('seems a MIDI message', (t) => {
+  t.false (P.seemsMessage (null))
+  t.false (P.seemsMessage (undefined))
+  t.false (P.seemsMessage ({}))
+  t.false (P.seemsMessage ({ type: 'midimessage' }))
+  t.false (P.seemsMessage ({ data: [144, 64, 96] }))
+  t.false (P.seemsMessage (msg ([])))
+  t.false (P.seemsMessage (['test']))
+  t.false (P.seemsMessage ([248, 'test']))
+  t.false (P.seemsMessage ([{}]))
+  t.false (P.seemsMessage ([248, {}]))
+  t.true (P.seemsMessage (msg ([248])))
+  t.true (P.seemsMessage (msg ([144, 64, 96])))
 })
 
 test ('seemsArrayOfMIDIMessages', (t) => {

@@ -1,51 +1,56 @@
 import { 
-  all, allPass, anyPass, both, cond, complement, curry, 
-  either, equals, F, has, includes, is, isEmpty, 
-  length,path, pathEq, propEq, propSatisfies, T
-} from 'ramda'
-import { filter } from 'rxjs/operators'
+    all, allPass, anyPass, both, cond, complement, curry, 
+    either, equals, F, has, includes, is, isEmpty, 
+    length,path, pathEq, propEq, propSatisfies, T
+  } from 'ramda'
 
-// ================= MIDI Messages predicates ======================
+// ===================== MIDI Messages predicates ========================
 
-export const seemsMIDIMessageAsArray = (msg) => 
+// These predicates check if an object is a MIDI Message (or a MIDI
+// message's subtype like note on, note off, etc) or if an array is an
+// array of MIDI messages.
+
+export const seemsMessageAsArray = (msg) => 
   allPass ([either (is (Array)) (is (Uint8Array)),
             complement (isEmpty),
             all (is (Number))]) (msg)
 
-export const seemsMIDIMessage = (msg) =>
+export const seemsMessage = (msg) =>
   allPass ([is (Object),
             propEq ('type', 'midimessage'),
-            propSatisfies (seemsMIDIMessageAsArray, 'data')]) (msg)
+            propSatisfies (seemsMessageAsArray, 'data')]) (msg)
 
 export const seemsArrayOfMIDIMessages =
   both (is (Array))
-       (all (seemsMIDIMessage))
+       (all (seemsMessage))
+
+// -------- Utilities for comparing MIDI messages byte array values ------
 
 export const dataEq = curry ((data, msg) =>
-  seemsMIDIMessage (msg) ?
+  seemsMessage (msg) ?
     equals (data) (msg.data)
     : false)
 
 export const byteEq = curry ((n, data, msg) =>
-  seemsMIDIMessage (msg) ?
+  seemsMessage (msg) ?
     pathEq ([n]) (data) (msg.data)
     : false)
 
 export const dataEqBy = curry ((pred, msg) =>
-  seemsMIDIMessage (msg) ? 
+  seemsMessage (msg) ? 
     pred (msg.data)
     : false)
 
 export const byteEqBy = curry ((n, pred, msg) =>
-  seemsMIDIMessage (msg) ?
+  seemsMessage (msg) ?
     pred (path ([n]) (msg.data))
     : false)
 
 
-// ------------------ Channel Voice Messages -----------------------
+// --------------------- Channel Voice Messages --------------------------
 
 export const isChannelVoiceMessageOfType = curry((type, msg) =>
-  both (seemsMIDIMessage)
+  both (seemsMessage)
        (dataEqBy 
          (p => includes (type, [8, 9, 10, 11, 14]) ?
                  length (p) === 3 && p [0] >> 4 === type
@@ -134,7 +139,7 @@ export const pitchBendEq = curry((pb, msg) =>
           (msg))
 
 
-// ------------ Channel Mode Messages ----------------
+// --------------------- Channel Mode Messages ---------------------------
 
 export const isChannelModeMessage = (d1, d2) => (msg) => 
   d2 === undefined ?
@@ -193,10 +198,10 @@ export const isChannelVoice = (msg) =>
             isPitchBend])
           (msg)
 
-// -------------------- RPN & NRPN predicates ----------------------
+// ----------------------- RPN & NRPN predicates -------------------------
 
 export const isRPN = (msg) =>
-  allPass ([seemsMIDIMessage,
+  allPass ([seemsMessage,
             byteEq (1) (101),
             byteEq (4) (100),
             byteEq (7) (6),
@@ -207,7 +212,7 @@ export const isRPN = (msg) =>
           (msg)
 
 export const isNRPN = (msg) =>
-  allPass ([seemsMIDIMessage,
+  allPass ([seemsMessage,
             byteEq (1) (99),
             byteEq (4) (98),
             byteEq (7) (6),
@@ -231,45 +236,45 @@ export const isOnChannels = curry((chs, msg) =>
        (byteEqBy (0) (v => includes (v & 0xF, chs)))
        (msg))
 
-// =============== System Common message predicates ================
+// ------------------ System Common message predicates -------------------
 
 export const isSystemExclusive = (msg) =>
-  allPass ([seemsMIDIMessage,
+  allPass ([seemsMessage,
             byteEq (0) (240),
             byteEq (-1) (247)])
           (msg)
 
 export const isMIDITimeCodeQuarterFrame = (msg) =>
-  both (seemsMIDIMessage) (byteEq (0) (241)) (msg)
+  both (seemsMessage) (byteEq (0) (241)) (msg)
 
 export const isSongPositionPointer = (msg) =>
-  both (seemsMIDIMessage) (byteEq (0) (242)) (msg)
+  both (seemsMessage) (byteEq (0) (242)) (msg)
 
 export const isSongSelect = (msg) =>
-  both (seemsMIDIMessage) (byteEq (0) (243)) (msg)
+  both (seemsMessage) (byteEq (0) (243)) (msg)
 
 export const isTuneRequest = (msg) =>
-  both (seemsMIDIMessage) (dataEq ([246])) (msg)
+  both (seemsMessage) (dataEq ([246])) (msg)
 
 export const isEndOfExclusive = (msg) =>
-  both (seemsMIDIMessage) (dataEq ([247])) (msg)
+  both (seemsMessage) (dataEq ([247])) (msg)
 
-// ============= System Real Time message predicates ===============
+// ----------------- System Real Time message predicates -----------------
 
 export const isMIDIClock = (msg) =>
-  both (seemsMIDIMessage) (dataEq ([248])) (msg)
+  both (seemsMessage) (dataEq ([248])) (msg)
 
 export const isStart = (msg) =>
-  both (seemsMIDIMessage) (dataEq ([250])) (msg)
+  both (seemsMessage) (dataEq ([250])) (msg)
 
 export const isContinue = (msg) =>
-  both (seemsMIDIMessage) (dataEq ([251])) (msg)
+  both (seemsMessage) (dataEq ([251])) (msg)
 
 export const isStop = (msg) =>
-  both (seemsMIDIMessage) (dataEq ([252])) (msg)
+  both (seemsMessage) (dataEq ([252])) (msg)
 
 export const isActiveSensing = (msg) =>
-  both (seemsMIDIMessage) (dataEq ([254])) (msg)
+  both (seemsMessage) (dataEq ([254])) (msg)
 
 // Reset and MIDI File Meta Events have the same value on
 // their first byte: 0xFF.
@@ -279,12 +284,12 @@ export const isActiveSensing = (msg) =>
 // programmer responsability to only use isReset outside
 // MIDI Files and seemsMIDIMetaEvent inside MIDI Files.
 export const isReset = (msg) =>
-  both (seemsMIDIMessage)
+  both (seemsMessage)
        (dataEq ([255]))
        (msg)
 
 
-// ============== MIDI File Meta Events predicates =================
+// ------------------ MIDI File Meta Events predicates -------------------
 
 // TODO: Check that length is correct !!!
 export const seemsMIDIMetaEvent = (msg) =>

@@ -1,20 +1,24 @@
 const test = require ('ava')
-import { cc, cp, on, off, pb } from '../src/messages.js'
 import { 
-  addNotes,
-  byNotesAndWeight,
-  isActiveNote, isLowerZone, isOnMasterChannel, isOnZone, isUpperZone,
-  channelByKeyRange,
-  leastNotesChannel,
-  mpeNote, mpeZone, 
-  notesPerChannel,
-  processChannelPressureMessage,
-  processNoteOnMessage, processNoteOffMessage,
-  processPitchBendMessage,
-  processTimbreMessage,
-  seemsActiveNote
-  } from '../src/mpe.js'
-import { sort, map } from 'ramda'
+    cc, cp, on, off, pb 
+  } from '../src/messages'
+import { 
+    addNotes,
+    byNotesAndWeight,
+    isActiveNote, isLowerZone, isOnMasterChannel, isOnZone, isUpperZone,
+    channelByKeyRange,
+    leastNotesPerChannel,
+    mpeNote, mpeZone, 
+    notesPerChannel,
+    processChannelPressureMessage,
+    processNoteOnMessage, processNoteOffMessage,
+    processPitchBendMessage,
+    processTimbreMessage,
+    seemsActiveNote
+  } from '../src/mpe/mpe.js'
+import { 
+    sort, map 
+  } from 'ramda'
 
 test ('mpeNote', (t) => {
   let n = mpeNote (on (64))
@@ -208,13 +212,13 @@ test ('Get notes per channel', (t) => {
 
 test ('Least notes channel algorithm', (t) => {
   let z = mpeZone (0, 2)
-  t.deepEqual (1, leastNotesChannel (z) ())
+  t.deepEqual (1, leastNotesPerChannel (z) ())
   let z2 = processNoteOnMessage (z) (on (64, 96, 1))
-  t.deepEqual (2, leastNotesChannel (z2) ())
+  t.deepEqual (2, leastNotesPerChannel (z2) ())
   let z3 = processNoteOnMessage (z2) (on (64, 75, 2))
-  t.deepEqual (1, leastNotesChannel (z3) ())
+  t.deepEqual (1, leastNotesPerChannel (z3) ())
   let z4 = processNoteOffMessage (z3) (off (64, 12, 2))
-  t.deepEqual (2, leastNotesChannel (z4) ())
+  t.deepEqual (2, leastNotesPerChannel (z4) ())
 })
 
 test ('Channel by key range algorithm', (t) => {

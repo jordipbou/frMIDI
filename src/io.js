@@ -1,25 +1,20 @@
 import * as rx from 'rxjs'
 import * as rxo from 'rxjs/operators'
 import { 
-  bind, complement, cond, curry, filter, forEach, 
-  head, is, isEmpty, last, 
-  map, pipe, prop, propEq
-} from 'ramda'
-
-import { msg, from } from './messages.js'
+    bind, complement, cond, curry, filter, forEach, 
+    head, is, isEmpty, last, 
+    map, pipe, prop, propEq
+  } from 'ramda'
+import { msg, from } from './messages'
 import { 
-  seemsArrayOfMIDIMessages, seemsMIDIMessage,
-  isTempoChange
-  } from './predicates.js'
-import { createTimer, lookAheadClock, MIDIClock } from './clock.js'
-import { MIDIFilePlayer, QNPM2BPM } from './midifile.js'
-
+    seemsArrayOfMIDIMessages, seemsMessage, isTempoChange
+  } from './predicates'
+import { sequencePlayer, QNPM2BPM } from './sequences'
 import { 
-  MidiParser 
+    MidiParser 
   } from '../node_modules/midi-parser-js/src/midi-parser.js'
-
 export { 
-  MidiParser 
+    MidiParser 
   } from '../node_modules/midi-parser-js/src/midi-parser.js'
 
 import { isBrowser, isNode } from 'browser-or-node/src/index.js'
@@ -132,7 +127,7 @@ export const input = (n = '') =>
 export const send = (sendfn) => (msg) => 
   seemsArrayOfMIDIMessages (msg) ?
     forEach (m => sendfn (m.data, m.timeStamp)) (msg)
-    : seemsMIDIMessage (msg) ?
+    : seemsMessage (msg) ?
       sendfn (msg.data, msg.timeStamp)
       : is (rx.Observable) (msg) ?
         msg.subscribe (send (sendfn))
@@ -221,27 +216,3 @@ export const loadMidiFile =	() => {
 
 	return promise
 }
-
-export const MIDIPlayer = (midifile) => {
-  let player = MIDIFilePlayer (midifile)
-
-  return rx.pipe (
-    rxo.scan (([events, tick], midi_clocks) => {
-      return player (tick, midi_clocks)
-    }, [null, 0]),
-    rxo.map(([events, tick]) => events)
-  )
-}
-
-export const play = (midifile) => {
-    let t = createTimer ()
-    let clock = MIDIClock (midifile.timeDivision, 30)
-
-    return t.pipe (
-      clock,
-      MIDIPlayer (midifile),
-      rxo.tap ((events) => 
-        forEach ((m) => clock.bpm (QNPM2BPM (m.data [0])))
-                (filter (isTempoChange) (events)))
-    )
-  }

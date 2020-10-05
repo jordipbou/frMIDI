@@ -1,14 +1,15 @@
-import { timeStamp } from './lenses.js'
-import { mc } from './messages.js'
+import { timeStamp } from '../lenses'
+import { mc } from '../messages'
 import { 
-  complement, curry, isEmpty, last, length, prop, set, view
+    complement, curry, isEmpty, last, length, prop, set, view
   } from 'ramda'
 import { 
-  BehaviorSubject, pipe, Subject, timer, asapScheduler
+    BehaviorSubject, pipe, Subject, timer, asapScheduler
   } from 'rxjs'
 import { 
-  filter, map, scan, switchMap, takeUntil, repeat, withLatestFrom 
+    filter, map, scan, switchMap, takeUntil, repeat, withLatestFrom 
   } from 'rxjs/operators'
+import { pausable } from 'rxjs-pausable'
 import { isBrowser, isNode } from 'browser-or-node/src/index.js'
 
 // asapScheduler's now function is modified to use browser's
@@ -51,7 +52,7 @@ export const createTimer =
 // Messages will be generated even before current time if last tick time
 // is in the past.
 
-export let lookAheadClock = 
+export const lookAheadClock = 
   curry ((time_division, bpm, last_tick_time, now, look_ahead) => {
     let ms_per_tick = 60000 / (bpm * time_division)
     let look_ahead_end = now + look_ahead
@@ -120,3 +121,8 @@ export const MIDIClock = curry (
   
     return op
   })
+
+// -------------------------- MIDI Transport -----------------------------
+
+// TODO: Think how to implement a MIDI Transport.
+// It should allow play/pause/stop, song position and tempo adjustment.

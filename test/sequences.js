@@ -1,22 +1,21 @@
 const test = require ('ava')
 import { 
-  isNoteOn, isNoteOff,
-  seemsMIDIMessage 
-} from '../src/predicates.js'
-import { on, off, mc } from '../src/messages.js'
+    isNoteOn, isNoteOff, seemsMessage 
+  } from '../src/predicates'
+import { on, off, mc } from '../src/messages'
 import { 
-  deltaTime, note, timeStamp
-} from '../src/lenses.js'
+    deltaTime, note, timeStamp
+  } from '../src/lenses'
 import { 
-  createMIDIFile,
-  createLoop,
-  filterTracks,
-  mergeTracks,
-  MIDIFilePlayer,
-  seemsMIDIFile,
-  sortEvents,
-  withAbsoluteDeltaTimes
-} from '../src/midifile.js'
+    createSequence,
+    createLoop,
+    filterTracks,
+    mergeTracks,
+    sequencePlayer,
+    seemsSequence,
+    sortEvents,
+    withAbsoluteDeltaTimes
+  } from '../src/sequences/sequences.js'
 import { identical, is, set, view } from 'ramda'
 
 let midifile = {
@@ -41,14 +40,14 @@ let midifile = {
   timeDivision: 1
 }
 
-test ('seemsMIDIFile', t => {
-  t.true (seemsMIDIFile (midifile))
+test ('seems MIDI sequence', (t) => {
+  t.true (seemsSequence (midifile))
 })
 
-test ('withAbsoluteDeltaTimes', t => {
+test ('withAbsoluteDeltaTimes', (t) => {
   let modified = withAbsoluteDeltaTimes (midifile)
 
-  t.true (seemsMIDIFile (modified))
+  t.true (seemsSequence (modified))
   t.not (modified.track, midifile.track)
   t.not (modified.track [0], midifile.track [0])
   t.not (modified.track [1], midifile.track [1])
@@ -79,10 +78,10 @@ test ('withAbsoluteDeltaTimes', t => {
   t.is (track1 [1].absoluteDeltaTime, 8)
 })
 
-test ('mergeTracks', t => {
+test ('mergeTracks', (t) => {
   let modified = mergeTracks (midifile)
   
-  t.true (seemsMIDIFile (modified))
+  t.true (seemsSequence (modified))
   t.false (identical (modified, midifile))
   t.not (modified.track, midifile.track)
   t.not (modified.track [0], midifile.track [0])
@@ -109,11 +108,11 @@ test ('mergeTracks', t => {
   t.is (view (note) (track [7]), 32)
 })
 
-test ('sortEvents', t => {
+test ('sortEvents', (t) => {
   let new_midifile = mergeTracks (withAbsoluteDeltaTimes (midifile))
   let modified = sortEvents (new_midifile)
 
-  t.true (seemsMIDIFile (modified))
+  t.true (seemsSequence (modified))
   t.false (identical (modified, new_midifile))
   t.not (modified.track, new_midifile.track)
   t.not (modified.track [0], new_midifile.track [0])
@@ -140,10 +139,10 @@ test ('sortEvents', t => {
   t.false (identical (track [7], original_track [7]))
 })
 
-test ('filterTracks', t => {
+test ('filterTracks', (t) => {
   let modified = filterTracks ([1], midifile)
 
-  t.true (seemsMIDIFile (modified))
+  t.true (seemsSequence (modified))
   t.false (identical (modified, midifile))
   t.not (modified.track, midifile.track)
   t.not (modified.track [0], midifile.track [1])
@@ -161,7 +160,7 @@ test ('filterTracks', t => {
   t.false (identical (track [1], original_track [1]))
 })
 
-test ('createMIDIFile', t => {
+test ('create sequence', (t) => {
   let track = [
     set (deltaTime) (0) (on (64)),
     set (deltaTime) (1) (off (64)),
@@ -170,9 +169,9 @@ test ('createMIDIFile', t => {
     set (deltaTime) (1) (on (71)),
     set (deltaTime) (3) (off (71))
   ]
-  let newfile = createMIDIFile (track)
+  let newfile = createSequence (track)
 
-  t.true (seemsMIDIFile (newfile))
+  t.true (seemsSequence (newfile))
   t.deepEqual (track[0], newfile.track [0].event [0])
   t.false (identical (track [0], newfile.track [0].event [0]))
   t.deepEqual (track[1], newfile.track [0].event [1])
@@ -187,7 +186,7 @@ test ('createMIDIFile', t => {
   t.false (identical (track [5], newfile.track [0].event [5]))
 })
 
-test ('createLoop', t => {
+test ('createLoop', (t) => {
   let loop = createLoop (midifile)
 
   t.true (loop.loop)
@@ -202,10 +201,10 @@ test ('createLoop', t => {
   t.is (loop.track [1].event.length, midifile.track [1].event.length)
 })
 
-test ('MIDIFilePlayer', t => {
+test ('sequencePlayer', (t) => {
   let mc1 = set (timeStamp) (10.5) (mc ())
 
-  let [events, tick] = MIDIFilePlayer (midifile) (0, [mc1])
+  let [events, tick] = sequencePlayer (midifile) (0, [mc1])
 
   t.is (tick, 1)
   t.is (events.length, 2)
@@ -214,7 +213,7 @@ test ('MIDIFilePlayer', t => {
   t.deepEqual (events [1].data, on (32).data)
   t.is (events [1].timeStamp, 10.5)
 
-  let player = MIDIFilePlayer (midifile)
+  let player = sequencePlayer (midifile)
 
   let [events1, tick1] = player (0, [mc1])
 
@@ -240,9 +239,9 @@ test ('MIDIFilePlayer', t => {
   t.is (events3 [0].timeStamp, 10.5)
 })
 
-test ('looped MIDIFilePlayer', t => {
+test ('looped sequencePlayer', (t) => {
   let loop = createLoop (midifile)
-  let player = MIDIFilePlayer (loop)
+  let player = sequencePlayer (loop)
 
   let mc1 = set (timeStamp) (10.5) (mc ())
   let [events, tick] = player (8, [mc1])

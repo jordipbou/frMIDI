@@ -1,16 +1,23 @@
 import { 
-  asNoteOff, isChannelPressure,
-  isNote, isNoteOn, isPitchBend, isPolyPressure, isTimbreChange
-  } from './predicates.js'
+    asNoteOff, isChannelPressure,
+    isNote, isNoteOn, isPitchBend, isPolyPressure, isTimbreChange
+  } from '../predicates'
 import { 
-  channel, note, pitchBend, pressure, value, velocity 
-  } from './lenses.js'
+    channel, note, pitchBend, pressure, value, velocity 
+  } from '../lenses'
 import { 
-  always, allPass, any, anyPass, append, assoc,
-  both, complement, cond, countBy,
-  evolve, filter, fromPairs, head, includes, length,
-  map, path, propEq, range, sort, T, view, without, xprod, zip
+    always, allPass, any, anyPass, append, assoc,
+    both, complement, cond, countBy, curry,
+    evolve, filter, fromPairs, head, includes, length,
+    map, path, propEq, range, sort, T, view, without, xprod, zip
   } from 'ramda'
+import {
+    pipe as rx_pipe
+  } from 'rxjs'
+import {
+    map as rxo_map,
+    scan as rxo_scan
+  } from 'rxjs/operators'
 
 // ------------------------ MPE State Objects ----------------------------
 
@@ -158,7 +165,7 @@ export const notesPerChannel = (mpeZone) =>
 // Algorithm: select channel on mpe zone as the one with least notes -----
 
 // Sort channels by note usage (ascending) and use first one 
-export const leastNotesChannel = (mpeZone) => (msg) =>
+export const leastNotesPerChannel = (mpeZone) => (msg) =>
   head (
     head (
       sort ((a, b) => a [1] - b [1])
@@ -201,3 +208,24 @@ export const channelByKeyRange = (keyRanges) => (mpeZone) => (msg) => {
                          (filter (noteInRange (msg_note)) 
                                  (keyRanges))))
 }
+
+// ------------------ Transform non-mpe data to mpe ----------------------
+
+export const toMPE = curry ((m, c, findChannel = leastNotesPerChannel) =>
+  rx_pipe (
+    rxo_scan (([z, _], msg) => {
+      if (isNoteOn (msg)) {
+        let ch = findChannel (z) (msg)
+        let mod_msg = set (channel) (ch) (msg)
+        return [processMessage (z) (mod_msg), mod_msg]
+      } else if (isNoteOff (msg)) {
+        let n = view (note) (msg)
+        let ch = prop ('channel') (head (filter ((an) => an.note === n)
+                                                (z.activeNotes)))
+        let mod_msg = set (channel) (ch) (msg)
+        return [processMessage (z) (mod_msg), mod_msg]
+      } else {
+        return [z, msg]
+      }
+    }, [mpeZone (m, c), null]),
+    rxo_map (([x, msg]) => msg)))

@@ -1,17 +1,21 @@
-import { isTempoChange } from './predicates.js'
-import { from } from './messages.js'
-import { timeStamp } from './lenses.js'
-
+import { isTempoChange } from '../predicates'
+import { from } from '../messages'
+import { timeStamp } from '../lenses'
+import { createTimer, MIDIClock } from '../clock'
+import { pipe as rx_pipe } from 'rxjs'
+import { 
+    map as rxo_map, tap as rxo_tap, scan as rxo_scan 
+  } from 'rxjs/operators'
 import {
-  __, addIndex, always, allPass, append, assoc, both, concat, 
-  either, evolve, filter, has, head, is, isEmpty, last,
-  map, mergeLeft, objOf, pipe, prop, propIs, propEq, reduce, 
-  reduceWhile, scan, set, slice, sort, tail
-} from 'ramda'
+    __, addIndex, always, allPass, append, assoc, both, concat, 
+    either, evolve, filter, forEach, has, head, is, isEmpty, last,
+    map, mergeLeft, objOf, pipe, prop, propIs, propEq, reduce, 
+    reduceWhile, scan, set, slice, sort, tail
+  } from 'ramda'
 
 // ------------------------- Predicates ----------------------------
 
-export let seemsMIDIFile =
+export const seemsSequence =
   allPass ([is (Object),
             has ('formatType'),
             has ('timeDivision'),
@@ -19,13 +23,13 @@ export let seemsMIDIFile =
             has ('track'),
             propIs (Array, 'track')])
 
-export let seemsMIDILoop =
-  both (seemsMIDIFile)
+export const seemsLoop =
+  both (seemsSequence)
        (propEq ('loop', true))
 
 // -------------------------- Helpers ------------------------------
 
-export let withAbsoluteDeltaTimes =
+export const withAbsoluteDeltaTimes =
   evolve ({
     track: map (
       evolve ({
@@ -40,7 +44,7 @@ export let withAbsoluteDeltaTimes =
                 : null),
               tail)}))})
 
-export let mergeTracks =
+export const mergeTracks =
   evolve ({
     tracks: always (1),
     track: pipe (
@@ -49,7 +53,7 @@ export let mergeTracks =
       objOf ('event'),
       append (__, []))})
 
-export let sortEvents =
+export const sortEvents =
     evolve ({
   track: pipe (
     map (v =>
@@ -61,14 +65,11 @@ export let sortEvents =
     objOf ('event'),
     append (__, []))})
 
-let filterIndexed = 
-  addIndex (filter)
-
-export let filterTracks =	(tracks, midiFile) => 
+export const filterTracks =	(tracks, midiFile) => 
   evolve ({
     tracks: () => tracks.length,
     track: pipe (
-        filterIndexed ((v, k) => tracks.includes (k)),
+        addIndex (filter) ((v, k) => tracks.includes (k)),
         map (v => objOf ('event', map (from, v.event)))
       )
     }, midiFile)
@@ -82,14 +83,16 @@ export let filterTracks =	(tracks, midiFile) =>
 // TODO
 // export let commonTimeDivision = (midiFile1, midiFile2, ...) => 
 
-export let createMIDIFile =	(track, timeDivision = 24) => ({
+// ------------------ MIDI File creation from tracks ---------------------
+
+export const createSequence = (track, timeDivision = 24) => ({
   formatType: 1,
   tracks: 1,
   timeDivision: timeDivision,
   track: [{ event: map (from, track) }]
 })
 
-export let createLoop =	(midifile) => ({
+export const createLoop =	(midifile) => ({
   ...midifile,
   loop: true,
   track: map (
@@ -101,9 +104,9 @@ export let createLoop =	(midifile) => ({
   ) (midifile.track)
 })
 
-// TODO: MIDIPlayer should have state, extract inner function
-// to be easily testeable.
-export const MIDIFilePlayer = (midifile) => {
+// ---------------------------- Playing MIDI -----------------------------
+
+export const sequencePlayer = (midifile) => {
   let playable = pipe (
     withAbsoluteDeltaTimes,
     mergeTracks,
@@ -137,5 +140,29 @@ export const MIDIFilePlayer = (midifile) => {
         (midi_clocks))
 }
 
+export const player = (midifile) => {
+  let player = sequencePlayer (midifile)
+
+  return rx_pipe (
+    rxo_scan (
+      ([events, tick], midi_clocks) => player (tick, midi_clocks), 
+      [null, 0]),
+    rxo_map (([events, tick]) => events)
+  )
+}
+
+export const play = (midifile) => {
+    let t = createTimer ()
+    let clock = MIDIClock (midifile.timeDivision, 30)
+
+    return t.pipe (
+      clock,
+      player (midifile),
+      rxo_tap ((events) => 
+        forEach ((m) => clock.bpm (QNPM2BPM (m.data [0])))
+                (filter (isTempoChange) (events)))
+    )
+  }
+  
 export const QNPM2BPM = (qnpm) => 60 * 1000000 / qnpm
 

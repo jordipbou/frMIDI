@@ -4,13 +4,17 @@ JavaScript functional reactive MIDI library.
 
 ## Why reactive?
 
-It's difficult with current tools to process MIDI in the time-domain. Using rxjs (or other reactive frameworks) allows using already created and tested functions that work in time-domain in an easier way.
+Reactive programming offers a similar feeling to using cables. Things are connected and data flows throw them. Also, a lot of typical MIDI processing seems very similar to what reactive frameworks offer: filtering messages, mapping one type of message to another, adapting values, etc.
+
+It's difficult with current tools to process MIDI in the time-domain. Using rxjs (or other reactive frameworks) allows using already created and tested functions that work in time-domain in an easier way, allowing things like buffering or maintaining state a lot easier.
 
 ## Why functional?
 
-Functional programming allows easier testing and function composition.
+Not being able of trusting the language virtual machine for rock-solid precise timing, and after reading ["A Tale of Two Clocks - Scheduling Web Audio with Precision"](https://www.html5rocks.com/en/tutorials/audio/scheduling/), it became clear that to be able to have rock-solid timing precise MIDI message timestamps were necessary.
 
-Functions are curried and parameters ordered for correct composing of functions.
+Unit Testing is a great tool to check valid timestamps in this case, and functional programming allows easier testing by allowing easier function composition.
+
+[Ramda](https://ramdajs.com) library has become a fundamental tool in the process. 
 
 # Installation
 
@@ -274,6 +278,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.0.43 [2020/10/05] - Big refactor. Some modules moved to its own directory, this way it will be possible to export functions for testing but don't export for public API. Everything related to MIDI File refactored to Sequence.
 * 1.0.42 [2020/10/04] - Moved clock functions from helper to clock.js. Added tests for rxjs based code. Reworked lookAheadClock.
 * 1.0.41 [2020/09/30] - Added playMIDIFile function.
 * 1.0.40 [2020/09/29] - Working MIDI file playing functionality.
