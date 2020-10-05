@@ -10,95 +10,97 @@ All message functions accept optional timeStamp and deltaTime after their own sp
 
 ### Generic message creation utility functions
 
-msg (data: Array, ts: Number, dt: Number)
-from (msg: Array | Object)
+```msg (data: Array, ts: Number, dt: Number)```
+
+```from (msg: Array | Object)```
 
 ### Channel Voice messages generation
 
 #### Note Off
 
-off (note: 0-127, velocity: 0-127, channel: 0-15)
+```off (note: 0-127, velocity: 0-127, channel: 0-15)```
 
 #### Note On
 
-on (note: 0-127, velocity: 0.127, channel: 0-15)
+```on (note: 0-127, velocity: 0.127, channel: 0-15)```
 
 #### Poly Pressure
 
-pp (note: 0-127, pressure: 0-127, channel: 0-15)
+```pp (note: 0-127, pressure: 0-127, channel: 0-15)```
 
 #### Control Change
 
-cc (control: 0-127, value: 0-127, channel: 0-15)
+```cc (control: 0-127, value: 0-127, channel: 0-15)```
 
 #### Program Change
 
-pc (program: 0-127, channel: 0-15)
+```pc (program: 0-127, channel: 0-15)```
 
 #### Channel Pressure
 
-cp (pressure: 0-127, channel: 0-15)
+```cp (pressure: 0-127, channel: 0-15)```
 
 #### Pitch Bend
 
-pb (value: 0-16383, channel: 0-15)
+```pb (value: 0-16383, channel: 0-15)```
 
 #### RPN & NRPN
 
-rpn (number: 0-16383, value: 0-16383, channel: 0-15)
-nrpn (number: 0-16383, value: 0-16383, channel: 0-15)
+```rpn (number: 0-16383, value: 0-16383, channel: 0-15)```
+
+```nrpn (number: 0-16383, value: 0-16383, channel: 0-15)```
 
 ### System common messages generation
 
 #### System Exclusive
 
-syx (data: Array)
+```syx (data: Array)```
 
 #### MIDI Time Code Quarter Frame
 
-tc (type: 0-7, value: 0-15)
+```tc (type: 0-7, value: 0-15)```
 
 #### Song Position Pointer
 
-spp (number: 0-16383)
+```spp (number: 0-16383)```
 
 #### Song Select
 
-ss (number: 0-127)
+```ss (number: 0-127)```
 
 #### Tune Request
 
-tun ()
+```tun ()```
 
 ### System real time messages generation
 
 #### Timing Clock
 
-mc ()
+```mc ()```
 
 #### Start
 
-start ()
+```start ()```
 
 #### Continue
 
-cont ()
+```cont ()```
 
 #### Stop
 
-stop ()
+```stop ()```
 
 #### Active Sensing
 
-as ()
+```as ()```
 
 #### Reset
 
-rst ()
+```rst ()```
 
 ### Panic messages generation
 
 Creates a note off for every note on every channel and also sends zero values to controllers 64 (Sustain Pedal), 120 (All Sound Off) and 123 (All Controllers Off).
 
-panic ()
+```panic ()```
 
