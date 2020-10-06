@@ -34,13 +34,13 @@ For input/output in node it's necessary to use JZZ library navigator implementat
 
 # Modules
 
-[Predicates](./src/predicates/README.md)
-[Messages](./src/messages/README.md)
-[Lenses](./src/lenses/README.md)
-[Clock](./src/clock/README.md)
-[Sequences](./src/sequences/README.md)
-[MPE](./src/mpe/README.md)
-[I/O](./src/io/README.md)
+* [Predicates](./src/predicates/README.md)
+* [Messages](./src/messages/README.md)
+* [Lenses](./src/lenses/README.md)
+* [Clock](./src/clock/README.md)
+* [Sequences](./src/sequences/README.md)
+* [MPE](./src/mpe/README.md)
+* [I/O](./src/io/README.md)
 
 # Data types
 
