@@ -3,8 +3,10 @@ const EventEmitter = require ('events')
 const { now } = require ('performance-now')
 
 import { 
-    initialize, input, inputFrom, inputsAsText, output, outputsAsText, send 
-  } from '../src/io.js'
+    initialize, 
+    input, inputFrom, inputsAsText, 
+    output, outputsAsText, send 
+  } from '../src/io/io.js'
 import { on, off } from '../src/messages'
 import { bind, concat } from 'ramda'
 import { Subject } from 'rxjs'

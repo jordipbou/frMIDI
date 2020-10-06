@@ -5,17 +5,17 @@ import {
     head, is, isEmpty, last, 
     map, pipe, prop, propEq
   } from 'ramda'
-import { msg, from } from './messages'
 import { 
     seemsArrayOfMIDIMessages, seemsMessage, isTempoChange
-  } from './predicates'
-import { sequencePlayer, QNPM2BPM } from './sequences'
+  } from '../predicates'
+import { msg, from } from '../messages'
+import { sequencePlayer, QNPM2BPM } from '../sequences'
 import { 
     MidiParser 
-  } from '../node_modules/midi-parser-js/src/midi-parser.js'
+  } from '../../node_modules/midi-parser-js/src/midi-parser.js'
 export { 
     MidiParser 
-  } from '../node_modules/midi-parser-js/src/midi-parser.js'
+  } from '../../node_modules/midi-parser-js/src/midi-parser.js'
 
 import { isBrowser, isNode } from 'browser-or-node/src/index.js'
 
@@ -181,7 +181,7 @@ export const output = (n = '') =>
 //
 // Returns a promise that returns parsed MIDI file as object.
 
-export const loadMidiFile =	() => {
+export const loadMIDIFile =	() => {
   let input_file_element = document.createElement ('input')
   let type = document.createAttribute ('type')
   type.value = 'file'

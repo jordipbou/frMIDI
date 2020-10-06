@@ -6,7 +6,7 @@ export * from './sequences'
 export * from './mpe'
 export * from './patterns.js'
 export * from './music_defs.js'
-export * from './io.js'
+export * from './io'
 
 export const version = '1.0.43'
 

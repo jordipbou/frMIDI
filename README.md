@@ -32,6 +32,16 @@ For input/output in node it's necessary to use JZZ library navigator implementat
 	  initialize ().then (logPorts)
 	</script>
 
+# Modules
+
+[Predicates](./src/predicates/README.md)
+[Messages](./src/messages/README.md)
+[Lenses](./src/lenses/README.md)
+[Clock](./src/clock/README.md)
+[Sequences](./src/sequences/README.md)
+[MPE](./src/mpe/README.md)
+[I/O](./src/io/README.md)
+
 # Data types
 
 # Recipes
@@ -147,128 +157,6 @@ Filtering note on/off that has velocity between 64 and 96.
 	…   .subscribe (console.log)
 
 
-
-# Modules
-
-## Predicates
-
-Predicates allow checking MIDI message characteristics.
-
-Their name is self explanatory, only on those cases that was needed
-some more documentation is added.
-
-### Generic MIDI Message predicates
-
-* seemsMIDIMessageAsArray (msg) => boolean
-* seemsMIDIMessageAsObject (msg) => boolean
-* seemsMIDIMessage (msg) => boolean
-* seemsArrayOfMIDIMessagesAsArrays (msg) => boolean
-* seemsArrayOfMIDIMessagesAsObjects (msg) => boolean
-* dataEq (data, msg) => boolean
-* byteEq (n, data, msg) => boolean
-* dataEqBy (pred, msg) => boolean
-* byteEqBy (n, pred, msg) => boolean
-
-### Channel Voice Messages
-
-* isChannelVoiceMessageOfType (type, msg) => boolean
-* isNoteOff (msg) => boolean
-* isNoteOn (msg) => boolean
-* asNoteOn (msg) => boolean
-* asNoteOff (msg) => boolean
-* isNote (msg) => boolean
-* hasVelocity (msg) => boolean
-* velocityEq (v, msg) => boolean
-* isPolyPressure (msg) => boolean
-* hasNote (msg) => boolean
-* noteEq (n, msg) => boolean
-* isControlChange (msg) => boolean
-* controlEq (c, msg) => boolean
-* valueEq (v, msg) => boolean
-* isProgramChange (msg) => boolean
-* programEq (p, msg) => boolean
-* isChannelPressure (msg) => boolean
-* hasPressure (msg) => boolean
-* pressureEq (p, msg) => boolean
-* isPitchBend (msg) => boolean
-* pitchBendEq (pb, msg) => boolean
-
-### Channel Mode Messages
-
-* isChannelModeMessage (d1, d2) => (msg) => boolean
-* isAllSoundOff (msg) => boolean
-* isResetAll (msg) => boolean
-* isLocalControlOff (msg) => boolean
-* isLocalControlOn (msg) => boolean
-* isAllNotesOff (msg) => boolean
-* isOmniModeOff (msg) => boolean
-* isOmniModeOn (msg) => boolean
-* isMonoModeOn (msg) => boolean
-* isPolyModeOn (msg) => boolean
-* isChannelMode (msg) => boolean
-* isChannelVoice (msg) => boolean
-
-### RPN & NRPN predicates
-
-* isRPN (msg) => boolean
-* isNRPN (msg) => boolean
-* isChannelMessage (msg) => boolean
-* isOnChannel (channel, msg) => boolean
-* isOnChannels (channels, msg) => boolean
-
-### System Common message predicates
-
-* isSystemExclusive
-* isMIDITimeCodeQuarterFrame
-* isSongPositionPointer
-* isSongSelect
-* isTuneRequest
-* isEndOfExclusive
-
-### System Real Time message predicates
-
-* isMIDIClock
-* isStart
-* isContinue
-* isStop
-* isActiveSensing
-* isReset
-
-### MIDI File Meta Events predicates
-
-* seemsMIDIMetaEventArray
-* seemsMIDIMetaEventObject
-* seemsMIDIMetaEvent
-* metaTypeEq
-* isTempoChange
-
-## Messages
-
-## Lenses
-
-## Clock
-
-## MidiFile
-
-## I/O
-
-The input/output module contains functions to interact with the outer world.
-
-initialize (sysex = false, custom_navigator = window.navigator)
-
-  Initializes WebMIDI API.
-
-logPorts ()
-
-  Logs every input/output MIDI port to console.
-
-input (name)
-
-  Returns first MIDI input that contains name as an observable.
-
-output (name)
-
-  Returns first MIDI output that contains name as an observer
 
 # License
 

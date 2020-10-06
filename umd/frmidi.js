@@ -6908,7 +6908,7 @@
   //
   // Returns a promise that returns parsed MIDI file as object.
 
-  const loadMidiFile = () => {
+  const loadMIDIFile = () => {
     let input_file_element = document.createElement('input');
     let type = document.createAttribute('type');
     type.value = 'file';
@@ -7091,7 +7091,6 @@
   exports.M6 = M6;
   exports.M7 = M7;
   exports.MIDIClock = MIDIClock;
-  exports.MidiParser = _MidiParser;
   exports.P1 = P1;
   exports.P4 = P4;
   exports.P5 = P5;
@@ -7127,8 +7126,6 @@
   exports.hasVelocity = hasVelocity;
   exports.initialize = initialize;
   exports.input = input;
-  exports.inputFrom = inputFrom;
-  exports.inputsAsText = inputsAsText;
   exports.isActiveNote = isActiveNote;
   exports.isActiveSensing = isActiveSensing;
   exports.isAllNotesOff = isAllNotesOff;
@@ -7174,7 +7171,7 @@
   exports.isUpperZone = isUpperZone;
   exports.leastNotesPerChannel = leastNotesPerChannel;
   exports.lensP = lensP;
-  exports.loadMidiFile = loadMidiFile;
+  exports.loadMIDIFile = loadMIDIFile;
   exports.logPorts = logPorts;
   exports.m2 = m2;
   exports.m3 = m3;
@@ -7192,8 +7189,6 @@
   exports.off = off;
   exports.on = on;
   exports.output = output;
-  exports.outputFrom = outputFrom;
-  exports.outputsAsText = outputsAsText;
   exports.panic = panic;
   exports.pattern = pattern;
   exports.pb = pb;
@@ -7221,7 +7216,6 @@
   exports.seemsMessage = seemsMessage;
   exports.seemsMessageAsArray = seemsMessageAsArray;
   exports.seemsSequence = seemsSequence;
-  exports.send = send;
   exports.sequencePlayer = sequencePlayer;
   exports.spp = spp;
   exports.ss = ss;
