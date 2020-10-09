@@ -1,6 +1,6 @@
 {
   "name": "frmidi",
-  "version": "1.0.43",
+  "version": "1.0.47",
   "description": "Functional reactive MIDI library",
   "main": "umd/frmidi.js",
   "module": "es/frmidi.js",
@@ -25,16 +25,16 @@
   "homepage": "https://github.com/jordipbou/frMIDI#readme",
   "devDependencies": {
     "@ava/babel": "^1.0.1",
-    "@babel/core": "^7.11.4",
+    "@babel/core": "^7.11.6",
     "@rollup/plugin-node-resolve": "^9.0.0",
-    "ava": "^3.12.1",
+    "ava": "^3.13.0",
     "esm": "^3.2.25",
     "midi-parser-js": "^4.0.4",
     "performance-now": "^2.1.0",
     "ramda": "^0.27.1",
-    "rollup": "^2.26.6",
+    "rollup": "^2.28.2",
     "rollup-plugin-babel": "^4.4.0",
-    "rxjs": "^6.6.2",
+    "rxjs": "^6.6.3",
     "rxjs-pausable": "^1.0.0"
   },
   "dependencies": {

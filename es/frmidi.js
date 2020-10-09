@@ -36,37 +36,6 @@ var T = function () {
   return true;
 };
 
-/**
- * A special placeholder value used to specify "gaps" within curried functions,
- * allowing partial application of any combination of arguments, regardless of
- * their positions.
- *
- * If `g` is a curried ternary function and `_` is `R.__`, the following are
- * equivalent:
- *
- *   - `g(1, 2, 3)`
- *   - `g(_, 2, 3)(1)`
- *   - `g(_, _, 3)(1)(2)`
- *   - `g(_, _, 3)(1, 2)`
- *   - `g(_, 2, _)(1, 3)`
- *   - `g(_, 2)(1)(3)`
- *   - `g(_, 2)(1, 3)`
- *   - `g(_, 2)(_, 3)(1)`
- *
- * @name __
- * @constant
- * @memberOf R
- * @since v0.6.0
- * @category Function
- * @example
- *
- *      const greet = R.replace('{name}', R.__, 'Hello, {name}!');
- *      greet('Alice'); //=> 'Hello, Alice!'
- */
-var __ = {
-  '@@functional/placeholder': true
-};
-
 function _isPlaceholder(a) {
   return a != null && typeof a === 'object' && a['@@functional/placeholder'] === true;
 }
@@ -2317,25 +2286,6 @@ function _includes(a, list) {
   return _indexOf(list, a, 0) >= 0;
 }
 
-function _quote(s) {
-  var escaped = s.replace(/\\/g, '\\\\').replace(/[\b]/g, '\\b') // \b matches word boundary; [\b] matches backspace
-  .replace(/\f/g, '\\f').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t').replace(/\v/g, '\\v').replace(/\0/g, '\\0');
-  return '"' + escaped.replace(/"/g, '\\"') + '"';
-}
-
-/**
- * Polyfill from <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString>.
- */
-var pad = function pad(n) {
-  return (n < 10 ? '0' : '') + n;
-};
-
-var _toISOString = typeof Date.prototype.toISOString === 'function' ? function _toISOString(d) {
-  return d.toISOString();
-} : function _toISOString(d) {
-  return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + '.' + (d.getUTCMilliseconds() / 1000).toFixed(3).slice(2, 5) + 'Z';
-};
-
 function _complement(f) {
   return function () {
     return !f.apply(this, arguments);
@@ -2458,161 +2408,6 @@ var reject =
 /*#__PURE__*/
 _curry2(function reject(pred, filterable) {
   return filter(_complement(pred), filterable);
-});
-
-function _toString(x, seen) {
-  var recur = function recur(y) {
-    var xs = seen.concat([x]);
-    return _includes(y, xs) ? '<Circular>' : _toString(y, xs);
-  }; //  mapPairs :: (Object, [String]) -> [String]
-
-
-  var mapPairs = function (obj, keys) {
-    return _map(function (k) {
-      return _quote(k) + ': ' + recur(obj[k]);
-    }, keys.slice().sort());
-  };
-
-  switch (Object.prototype.toString.call(x)) {
-    case '[object Arguments]':
-      return '(function() { return arguments; }(' + _map(recur, x).join(', ') + '))';
-
-    case '[object Array]':
-      return '[' + _map(recur, x).concat(mapPairs(x, reject(function (k) {
-        return /^\d+$/.test(k);
-      }, keys(x)))).join(', ') + ']';
-
-    case '[object Boolean]':
-      return typeof x === 'object' ? 'new Boolean(' + recur(x.valueOf()) + ')' : x.toString();
-
-    case '[object Date]':
-      return 'new Date(' + (isNaN(x.valueOf()) ? recur(NaN) : _quote(_toISOString(x))) + ')';
-
-    case '[object Null]':
-      return 'null';
-
-    case '[object Number]':
-      return typeof x === 'object' ? 'new Number(' + recur(x.valueOf()) + ')' : 1 / x === -Infinity ? '-0' : x.toString(10);
-
-    case '[object String]':
-      return typeof x === 'object' ? 'new String(' + recur(x.valueOf()) + ')' : _quote(x);
-
-    case '[object Undefined]':
-      return 'undefined';
-
-    default:
-      if (typeof x.toString === 'function') {
-        var repr = x.toString();
-
-        if (repr !== '[object Object]') {
-          return repr;
-        }
-      }
-
-      return '{' + mapPairs(x, keys(x)).join(', ') + '}';
-  }
-}
-
-/**
- * Returns the string representation of the given value. `eval`'ing the output
- * should result in a value equivalent to the input value. Many of the built-in
- * `toString` methods do not satisfy this requirement.
- *
- * If the given value is an `[object Object]` with a `toString` method other
- * than `Object.prototype.toString`, this method is invoked with no arguments
- * to produce the return value. This means user-defined constructor functions
- * can provide a suitable `toString` method. For example:
- *
- *     function Point(x, y) {
- *       this.x = x;
- *       this.y = y;
- *     }
- *
- *     Point.prototype.toString = function() {
- *       return 'new Point(' + this.x + ', ' + this.y + ')';
- *     };
- *
- *     R.toString(new Point(1, 2)); //=> 'new Point(1, 2)'
- *
- * @func
- * @memberOf R
- * @since v0.14.0
- * @category String
- * @sig * -> String
- * @param {*} val
- * @return {String}
- * @example
- *
- *      R.toString(42); //=> '42'
- *      R.toString('abc'); //=> '"abc"'
- *      R.toString([1, 2, 3]); //=> '[1, 2, 3]'
- *      R.toString({foo: 1, bar: 2, baz: 3}); //=> '{"bar": 2, "baz": 3, "foo": 1}'
- *      R.toString(new Date('2001-02-03T04:05:06Z')); //=> 'new Date("2001-02-03T04:05:06.000Z")'
- */
-
-var toString$1 =
-/*#__PURE__*/
-_curry1(function toString(val) {
-  return _toString(val, []);
-});
-
-/**
- * Returns the result of concatenating the given lists or strings.
- *
- * Note: `R.concat` expects both arguments to be of the same type,
- * unlike the native `Array.prototype.concat` method. It will throw
- * an error if you `concat` an Array with a non-Array value.
- *
- * Dispatches to the `concat` method of the first argument, if present.
- * Can also concatenate two members of a [fantasy-land
- * compatible semigroup](https://github.com/fantasyland/fantasy-land#semigroup).
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig [a] -> [a] -> [a]
- * @sig String -> String -> String
- * @param {Array|String} firstList The first list
- * @param {Array|String} secondList The second list
- * @return {Array|String} A list consisting of the elements of `firstList` followed by the elements of
- * `secondList`.
- *
- * @example
- *
- *      R.concat('ABC', 'DEF'); // 'ABCDEF'
- *      R.concat([4, 5, 6], [1, 2, 3]); //=> [4, 5, 6, 1, 2, 3]
- *      R.concat([], []); //=> []
- */
-
-var concat =
-/*#__PURE__*/
-_curry2(function concat(a, b) {
-  if (_isArray(a)) {
-    if (_isArray(b)) {
-      return a.concat(b);
-    }
-
-    throw new TypeError(toString$1(b) + ' is not an array');
-  }
-
-  if (_isString(a)) {
-    if (_isString(b)) {
-      return a + b;
-    }
-
-    throw new TypeError(toString$1(b) + ' is not a string');
-  }
-
-  if (a != null && _isFunction(a['fantasy-land/concat'])) {
-    return a['fantasy-land/concat'](b);
-  }
-
-  if (a != null && _isFunction(a.concat)) {
-    return a.concat(b);
-  }
-
-  throw new TypeError(toString$1(a) + ' does not have a method named "concat" or "fantasy-land/concat"');
 });
 
 /**
@@ -3103,63 +2898,6 @@ var includes =
 /*#__PURE__*/
 _curry2(_includes);
 
-function _objectAssign(target) {
-  if (target == null) {
-    throw new TypeError('Cannot convert undefined or null to object');
-  }
-
-  var output = Object(target);
-  var idx = 1;
-  var length = arguments.length;
-
-  while (idx < length) {
-    var source = arguments[idx];
-
-    if (source != null) {
-      for (var nextKey in source) {
-        if (_has(nextKey, source)) {
-          output[nextKey] = source[nextKey];
-        }
-      }
-    }
-
-    idx += 1;
-  }
-
-  return output;
-}
-
-var _objectAssign$1 = typeof Object.assign === 'function' ? Object.assign : _objectAssign;
-
-/**
- * Creates an object containing a single key:value pair.
- *
- * @func
- * @memberOf R
- * @since v0.18.0
- * @category Object
- * @sig String -> a -> {String:a}
- * @param {String} key
- * @param {*} val
- * @return {Object}
- * @see R.pair
- * @example
- *
- *      const matchPhrases = R.compose(
- *        R.objOf('must'),
- *        R.map(R.objOf('match_phrase'))
- *      );
- *      matchPhrases(['foo', 'bar', 'baz']); //=> {must: [{match_phrase: 'foo'}, {match_phrase: 'bar'}, {match_phrase: 'baz'}]}
- */
-
-var objOf =
-/*#__PURE__*/
-_curry2(function objOf(key, val) {
-  var obj = {};
-  obj[key] = val;
-  return obj;
-});
-
 /**
  * See if an object (`val`) is an instance of the supplied constructor. This
  * function will check up the inheritance chain, if any.
@@ -3281,33 +3019,55 @@ _curry2(function lens(getter, setter) {
 });
 
 /**
- * Create a new object with the own properties of the first object merged with
- * the own properties of the second object. If a key exists in both objects,
- * the value from the first object will be used.
+ * The `mapAccum` function behaves like a combination of map and reduce; it
+ * applies a function to each element of a list, passing an accumulating
+ * parameter from left to right, and returning a final value of this
+ * accumulator together with the new list.
+ *
+ * The iterator function receives two arguments, *acc* and *value*, and should
+ * return a tuple *[acc, value]*.
  *
  * @func
  * @memberOf R
- * @since v0.26.0
- * @category Object
- * @sig {k: v} -> {k: v} -> {k: v}
- * @param {Object} l
- * @param {Object} r
- * @return {Object}
- * @see R.mergeRight, R.mergeDeepLeft, R.mergeWith, R.mergeWithKey
+ * @since v0.10.0
+ * @category List
+ * @sig ((acc, x) -> (acc, y)) -> acc -> [x] -> (acc, [y])
+ * @param {Function} fn The function to be called on every element of the input `list`.
+ * @param {*} acc The accumulator value.
+ * @param {Array} list The list to iterate over.
+ * @return {*} The final, accumulated value.
+ * @see R.scan, R.addIndex, R.mapAccumRight
  * @example
  *
- *      R.mergeLeft({ 'age': 40 }, { 'name': 'fred', 'age': 10 });
- *      //=> { 'name': 'fred', 'age': 40 }
+ *      const digits = ['1', '2', '3', '4'];
+ *      const appender = (a, b) => [a + b, a + b];
  *
- *      const resetToDefault = R.mergeLeft({x: 0});
- *      resetToDefault({x: 5, y: 2}); //=> {x: 0, y: 2}
- * @symb R.mergeLeft(a, b) = {...b, ...a}
+ *      R.mapAccum(appender, 0, digits); //=> ['01234', ['01', '012', '0123', '01234']]
+ * @symb R.mapAccum(f, a, [b, c, d]) = [
+ *   f(f(f(a, b)[0], c)[0], d)[0],
+ *   [
+ *     f(a, b)[1],
+ *     f(f(a, b)[0], c)[1],
+ *     f(f(f(a, b)[0], c)[0], d)[1]
+ *   ]
+ * ]
  */
 
-var mergeLeft =
+var mapAccum =
 /*#__PURE__*/
-_curry2(function mergeLeft(l, r) {
-  return _objectAssign$1({}, r, l);
+_curry3(function mapAccum(fn, acc, list) {
+  var idx = 0;
+  var len = list.length;
+  var result = [];
+  var tuple = [acc];
+
+  while (idx < len) {
+    tuple = fn(tuple[0], list[idx]);
+    result[idx] = tuple[1];
+    idx += 1;
+  }
+
+  return [tuple[0], result];
 });
 
 /**
@@ -3534,82 +3294,6 @@ _curry2(function range(from, to) {
 });
 
 /**
- * Like [`reduce`](#reduce), `reduceWhile` returns a single item by iterating
- * through the list, successively calling the iterator function. `reduceWhile`
- * also takes a predicate that is evaluated before each step. If the predicate
- * returns `false`, it "short-circuits" the iteration and returns the current
- * value of the accumulator.
- *
- * @func
- * @memberOf R
- * @since v0.22.0
- * @category List
- * @sig ((a, b) -> Boolean) -> ((a, b) -> a) -> a -> [b] -> a
- * @param {Function} pred The predicate. It is passed the accumulator and the
- *        current element.
- * @param {Function} fn The iterator function. Receives two values, the
- *        accumulator and the current element.
- * @param {*} a The accumulator value.
- * @param {Array} list The list to iterate over.
- * @return {*} The final, accumulated value.
- * @see R.reduce, R.reduced
- * @example
- *
- *      const isOdd = (acc, x) => x % 2 === 1;
- *      const xs = [1, 3, 5, 60, 777, 800];
- *      R.reduceWhile(isOdd, R.add, 0, xs); //=> 9
- *
- *      const ys = [2, 4, 6]
- *      R.reduceWhile(isOdd, R.add, 111, ys); //=> 111
- */
-
-var reduceWhile =
-/*#__PURE__*/
-_curryN(4, [], function _reduceWhile(pred, fn, a, list) {
-  return _reduce(function (acc, x) {
-    return pred(acc, x) ? fn(acc, x) : _reduced(acc);
-  }, a, list);
-});
-
-/**
- * Scan is similar to [`reduce`](#reduce), but returns a list of successively
- * reduced values from the left
- *
- * @func
- * @memberOf R
- * @since v0.10.0
- * @category List
- * @sig ((a, b) -> a) -> a -> [b] -> [a]
- * @param {Function} fn The iterator function. Receives two values, the accumulator and the
- *        current element from the array
- * @param {*} acc The accumulator value.
- * @param {Array} list The list to iterate over.
- * @return {Array} A list of all intermediately reduced values.
- * @see R.reduce, R.mapAccum
- * @example
- *
- *      const numbers = [1, 2, 3, 4];
- *      const factorials = R.scan(R.multiply, 1, numbers); //=> [1, 1, 2, 6, 24]
- * @symb R.scan(f, a, [b, c]) = [a, f(a, b), f(f(a, b), c)]
- */
-
-var scan =
-/*#__PURE__*/
-_curry3(function scan(fn, acc, list) {
-  var idx = 0;
-  var len = list.length;
-  var result = [acc];
-
-  while (idx < len) {
-    acc = fn(acc, list[idx]);
-    result[idx + 1] = acc;
-    idx += 1;
-  }
-
-  return result;
-});
-
-/**
  * Returns the result of "setting" the portion of the given data structure
  * focused by the given lens to the given value.
  *
@@ -3663,6 +3347,85 @@ var sort =
 /*#__PURE__*/
 _curry2(function sort(comparator, list) {
   return Array.prototype.slice.call(list, 0).sort(comparator);
+});
+
+/**
+ * Sorts the list according to the supplied function.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Relation
+ * @sig Ord b => (a -> b) -> [a] -> [a]
+ * @param {Function} fn
+ * @param {Array} list The list to sort.
+ * @return {Array} A new list sorted by the keys generated by `fn`.
+ * @example
+ *
+ *      const sortByFirstItem = R.sortBy(R.prop(0));
+ *      const pairs = [[-1, 1], [-2, 2], [-3, 3]];
+ *      sortByFirstItem(pairs); //=> [[-3, 3], [-2, 2], [-1, 1]]
+ *
+ *      const sortByNameCaseInsensitive = R.sortBy(R.compose(R.toLower, R.prop('name')));
+ *      const alice = {
+ *        name: 'ALICE',
+ *        age: 101
+ *      };
+ *      const bob = {
+ *        name: 'Bob',
+ *        age: -10
+ *      };
+ *      const clara = {
+ *        name: 'clara',
+ *        age: 314.159
+ *      };
+ *      const people = [clara, bob, alice];
+ *      sortByNameCaseInsensitive(people); //=> [alice, bob, clara]
+ */
+
+var sortBy =
+/*#__PURE__*/
+_curry2(function sortBy(fn, list) {
+  return Array.prototype.slice.call(list, 0).sort(function (a, b) {
+    var aa = fn(a);
+    var bb = fn(b);
+    return aa < bb ? -1 : aa > bb ? 1 : 0;
+  });
+});
+
+/**
+ * Takes a list and a predicate and returns a pair of lists with the following properties:
+ *
+ *  - the result of concatenating the two output lists is equivalent to the input list;
+ *  - none of the elements of the first output list satisfies the predicate; and
+ *  - if the second output list is non-empty, its first element satisfies the predicate.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.19.0
+ * @category List
+ * @sig (a -> Boolean) -> [a] -> [[a], [a]]
+ * @param {Function} pred The predicate that determines where the array is split.
+ * @param {Array} list The array to be split.
+ * @return {Array}
+ * @example
+ *
+ *      R.splitWhen(R.equals(2), [1, 2, 3, 1, 2, 3]);   //=> [[1], [2, 3, 1, 2, 3]]
+ */
+
+var splitWhen =
+/*#__PURE__*/
+_curry2(function splitWhen(pred, list) {
+  var idx = 0;
+  var len = list.length;
+  var prefix = [];
+
+  while (idx < len && !pred(list[idx])) {
+    prefix.push(list[idx]);
+    idx += 1;
+  }
+
+  return [prefix, Array.prototype.slice.call(list, idx)];
 });
 
 var Const = function (x) {
@@ -3730,13 +3493,47 @@ _curry2(function (xs, list) {
   return reject(flip(_includes)(xs), list);
 });
 
+/**
+ * Creates a new list out of the two supplied by pairing up equally-positioned
+ * items from both lists. The returned list is truncated to the length of the
+ * shorter of the two input lists.
+ * Note: `zip` is equivalent to `zipWith(function(a, b) { return [a, b] })`.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig [a] -> [b] -> [[a,b]]
+ * @param {Array} list1 The first array to consider.
+ * @param {Array} list2 The second array to consider.
+ * @return {Array} The list made by pairing up same-indexed elements of `list1` and `list2`.
+ * @example
+ *
+ *      R.zip([1, 2, 3], ['a', 'b', 'c']); //=> [[1, 'a'], [2, 'b'], [3, 'c']]
+ * @symb R.zip([a, b, c], [d, e, f]) = [[a, d], [b, e], [c, f]]
+ */
+
+var zip =
+/*#__PURE__*/
+_curry2(function zip(a, b) {
+  var rv = [];
+  var idx = 0;
+  var len = Math.min(a.length, b.length);
+
+  while (idx < len) {
+    rv[idx] = [a[idx], b[idx]];
+    idx += 1;
+  }
+
+  return rv;
+});
+
 // These predicates check if an object is a MIDI Message (or a MIDI
 // message's subtype like note on, note off, etc) or if an array is an
 // array of MIDI messages.
 
 const seemsMessageAsArray = msg => allPass([either(is(Array))(is(Uint8Array)), complement(isEmpty), all(is(Number))])(msg);
-const seemsMessage = msg => allPass([is(Object), propEq('type', 'midimessage'), propSatisfies(seemsMessageAsArray, 'data')])(msg);
-const seemsArrayOfMIDIMessages = both(is(Array))(all(seemsMessage)); // -------- Utilities for comparing MIDI messages byte array values ------
+const seemsMessage = msg => allPass([is(Object), propEq('type', 'midimessage'), propSatisfies(seemsMessageAsArray, 'data')])(msg); // -------- Utilities for comparing MIDI messages byte array values ------
 
 const dataEq = curry((data, msg) => seemsMessage(msg) ? equals(data)(msg.data) : false);
 const byteEq = curry((n, data, msg) => seemsMessage(msg) ? pathEq([n])(data)(msg.data) : false);
@@ -3803,84 +3600,24 @@ const isActiveSensing = msg => both(seemsMessage)(dataEq([254]))(msg); // Reset 
 // Events are several bytes long. It's not possible to
 // differentiate them based on first byte, it's the
 // programmer responsability to only use isReset outside
-// MIDI Files and seemsMIDIMetaEvent inside MIDI Files.
+// MIDI Files and seemsMetaEvent inside MIDI Files.
 
 const isReset = msg => both(seemsMessage)(dataEq([255]))(msg); // ------------------ MIDI File Meta Events predicates -------------------
 // TODO: Check that length is correct !!!
 
-const seemsMIDIMetaEvent = msg => allPass([is(Object), propEq('type', 'metaevent'), has('metaType'), has('data')])(msg);
-const metaTypeEq = curry((type, msg) => seemsMIDIMetaEvent(msg) ? propEq('metaType')(type)(msg) : false);
+const seemsMetaEvent = msg => allPass([is(Object), propEq('type', 'metaevent'), has('metaType'), has('data')])(msg);
+const metaTypeEq = curry((type, msg) => seemsMetaEvent(msg) ? propEq('metaType')(type)(msg) : false);
 const isTempoChange = msg => metaTypeEq(81)(msg);
+const isTimingEvent = msg => metaTypeEq(96)(msg);
 
-// Converts a byte array to a MIDIMessageEvent compatible object.
+/* global window self */
 
-const msg = (data, timeStamp = 0, deltaTime = 0) => ({
-  type: 'midimessage',
-  timeStamp: timeStamp,
-  deltaTime: deltaTime,
-  data: [...data]
-});
-const from = msg => is(Array, msg) ? assoc('data')(flatten(map(prop$1('data'), msg)))(clone(head(msg))) : clone(msg); // =================== MIDI Messages definition ====================
-// -------------- Channel Voice messages generation ----------------
+const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+/* eslint-enable no-restricted-globals */
 
-const off = (n = 64, v = 96, ch = 0, ts = 0, dt = 0) => msg([128 + ch, n, v], ts, dt);
-const on = (n = 64, v = 96, ch = 0, ts = 0, dt = 0) => msg([144 + ch, n, v], ts, dt);
-const pp = (n = 64, p = 96, ch = 0, ts = 0, dt = 0) => msg([160 + ch, n, p], ts, dt);
-const cc = (c = 1, v = 127, ch = 0, ts = 0, dt = 0) => msg([176 + ch, c, v], ts, dt);
-const pc = (p = 0, ch = 0, ts = 0, dt = 0) => msg([192 + ch, p], ts, dt);
-const cp = (p = 96, ch = 0, ts = 0, dt = 0) => msg([208 + ch, p], ts, dt);
-const pb = (v = 8192, ch = 0, ts = 0, dt = 0) => msg([224 + ch, v & 0x7F, v >> 7], ts, dt);
-const rpn = (n = 0, v = 8192, ch = 0, ts = 0, dt = 0) => from([cc(101, n >> 7, ch, ts, dt), cc(100, n % 128, ch, ts, dt), cc(6, v >> 7, ch, ts, dt), cc(38, v % 128, ch, ts, dt), cc(101, 127, ch, ts, dt), cc(100, 127, ch, ts, dt)]);
-const nrpn = (n = 0, v = 8192, ch = 0, ts = 0, dt = 0) => from([cc(99, n >> 7, ch, ts, dt), cc(98, n % 128, ch, ts, dt), cc(6, v >> 7, ch, ts, dt), cc(38, v % 128, ch, ts, dt), cc(101, 127, ch, ts, dt), cc(100, 127, ch, ts, dt)]); // -------------- System common messages generation ----------------
-
-const syx = (b, ts = 0, dt = 0) => msg([240, ...b, 247], ts, dt);
-const tc = (t, v, ts = 0, dt = 0) => msg([241, (t << 4) + v], ts, dt);
-const spp = (b, ts = 0, dt = 0) => msg([242, b % 128, b >> 7], ts, dt);
-const ss = (s, ts = 0, dt = 0) => msg([243, s], ts, dt);
-const tun = (ts = 0, dt = 0) => msg([246], ts, dt); // ------------- System real time messages generation --------------
-
-const mc = (ts = 0, dt = 0) => msg([248], ts, dt);
-const start = (ts = 0, dt = 0) => msg([250], ts, dt);
-const cont = (ts = 0, dt = 0) => msg([251], ts, dt);
-const stop = (ts = 0, dt = 0) => msg([252], ts, dt);
-const as = (ts = 0, dt = 0) => msg([254], ts, dt);
-const rst = (ts = 0, dt = 0) => msg([255], ts, dt);
-const panic = (ts = 0, dt = 0) => {
-  const panic_msgs = [];
-
-  for (let ch = 0; ch < 16; ch++) {
-    panic_msgs.push(cc(64, 0, ch, ts, dt));
-    panic_msgs.push(cc(120, 0, ch, ts, dt));
-    panic_msgs.push(cc(123, 0, ch, ts, dt));
-
-    for (let n = 0; n < 128; n++) {
-      panic_msgs.push(off(n, 0, ch, ts, dt));
-    }
-  }
-
-  return from(panic_msgs);
-};
-
-const getByte = curry((n, msg) => msg.data[n]);
-const setByte = curry((n, v, msg) => evolve({
-  data: d => [...slice(0, n, d), v, ...slice(n + 1, Infinity, d)]
-})(msg)); // ------------------------------ Lenses ---------------------------------
-// Creates a lens object from the getter and the setter only if the 
-// received MIDI message passes the predicate.
-
-const lensWhen = curry((p, v, s) => msg => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg)(msg));
-const timeStamp = lensWhen(seemsMessage)(prop$1('timeStamp'))(assoc('timeStamp'));
-const deltaTime = lensWhen(seemsMessage)(prop$1('deltaTime'))(assoc('deltaTime'));
-const channel = lensWhen(isChannelMessage)(m => getByte(0)(m) & 0xF)((v, m) => setByte(0)((getByte(0, m) & 0xF0) + v)(m));
-const note = lensWhen(hasNote)(getByte(1))(setByte(1));
-const velocity = lensWhen(hasVelocity)(getByte(2))(setByte(2));
-const pressure = lensWhen(hasPressure)(ifElse(isPolyPressure)(getByte(2))(getByte(1)))((v, m) => isPolyPressure(m) ? setByte(2)(v)(m) : setByte(1)(v)(m));
-const control = lensWhen(isControlChange)(getByte(1))(setByte(1));
-const value = lensWhen(isControlChange)(getByte(2))(setByte(2));
-const program = lensWhen(isProgramChange)(getByte(1))(setByte(1));
-const pitchBend = lensWhen(isPitchBend)(m => (getByte(2)(m) << 7) + getByte(1)(m))((v, m) => setByte(1)(v & 0x7F)(setByte(2)(v >> 7)(m))); // ----------------------- Predicate helpers -----------------------------
-
-const lensP = curry((lens, pred, v) => msg => pred(view(lens)(msg))(v));
+const isNode = typeof process !== 'undefined'
+  && process.versions != null
+  && process.versions.node != null;
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -4918,6 +4655,15 @@ var AsyncScheduler = /*@__PURE__*/ (function (_super) {
     return AsyncScheduler;
 }(Scheduler));
 
+/** PURE_IMPORTS_START _Observable PURE_IMPORTS_END */
+var EMPTY = /*@__PURE__*/ new Observable(function (subscriber) { return subscriber.complete(); });
+function empty$2(scheduler) {
+    return scheduler ? emptyScheduled(scheduler) : EMPTY;
+}
+function emptyScheduled(scheduler) {
+    return new Observable(function (subscriber) { return scheduler.schedule(function () { return subscriber.complete(); }); });
+}
+
 /** PURE_IMPORTS_START  PURE_IMPORTS_END */
 function isScheduler(value) {
     return value && typeof value.schedule === 'function';
@@ -4961,6 +4707,102 @@ function fromArray(input, scheduler) {
         return scheduleArray(input, scheduler);
     }
 }
+
+/** PURE_IMPORTS_START _util_isScheduler,_fromArray,_scheduled_scheduleArray PURE_IMPORTS_END */
+function of() {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
+    }
+    var scheduler = args[args.length - 1];
+    if (isScheduler(scheduler)) {
+        args.pop();
+        return scheduleArray(args, scheduler);
+    }
+    else {
+        return fromArray(args);
+    }
+}
+
+/** PURE_IMPORTS_START _Observable PURE_IMPORTS_END */
+function throwError(error, scheduler) {
+    if (!scheduler) {
+        return new Observable(function (subscriber) { return subscriber.error(error); });
+    }
+    else {
+        return new Observable(function (subscriber) { return scheduler.schedule(dispatch, 0, { error: error, subscriber: subscriber }); });
+    }
+}
+function dispatch(_a) {
+    var error = _a.error, subscriber = _a.subscriber;
+    subscriber.error(error);
+}
+
+/** PURE_IMPORTS_START _observable_empty,_observable_of,_observable_throwError PURE_IMPORTS_END */
+var Notification = /*@__PURE__*/ (function () {
+    function Notification(kind, value, error) {
+        this.kind = kind;
+        this.value = value;
+        this.error = error;
+        this.hasValue = kind === 'N';
+    }
+    Notification.prototype.observe = function (observer) {
+        switch (this.kind) {
+            case 'N':
+                return observer.next && observer.next(this.value);
+            case 'E':
+                return observer.error && observer.error(this.error);
+            case 'C':
+                return observer.complete && observer.complete();
+        }
+    };
+    Notification.prototype.do = function (next, error, complete) {
+        var kind = this.kind;
+        switch (kind) {
+            case 'N':
+                return next && next(this.value);
+            case 'E':
+                return error && error(this.error);
+            case 'C':
+                return complete && complete();
+        }
+    };
+    Notification.prototype.accept = function (nextOrObserver, error, complete) {
+        if (nextOrObserver && typeof nextOrObserver.next === 'function') {
+            return this.observe(nextOrObserver);
+        }
+        else {
+            return this.do(nextOrObserver, error, complete);
+        }
+    };
+    Notification.prototype.toObservable = function () {
+        var kind = this.kind;
+        switch (kind) {
+            case 'N':
+                return of(this.value);
+            case 'E':
+                return throwError(this.error);
+            case 'C':
+                return empty$2();
+        }
+        throw new Error('unexpected notification kind value');
+    };
+    Notification.createNext = function (value) {
+        if (typeof value !== 'undefined') {
+            return new Notification('N', value);
+        }
+        return Notification.undefinedValueNotification;
+    };
+    Notification.createError = function (err) {
+        return new Notification('E', undefined, err);
+    };
+    Notification.createComplete = function () {
+        return Notification.completeNotification;
+    };
+    Notification.completeNotification = new Notification('C');
+    Notification.undefinedValueNotification = new Notification('N', undefined);
+    return Notification;
+}());
 
 /** PURE_IMPORTS_START  PURE_IMPORTS_END */
 var nextHandle = 1;
@@ -5102,49 +4944,6 @@ var MapSubscriber = /*@__PURE__*/ (function (_super) {
     return MapSubscriber;
 }(Subscriber));
 
-/** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
-var OuterSubscriber = /*@__PURE__*/ (function (_super) {
-    __extends(OuterSubscriber, _super);
-    function OuterSubscriber() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    OuterSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
-        this.destination.next(innerValue);
-    };
-    OuterSubscriber.prototype.notifyError = function (error, innerSub) {
-        this.destination.error(error);
-    };
-    OuterSubscriber.prototype.notifyComplete = function (innerSub) {
-        this.destination.complete();
-    };
-    return OuterSubscriber;
-}(Subscriber));
-
-/** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
-var InnerSubscriber = /*@__PURE__*/ (function (_super) {
-    __extends(InnerSubscriber, _super);
-    function InnerSubscriber(parent, outerValue, outerIndex) {
-        var _this = _super.call(this) || this;
-        _this.parent = parent;
-        _this.outerValue = outerValue;
-        _this.outerIndex = outerIndex;
-        _this.index = 0;
-        return _this;
-    }
-    InnerSubscriber.prototype._next = function (value) {
-        this.parent.notifyNext(this.outerValue, value, this.outerIndex, this.index++, this);
-    };
-    InnerSubscriber.prototype._error = function (error) {
-        this.parent.notifyError(error, this);
-        this.unsubscribe();
-    };
-    InnerSubscriber.prototype._complete = function () {
-        this.parent.notifyComplete(this);
-        this.unsubscribe();
-    };
-    return InnerSubscriber;
-}(Subscriber));
-
 /** PURE_IMPORTS_START _hostReportError PURE_IMPORTS_END */
 var subscribeToPromise = function (promise) {
     return function (subscriber) {
@@ -5243,20 +5042,6 @@ var subscribeTo = function (result) {
         throw new TypeError(msg);
     }
 };
-
-/** PURE_IMPORTS_START _InnerSubscriber,_subscribeTo,_Observable PURE_IMPORTS_END */
-function subscribeToResult(outerSubscriber, result, outerValue, outerIndex, innerSubscriber) {
-    if (innerSubscriber === void 0) {
-        innerSubscriber = new InnerSubscriber(outerSubscriber, outerValue, outerIndex);
-    }
-    if (innerSubscriber.closed) {
-        return undefined;
-    }
-    if (result instanceof Observable) {
-        return result.subscribe(innerSubscriber);
-    }
-    return subscribeTo(result)(innerSubscriber);
-}
 
 /** PURE_IMPORTS_START _Observable,_Subscription,_symbol_observable PURE_IMPORTS_END */
 function scheduleObservable(input, scheduler) {
@@ -5365,7 +5150,7 @@ function scheduled(input, scheduler) {
 }
 
 /** PURE_IMPORTS_START _Observable,_util_subscribeTo,_scheduled_scheduled PURE_IMPORTS_END */
-function from$1(input, scheduler) {
+function from(input, scheduler) {
     if (!scheduler) {
         if (input instanceof Observable) {
             return input;
@@ -5430,7 +5215,7 @@ function mergeMap(project, resultSelector, concurrent) {
         concurrent = Number.POSITIVE_INFINITY;
     }
     if (typeof resultSelector === 'function') {
-        return function (source) { return source.pipe(mergeMap(function (a, i) { return from$1(project(a, i)).pipe(map$1(function (b, ii) { return resultSelector(a, b, i, ii); })); }, concurrent)); };
+        return function (source) { return source.pipe(mergeMap(function (a, i) { return from(project(a, i)).pipe(map$1(function (b, ii) { return resultSelector(a, b, i, ii); })); }, concurrent)); };
     }
     else if (typeof resultSelector === 'number') {
         concurrent = resultSelector;
@@ -5613,46 +5398,8 @@ function merge() {
     return mergeAll(concurrent)(fromArray(observables, scheduler));
 }
 
-/** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
-function filter$1(predicate, thisArg) {
-    return function filterOperatorFunction(source) {
-        return source.lift(new FilterOperator(predicate, thisArg));
-    };
-}
-var FilterOperator = /*@__PURE__*/ (function () {
-    function FilterOperator(predicate, thisArg) {
-        this.predicate = predicate;
-        this.thisArg = thisArg;
-    }
-    FilterOperator.prototype.call = function (subscriber, source) {
-        return source.subscribe(new FilterSubscriber(subscriber, this.predicate, this.thisArg));
-    };
-    return FilterOperator;
-}());
-var FilterSubscriber = /*@__PURE__*/ (function (_super) {
-    __extends(FilterSubscriber, _super);
-    function FilterSubscriber(destination, predicate, thisArg) {
-        var _this = _super.call(this, destination) || this;
-        _this.predicate = predicate;
-        _this.thisArg = thisArg;
-        _this.count = 0;
-        return _this;
-    }
-    FilterSubscriber.prototype._next = function (value) {
-        var result;
-        try {
-            result = this.predicate.call(this.thisArg, value, this.count++);
-        }
-        catch (err) {
-            this.destination.error(err);
-            return;
-        }
-        if (result) {
-            this.destination.next(value);
-        }
-    };
-    return FilterSubscriber;
-}(Subscriber));
+/** PURE_IMPORTS_START _Observable,_util_noop PURE_IMPORTS_END */
+var NEVER = /*@__PURE__*/ new Observable(noop);
 
 /** PURE_IMPORTS_START _Observable,_scheduler_async,_util_isNumeric,_util_isScheduler PURE_IMPORTS_END */
 function timer(dueTime, periodOrScheduler, scheduler) {
@@ -5673,12 +5420,12 @@ function timer(dueTime, periodOrScheduler, scheduler) {
         var due = isNumeric(dueTime)
             ? dueTime
             : (+dueTime - scheduler.now());
-        return scheduler.schedule(dispatch, due, {
+        return scheduler.schedule(dispatch$1, due, {
             index: 0, period: period, subscriber: subscriber
         });
     });
 }
-function dispatch(state) {
+function dispatch$1(state) {
     var index = state.index, period = state.period, subscriber = state.subscriber;
     subscriber.next(index);
     if (subscriber.closed) {
@@ -5692,7 +5439,67 @@ function dispatch(state) {
 }
 
 /** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
-function scan$1(accumulator, seed) {
+function dematerialize() {
+    return function dematerializeOperatorFunction(source) {
+        return source.lift(new DeMaterializeOperator());
+    };
+}
+var DeMaterializeOperator = /*@__PURE__*/ (function () {
+    function DeMaterializeOperator() {
+    }
+    DeMaterializeOperator.prototype.call = function (subscriber, source) {
+        return source.subscribe(new DeMaterializeSubscriber(subscriber));
+    };
+    return DeMaterializeOperator;
+}());
+var DeMaterializeSubscriber = /*@__PURE__*/ (function (_super) {
+    __extends(DeMaterializeSubscriber, _super);
+    function DeMaterializeSubscriber(destination) {
+        return _super.call(this, destination) || this;
+    }
+    DeMaterializeSubscriber.prototype._next = function (value) {
+        value.observe(this.destination);
+    };
+    return DeMaterializeSubscriber;
+}(Subscriber));
+
+/** PURE_IMPORTS_START tslib,_Subscriber,_Notification PURE_IMPORTS_END */
+function materialize() {
+    return function materializeOperatorFunction(source) {
+        return source.lift(new MaterializeOperator());
+    };
+}
+var MaterializeOperator = /*@__PURE__*/ (function () {
+    function MaterializeOperator() {
+    }
+    MaterializeOperator.prototype.call = function (subscriber, source) {
+        return source.subscribe(new MaterializeSubscriber(subscriber));
+    };
+    return MaterializeOperator;
+}());
+var MaterializeSubscriber = /*@__PURE__*/ (function (_super) {
+    __extends(MaterializeSubscriber, _super);
+    function MaterializeSubscriber(destination) {
+        return _super.call(this, destination) || this;
+    }
+    MaterializeSubscriber.prototype._next = function (value) {
+        this.destination.next(Notification.createNext(value));
+    };
+    MaterializeSubscriber.prototype._error = function (err) {
+        var destination = this.destination;
+        destination.next(Notification.createError(err));
+        destination.complete();
+    };
+    MaterializeSubscriber.prototype._complete = function () {
+        var destination = this.destination;
+        destination.next(Notification.createComplete());
+        destination.complete();
+    };
+    return MaterializeSubscriber;
+}(Subscriber));
+
+/** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
+function scan(accumulator, seed) {
     var hasSeed = false;
     if (arguments.length >= 2) {
         hasSeed = true;
@@ -5760,156 +5567,186 @@ var ScanSubscriber = /*@__PURE__*/ (function (_super) {
     return ScanSubscriber;
 }(Subscriber));
 
-/** PURE_IMPORTS_START tslib,_Subscriber,_util_noop,_util_isFunction PURE_IMPORTS_END */
-function tap(nextOrObserver, error, complete) {
-    return function tapOperatorFunction(source) {
-        return source.lift(new DoOperator(nextOrObserver, error, complete));
-    };
+/** PURE_IMPORTS_START tslib,_map,_observable_from,_innerSubscribe PURE_IMPORTS_END */
+function switchMap(project, resultSelector) {
+    if (typeof resultSelector === 'function') {
+        return function (source) { return source.pipe(switchMap(function (a, i) { return from(project(a, i)).pipe(map$1(function (b, ii) { return resultSelector(a, b, i, ii); })); })); };
+    }
+    return function (source) { return source.lift(new SwitchMapOperator(project)); };
 }
-var DoOperator = /*@__PURE__*/ (function () {
-    function DoOperator(nextOrObserver, error, complete) {
-        this.nextOrObserver = nextOrObserver;
-        this.error = error;
-        this.complete = complete;
-    }
-    DoOperator.prototype.call = function (subscriber, source) {
-        return source.subscribe(new TapSubscriber(subscriber, this.nextOrObserver, this.error, this.complete));
-    };
-    return DoOperator;
-}());
-var TapSubscriber = /*@__PURE__*/ (function (_super) {
-    __extends(TapSubscriber, _super);
-    function TapSubscriber(destination, observerOrNext, error, complete) {
-        var _this = _super.call(this, destination) || this;
-        _this._tapNext = noop;
-        _this._tapError = noop;
-        _this._tapComplete = noop;
-        _this._tapError = error || noop;
-        _this._tapComplete = complete || noop;
-        if (isFunction(observerOrNext)) {
-            _this._context = _this;
-            _this._tapNext = observerOrNext;
-        }
-        else if (observerOrNext) {
-            _this._context = observerOrNext;
-            _this._tapNext = observerOrNext.next || noop;
-            _this._tapError = observerOrNext.error || noop;
-            _this._tapComplete = observerOrNext.complete || noop;
-        }
-        return _this;
-    }
-    TapSubscriber.prototype._next = function (value) {
-        try {
-            this._tapNext.call(this._context, value);
-        }
-        catch (err) {
-            this.destination.error(err);
-            return;
-        }
-        this.destination.next(value);
-    };
-    TapSubscriber.prototype._error = function (err) {
-        try {
-            this._tapError.call(this._context, err);
-        }
-        catch (err) {
-            this.destination.error(err);
-            return;
-        }
-        this.destination.error(err);
-    };
-    TapSubscriber.prototype._complete = function () {
-        try {
-            this._tapComplete.call(this._context);
-        }
-        catch (err) {
-            this.destination.error(err);
-            return;
-        }
-        return this.destination.complete();
-    };
-    return TapSubscriber;
-}(Subscriber));
-
-/** PURE_IMPORTS_START tslib,_OuterSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
-function withLatestFrom() {
-    var args = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        args[_i] = arguments[_i];
-    }
-    return function (source) {
-        var project;
-        if (typeof args[args.length - 1] === 'function') {
-            project = args.pop();
-        }
-        var observables = args;
-        return source.lift(new WithLatestFromOperator(observables, project));
-    };
-}
-var WithLatestFromOperator = /*@__PURE__*/ (function () {
-    function WithLatestFromOperator(observables, project) {
-        this.observables = observables;
+var SwitchMapOperator = /*@__PURE__*/ (function () {
+    function SwitchMapOperator(project) {
         this.project = project;
     }
-    WithLatestFromOperator.prototype.call = function (subscriber, source) {
-        return source.subscribe(new WithLatestFromSubscriber(subscriber, this.observables, this.project));
+    SwitchMapOperator.prototype.call = function (subscriber, source) {
+        return source.subscribe(new SwitchMapSubscriber(subscriber, this.project));
     };
-    return WithLatestFromOperator;
+    return SwitchMapOperator;
 }());
-var WithLatestFromSubscriber = /*@__PURE__*/ (function (_super) {
-    __extends(WithLatestFromSubscriber, _super);
-    function WithLatestFromSubscriber(destination, observables, project) {
+var SwitchMapSubscriber = /*@__PURE__*/ (function (_super) {
+    __extends(SwitchMapSubscriber, _super);
+    function SwitchMapSubscriber(destination, project) {
         var _this = _super.call(this, destination) || this;
-        _this.observables = observables;
         _this.project = project;
-        _this.toRespond = [];
-        var len = observables.length;
-        _this.values = new Array(len);
-        for (var i = 0; i < len; i++) {
-            _this.toRespond.push(i);
-        }
-        for (var i = 0; i < len; i++) {
-            var observable = observables[i];
-            _this.add(subscribeToResult(_this, observable, undefined, i));
-        }
+        _this.index = 0;
         return _this;
     }
-    WithLatestFromSubscriber.prototype.notifyNext = function (_outerValue, innerValue, outerIndex) {
-        this.values[outerIndex] = innerValue;
-        var toRespond = this.toRespond;
-        if (toRespond.length > 0) {
-            var found = toRespond.indexOf(outerIndex);
-            if (found !== -1) {
-                toRespond.splice(found, 1);
-            }
-        }
-    };
-    WithLatestFromSubscriber.prototype.notifyComplete = function () {
-    };
-    WithLatestFromSubscriber.prototype._next = function (value) {
-        if (this.toRespond.length === 0) {
-            var args = [value].concat(this.values);
-            if (this.project) {
-                this._tryProject(args);
-            }
-            else {
-                this.destination.next(args);
-            }
-        }
-    };
-    WithLatestFromSubscriber.prototype._tryProject = function (args) {
+    SwitchMapSubscriber.prototype._next = function (value) {
         var result;
+        var index = this.index++;
         try {
-            result = this.project.apply(this, args);
+            result = this.project(value, index);
         }
-        catch (err) {
-            this.destination.error(err);
+        catch (error) {
+            this.destination.error(error);
             return;
         }
-        this.destination.next(result);
+        this._innerSub(result);
     };
-    return WithLatestFromSubscriber;
-}(OuterSubscriber));
+    SwitchMapSubscriber.prototype._innerSub = function (result) {
+        var innerSubscription = this.innerSubscription;
+        if (innerSubscription) {
+            innerSubscription.unsubscribe();
+        }
+        var innerSubscriber = new SimpleInnerSubscriber(this);
+        var destination = this.destination;
+        destination.add(innerSubscriber);
+        this.innerSubscription = innerSubscribe(result, innerSubscriber);
+        if (this.innerSubscription !== innerSubscriber) {
+            destination.add(this.innerSubscription);
+        }
+    };
+    SwitchMapSubscriber.prototype._complete = function () {
+        var innerSubscription = this.innerSubscription;
+        if (!innerSubscription || innerSubscription.closed) {
+            _super.prototype._complete.call(this);
+        }
+        this.unsubscribe();
+    };
+    SwitchMapSubscriber.prototype._unsubscribe = function () {
+        this.innerSubscription = undefined;
+    };
+    SwitchMapSubscriber.prototype.notifyComplete = function () {
+        this.innerSubscription = undefined;
+        if (this.isStopped) {
+            _super.prototype._complete.call(this);
+        }
+    };
+    SwitchMapSubscriber.prototype.notifyNext = function (innerValue) {
+        this.destination.next(innerValue);
+    };
+    return SwitchMapSubscriber;
+}(SimpleOuterSubscriber));
+
+// performance.now or node-now function.
+// Using schedulers from timer timings allows easier testing
+// when using testScheduler and correct MIDI timings (which are
+// based on performance.now on browser and not on Date.now).
+
+let frNow;
+
+if (isBrowser) {
+  frNow = window.performance.now.bind(window.performance);
+}
+
+if (isNode) {
+  frNow = () => {
+    let hr = process.hrtime();
+    return (hr[0] * 1e9 + hr[1]) / 1e6;
+  };
+}
+
+asapScheduler.now = frNow;
+const QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
+const BPM2QNPM = bpm => 60 * 1000000 / bpm;
+const multiSet = curry((lenses, values) => pipe(...map(([l, v]) => set$1(l)(v))(zip(lenses)(values))));
+
+// Converts a byte array to a MIDIMessageEvent compatible object.
+
+const msg = (data, timeStamp = 0, deltaTime = 0) => ({
+  type: 'midimessage',
+  timeStamp: timeStamp,
+  deltaTime: deltaTime,
+  data: [...data]
+});
+const from$1 = msg => is(Array, msg) ? assoc('data')(flatten(map(prop$1('data'), msg)))(clone(head(msg))) : clone(msg); // =================== MIDI Messages definition ====================
+// -------------- Channel Voice messages generation ----------------
+
+const off = (n = 64, v = 96, ch = 0, ts = 0, dt = 0) => msg([128 + ch, n, v], ts, dt);
+const on = (n = 64, v = 96, ch = 0, ts = 0, dt = 0) => msg([144 + ch, n, v], ts, dt);
+const pp = (n = 64, p = 96, ch = 0, ts = 0, dt = 0) => msg([160 + ch, n, p], ts, dt);
+const cc = (c = 1, v = 127, ch = 0, ts = 0, dt = 0) => msg([176 + ch, c, v], ts, dt);
+const pc = (p = 0, ch = 0, ts = 0, dt = 0) => msg([192 + ch, p], ts, dt);
+const cp = (p = 96, ch = 0, ts = 0, dt = 0) => msg([208 + ch, p], ts, dt);
+const pb = (v = 8192, ch = 0, ts = 0, dt = 0) => msg([224 + ch, v & 0x7F, v >> 7], ts, dt);
+const rpn = (n = 0, v = 8192, ch = 0, ts = 0, dt = 0) => from$1([cc(101, n >> 7, ch, ts, dt), cc(100, n % 128, ch, ts, dt), cc(6, v >> 7, ch, ts, dt), cc(38, v % 128, ch, ts, dt), cc(101, 127, ch, ts, dt), cc(100, 127, ch, ts, dt)]);
+const nrpn = (n = 0, v = 8192, ch = 0, ts = 0, dt = 0) => from$1([cc(99, n >> 7, ch, ts, dt), cc(98, n % 128, ch, ts, dt), cc(6, v >> 7, ch, ts, dt), cc(38, v % 128, ch, ts, dt), cc(101, 127, ch, ts, dt), cc(100, 127, ch, ts, dt)]); // -------------- System common messages generation ----------------
+
+const syx = (b, ts = 0, dt = 0) => msg([240, ...b, 247], ts, dt);
+const tc = (t, v, ts = 0, dt = 0) => msg([241, (t << 4) + v], ts, dt);
+const spp = (b, ts = 0, dt = 0) => msg([242, b % 128, b >> 7], ts, dt);
+const ss = (s, ts = 0, dt = 0) => msg([243, s], ts, dt);
+const tun = (ts = 0, dt = 0) => msg([246], ts, dt); // ------------- System real time messages generation --------------
+
+const mc = (ts = 0, dt = 0) => msg([248], ts, dt);
+const start = (ts = 0, dt = 0) => msg([250], ts, dt);
+const cont = (ts = 0, dt = 0) => msg([251], ts, dt);
+const stop = (ts = 0, dt = 0) => msg([252], ts, dt);
+const as = (ts = 0, dt = 0) => msg([254], ts, dt);
+const rst = (ts = 0, dt = 0) => msg([255], ts, dt);
+const panic = (ts = 0, dt = 0) => {
+  const panic_msgs = [];
+
+  for (let ch = 0; ch < 16; ch++) {
+    panic_msgs.push(cc(64, 0, ch, ts, dt));
+    panic_msgs.push(cc(120, 0, ch, ts, dt));
+    panic_msgs.push(cc(123, 0, ch, ts, dt));
+
+    for (let n = 0; n < 128; n++) {
+      panic_msgs.push(off(n, 0, ch, ts, dt));
+    }
+  }
+
+  return from$1(panic_msgs);
+}; // ================= MIDI File Meta Events generation ====================
+
+const meta = (metaType, data, timeStamp = 0, deltaTime = 0) => ({
+  type: 'metaevent',
+  timeStamp: timeStamp,
+  deltaTime: deltaTime,
+  metaType: metaType,
+  data: is(Array)(data) ? [...data] : [data]
+});
+const tempoChange = qnpm => meta(81, [qnpm]);
+const bpmChange = bpm => meta(81, BPM2QNPM(bpm)); // Internal meta event from frMIDI to manage own timers
+
+const timingEvent = (now = frNow(), look_ahead_window = 150) => meta(96, [now, look_ahead_window]);
+
+const getData = curry((n, msg) => msg.data[n]);
+const setData = curry((n, v, msg) => evolve({
+  data: d => [...slice(0, n, d), v, ...slice(n + 1, Infinity, d)]
+})(msg)); // ------------------------------ Lenses ---------------------------------
+// Creates a lens object from the getter and the setter only if the 
+// received MIDI message passes the predicate.
+
+const lensWhen = curry((p, v, s) => msg => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg)(msg));
+const timeStamp = lensWhen(seemsMessage)(prop$1('timeStamp'))(assoc('timeStamp'));
+const deltaTime = lensWhen(seemsMessage)(prop$1('deltaTime'))(assoc('deltaTime'));
+const absoluteDeltaTime = lensWhen(seemsMessage)(prop$1('absoluteDeltaTime'))(assoc('absoluteDeltaTime'));
+const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)((v, m) => setData(0)((getData(0, m) & 0xF0) + v)(m));
+const note = lensWhen(hasNote)(getData(1))(setData(1));
+const velocity = lensWhen(hasVelocity)(getData(2))(setData(2));
+const pressure = lensWhen(hasPressure)(ifElse(isPolyPressure)(getData(2))(getData(1)))((v, m) => isPolyPressure(m) ? setData(2)(v)(m) : setData(1)(v)(m));
+const control = lensWhen(isControlChange)(getData(1))(setData(1));
+const value = lensWhen(isControlChange)(getData(2))(setData(2));
+const program = lensWhen(isProgramChange)(getData(1))(setData(1));
+const pitchBend = lensWhen(isPitchBend)(m => (getData(2)(m) << 7) + getData(1)(m))((v, m) => setData(1)(v & 0x7F)(setData(2)(v >> 7)(m))); // ----------------------- Predicate helpers -----------------------------
+
+const lensP = curry((lens, pred, v) => msg => pred(view(lens)(msg))(v)); // ------------ Lenses for MIDI File and frMIDI Meta events --------------
+
+const tempo = lensWhen(isTempoChange)(getData(0))(setData(0));
+const timing = lensWhen(isTimingEvent)(getData(0))(setData(0));
+const lookAhead = lensWhen(isTimingEvent)(getData(1))(setData(1));
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
@@ -5953,156 +5790,158 @@ var PausableObservable = /** @class */ (function (_super) {
     };
     return PausableObservable;
 }(Observable));
-
-/* global window self */
-
-const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
-/* eslint-enable no-restricted-globals */
-
-const isNode = typeof process !== 'undefined'
-  && process.versions != null
-  && process.versions.node != null;
-
-// performance.now or node-now function.
-// Using schedulers from timer timings allows easier testing
-// when using testScheduler and correct MIDI timings (which are
-// based on performance.now on browser and not on Date.now).
-
-if (isBrowser) {
-  asapScheduler.now = window.performance.now.bind(window.performance);
+function pausable() {
+    return function pauseFn(source) {
+        var pausableProto = PausableObservable.prototype;
+        var pauser = new BehaviorSubject(false);
+        var newSource = pauser.pipe(switchMap(function (paused) { return (paused ? NEVER : source.pipe(materialize())); }), dematerialize());
+        var pausable = Object.create(newSource, {
+            pause: { value: pausableProto.pause },
+            resume: { value: pausableProto.resume },
+            pauser: { value: pauser }
+        });
+        return pausable;
+    };
 }
 
-if (isNode) {
-  asapScheduler.now = () => {
-    let hr = process.hrtime();
-    return (hr[0] * 1e9 + hr[1]) / 1e9;
-  };
-} // TODO: Export scheduler for other modules
-// ------------------------------ Timer ----------------------------------
 // The idea of a timer "independent" of the events with a look ahead
 // window was taken from this great article by Chris Wilson:
 // https://www.html5rocks.com/en/tutorials/audio/scheduling/
+// Here, a subject or an operator is implemented, depending on
+// how it's initialized.
+// The operators just forwards incoming MIDI messages and adds
+// timing meta events as needed.
 
-
-const createTimer = (resolution = 25, look_ahead = 150, scheduler = asapScheduler) => timer(0, resolution, scheduler).pipe(map$1(v => [scheduler.now(), look_ahead])); // -------------------- MIDI Clock message generation -------------------
+const timer$1 = (resolution = 25, look_ahead = 150, scheduler = asapScheduler) => timer(0, resolution, scheduler).pipe(map$1(v => timingEvent(scheduler.now(), look_ahead))); // -------------------- MIDI Clock message generation -------------------
 // Creates an array of MIDI Clock events with correct future timestamps
 // having into account current time (now) and look ahead 
 // window (look_ahead) for indicated bpm and time_division (pulses
 // per quarter note).
-// Messages will be generated even before current time if last tick time
-// is in the past.
 
-const lookAheadClock = curry((time_division, bpm, last_tick_time, now, look_ahead) => {
+const futureClock = (time_division, bpm, last_tick_time, timing_event_msg) => {
+  let now = view(timing)(timing_event_msg);
+  let look_ahead = view(lookAhead)(timing_event_msg);
   let ms_per_tick = 60000 / (bpm * time_division);
   let look_ahead_end = now + look_ahead;
   let events = [];
   let next_tick_time;
+  let look_ahead_start;
 
   if (last_tick_time === null) {
     // If last_tick_time is null, MIDI clocks start at 0.
     last_tick_time = now;
     next_tick_time = now;
+    look_ahead_start = now;
   } else {
     // If last_tick_time is not null, MIDI clocks start
     // on next ms_per_tick
     next_tick_time = last_tick_time + ms_per_tick;
+    look_ahead_start = last_tick_time + ms_per_tick;
   }
 
   while (next_tick_time < look_ahead_end) {
-    if (last_tick_time === null && next_tick_time >= now + ms_per_tick || last_tick_time !== null && next_tick_time >= last_tick_time) {
-      events.push(set$1(timeStamp)(next_tick_time)(mc()));
+    if (next_tick_time >= look_ahead_start && next_tick_time >= now) {
+      events.push(mc(next_tick_time));
     }
 
     next_tick_time = next_tick_time + ms_per_tick;
   }
 
   if (length(events) > 0) {
-    return [events, view(timeStamp)(last(events))];
+    return [events, view(timeStamp)(last(events)), bpm];
   } else {
-    return [[], last_tick_time];
+    return [[], last_tick_time, bpm];
   }
-}); // ----------------------- MIDI Clock operator ---------------------------
-// Transforms a timer stream to a stream arrays of MIDI Clock messages.
-// Received stream on scan:
-// [[pe, ltt], [[now, la], td, bpm]
-// pe -> past MIDI clock emitted events
-// ltt -> last tick time to continue calculation
-// now -> current time, received from timer
-// la -> look ahead window, received from time
-// td -> as used to calculate MIDI clock events
-// bpm -> desired beats per minute
+}; // ----------------------- MIDI Clock operator ---------------------------
+// Rx operator that transforms timing meta events into MIDI Clock
+// messages. Also recognizes tempo change meta events to modify MIDI 
+// Clock messages rate.
+// Rest of MIDI messages are just forwarded.
 
-const MIDIClock = curry((time_division = 1, bpm = 120, custom_now = asapScheduler.now) => {
-  let timeDivisionSubject = new BehaviorSubject(time_division);
-  let bpmSubject = new BehaviorSubject(bpm);
-  let op = pipe$1(withLatestFrom(timeDivisionSubject, bpmSubject), scan$1(([pe, ltt], [[now, la], td, bpm]) => lookAheadClock(td, bpm, ltt, now, la), [[], null]), map$1(([events, last_tick_time]) => events), filter$1(complement(isEmpty)));
+const clock = (bpm = 120, td
+/* time_division */
+= 24) => pipe$1(scan(([_past_events, ltt
+/* last tick time */
+, bpm, _last_msg], msg) => cond([[isTimingEvent, msg => [...futureClock(td, bpm, ltt, msg), null]], [isTempoChange, msg => [[], ltt, QNPM2BPM(view(tempo)(msg)), null]], [T, msg => [[], ltt, bpm, msg]]])(msg), [[], null, bpm, null]), switchMap(([events, _ltt, _bpm, msg]) => msg === null ? isEmpty(events) ? NEVER : from(events) : of(msg))); // -------------------------- MIDI Transport -----------------------------
+// TODO: What's a transport ? It's something that is able to generate
+// start/pause/continue commands (and maybe respond to them also)
+// and also the song position pointer command.
 
-  op.timeDivision = v => timeDivisionSubject.next(v);
-
-  op.bpm = v => bpmSubject.next(v);
-
+const transport = () => {
+  let op = pipe$1(pausable())();
   return op;
-}); // -------------------------- MIDI Transport -----------------------------
-// TODO: Think how to implement a MIDI Transport.
-// It should allow play/pause/stop, song position and tempo adjustment.
+};
 
-const seemsSequence = allPass([is(Object), has('formatType'), has('timeDivision'), has('tracks'), has('track'), propIs(Array, 'track')]);
-const seemsLoop = both(seemsSequence)(propEq('loop', true)); // -------------------------- Helpers ------------------------------
+const seemsSequence = sequence => allPass([is(Object), has('formatType'), has('timeDivision'), has('tracks'), propIs(Array)('tracks'), propSatisfies(all(is(Array)))('tracks')])(sequence);
+const seemsLoop = sequence => both(seemsSequence)(propEq('loop', true))(sequence); // -------------------------- Helpers ------------------------------
 
-const withAbsoluteDeltaTimes = evolve({
-  track: map(evolve({
-    event: pipe(scan(([tick, _], msg) => [tick + msg.deltaTime, msg])([0, null]), map(([tick, msg]) => msg !== null ? from(mergeLeft({
-      absoluteDeltaTime: tick
-    }, msg)) : null), tail)
-  }))
-});
-const mergeTracks = evolve({
-  tracks: always(1),
-  track: pipe(reduce((acc, v) => concat(acc, v.event), []), map(v => from(v)), objOf('event'), append(__, []))
-});
-const sortEvents = evolve({
-  track: pipe(map(v => pipe(sort((a, b) => a.absoluteDeltaTime - b.absoluteDeltaTime), map(v => from(v)))(v.event)), head, objOf('event'), append(__, []))
-});
+const withAbsoluteDeltaTime = curry((acc_tick, msg) => [acc_tick + msg.deltaTime, assoc('absoluteDeltaTime')(acc_tick + msg.deltaTime)(msg)]);
+const withAbsoluteDeltaTimes = sequence => evolve({
+  tracks: map(pipe(mapAccum(withAbsoluteDeltaTime)(0), last))
+})(sequence);
+const mergeTracks = sequence => evolve({
+  tracks: tracks => [flatten(tracks)]
+})(sequence);
+const sortEvents = sequence => evolve({
+  tracks: tracks => [sortBy(prop$1('absoluteDeltaTime'))(tracks[0])]
+})(sequence); //export const filterTracks =	curry((tracks, sequence) => 
+//  evolve ({
+//    tracks: () => tracks.length,
+//    track: pipe (
+//      addIndex (filter) ((v, k) => tracks.includes (k)),
+//      map (v => objOf ('event', map (from, v.event)))
+//    )
+//  }) (sequence))
+// export const flattenTimestamps = 
+// TODO
 //export let addTrack/s = (midiFile, tracks) => 
 // TODO
 //export let changeTimeDivision = (midiFile, newTimeDivision) =>
 // TODO
 // export let commonTimeDivision = (midiFile1, midiFile2, ...) => 
-// ------------------ MIDI File creation from tracks ---------------------
+// -------------- MIDI Sequence creation from tracks ---------------------
+// TODO: createSequence should allow several tracks at once
 
-const createSequence = (track, timeDivision = 24) => ({
+const createSequence = curry((track, timeDivision) => ({
   formatType: 1,
-  tracks: 1,
   timeDivision: timeDivision,
-  track: [{
-    event: map(from, track)
-  }]
-});
-const createLoop = midifile => ({ ...midifile,
-  loop: true,
-  track: map(pipe(prop$1('event'), map(from), objOf('event')))(midifile.track)
-}); // ---------------------------- Playing MIDI -----------------------------
+  tracks: [track]
+}));
+const createLoop = sequence => assoc('loop')(true)(sequence); // ------------------------ Playing MIDI Sequences -----------------------
+// sequence player must be able to maintain state to not need to 
+// constantly filter everything
 
-const sequencePlayer = midifile => {
-  let playable = pipe(withAbsoluteDeltaTimes, mergeTracks, sortEvents)(midifile);
-  let track = playable.track[0].event;
-  let loop = playable.loop;
-  let maxTick = last(track).absoluteDeltaTime;
-  return (tick, midi_clocks) => slice(0, 2)(reduceWhile(([events, tick, bpm_not_found], midi_clock) => bpm_not_found)(([events, tick, bpm_not_found], midi_clock) => {
-    let tick_events = pipe(filter(e => e.absoluteDeltaTime === tick || loop && e.absoluteDeltaTime === tick % maxTick), map(set$1(timeStamp)(midi_clock.timeStamp)))(track);
-    return [concat(events, tick_events), loop ? (tick + 1) % maxTick : tick + 1, isEmpty(filter(isTempoChange)(tick_events))];
-  })([[], tick, true])(midi_clocks));
+const prepareSequence = sequence => pipe(withAbsoluteDeltaTimes, mergeTracks, sortEvents)(sequence); // TODO: Important having loops into account !!!!
+
+const sequencePlayer = sequence => (currentAbsoluteDeltaTime, playable) => now => {
+  // TODO: Filter first events if playable is null and
+  // currentAbsoluteDeltaTime is not 0
+  if (playable === undefined || playable === null) {
+    playable = prepareSequence(sequence);
+  }
+
+  let events = splitWhen(e => e.absoluteDeltaTime > currentAbsoluteDeltaTime)(playable.tracks[0]);
+  return [currentAbsoluteDeltaTime + 1, createSequence(events[1])(playable.timeDivision), map(set$1(timeStamp)(now))(events[0])];
 };
-const player = midifile => {
-  let player = sequencePlayer(midifile);
-  return pipe$1(scan$1(([events, tick], midi_clocks) => player(tick, midi_clocks), [null, 0]), map$1(([events, tick]) => events));
-};
-const play = midifile => {
-  let t = createTimer();
-  let clock = MIDIClock(midifile.timeDivision, 30);
-  return t.pipe(clock, player(midifile), tap(events => forEach(m => clock.bpm(QNPM2BPM(m.data[0])))(filter(isTempoChange)(events))));
-};
-const QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
+const player = sequence => {
+  let seqPlayer = sequencePlayer(sequence);
+  return pipe$1( // TODO: player should respond to start, continue and stop !
+  scan(([currentTick, playable, _events], msg) => isMIDIClock(msg) ? seqPlayer(currentTick, playable)(view(timeStamp)(msg)) : [currentTick, playable, [msg]], [0, null, null]), mergeMap(([_dt, _s, events]) => isEmpty(events) ? NEVER : from(events)));
+}; //export const play = (midifile) => {
+//    let t = timer ()
+//    let clock = clock (30, midifile.timeDivision)
+//
+//    return t.pipe (
+//      clock,
+//      player (midifile),
+//      rxo_tap ((events) => 
+//        forEach ((m) => clock.bpm (QNPM2BPM (m.data [0])))
+//                (filter (isTempoChange) (events)))
+//    )
+//  }
+//  
+//export const QNPM2BPM = (qnpm) => 60 * 1000000 / qnpm
+//
 
 const mpeNote = msg => ({
   note: view(note)(msg),
@@ -6196,7 +6035,7 @@ const channelByKeyRange = keyRanges => mpeZone => msg => {
   return path([0, 'channel'])(sort(byNotesAndWeight)(map(addNotes(notesPerChannel(mpeZone)))(filter(noteInRange(msg_note))(keyRanges))));
 }; // ------------------ Transform non-mpe data to mpe ----------------------
 
-const toMPE = curry((m, c, findChannel = leastNotesPerChannel) => pipe$1(scan$1(([z, _], msg) => {
+const toMPE = curry((m, c, findChannel = leastNotesPerChannel) => pipe$1(scan(([z, _], msg) => {
   if (isNoteOn(msg)) {
     let ch = findChannel(z)(msg);
     let mod_msg = set(channel)(ch)(msg);
@@ -6854,7 +6693,7 @@ const input = (n = '') => n === 'dummy' ? inputFrom() : head(pipe(filter(([id, i
 // - array of MIDIMessage objects
 // - observable emitting any of the above
 
-const send = sendfn => msg => seemsArrayOfMIDIMessages(msg) ? forEach(m => sendfn(m.data, m.timeStamp))(msg) : seemsMessage(msg) ? sendfn(msg.data, msg.timeStamp) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
+const send = sendfn => msg => seemsMessage(msg) ? sendfn(msg.data, msg.timeStamp) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
 // returns send function instantiated with selected output.
 // Some properties are added for inspection purposes.
 
@@ -6902,41 +6741,38 @@ const output = (n = '') => n === 'dummy' ? outputFrom() : head(pipe(map(([k, v])
 //
 // Returns a promise that returns parsed MIDI file as object.
 
+const convertFromMidiParser = midifile => ({
+  formatType: midifile.formatType,
+  timeDivision: midifile.timeDivision,
+  tracks: map(map(e => {
+    e.timeStamp = 0;
+
+    if (e.type > 7 && e.type < 14) {
+      if (is(Array)(e.data)) {
+        e.data = [(e.type << 4) + e.channel, ...e.data];
+      } else {
+        e.data = [(e.type << 4) + e.channel, e.data];
+      }
+
+      e.type = 'midimessage';
+    } else if (e.type === 255) {
+      e.type = 'metaevent';
+      e.data = [e.data];
+    }
+
+    return e;
+  }))(map(prop$1('event'))(midifile.track))
+});
 const loadMIDIFile = () => {
   let input_file_element = document.createElement('input');
   let type = document.createAttribute('type');
   type.value = 'file';
   input_file_element.setAttributeNode(type);
-  let promise = new Promise((s, r) => _MidiParser.parse(input_file_element, o => {
-    // Convert data from each event to a format compatible
-    // with rest of library
-    for (let t of o.track) {
-      for (let e of t.event) {
-        e.timeStamp = 0;
-
-        if (e.type > 7 && e.type < 14) {
-          if (e.data instanceof Array) {
-            e.data = [(e.type << 4) + e.channel, ...e.data];
-          } else {
-            e.data = [(e.type << 4) + e.channel, e.data];
-          }
-
-          e.type = 'midimessage';
-        } else if (e.type === 255) {
-          e.type = 'metaevent';
-          e.data = [e.data];
-        }
-      }
-    }
-
-    return s(o);
-  }));
+  let promise = new Promise((solve, reject) => _MidiParser.parse(input_file_element, midifile => solve(convertFromMidiParser(midifile))));
   input_file_element.click();
   return promise;
 };
 
-const version = '1.0.43'; //// --------------------- Other utilities -------------------------
+const version = '1.0.47';
 
-const midiToHzs = (n, tuning = 440) => tuning / 32 * Math.pow((n - 9) / 12, 2);
-
-export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, MIDIClock, P1, P4, P5, P8, QNPM2BPM, TT, as, asNoteOff, asNoteOn, byteEq, byteEqBy, cc, channel, channelByKeyRange, cont, control, controlEq, cp, createLoop, createSequence, createTimer, dataEq, dataEqBy, deltaTime, e, et, from, getPatternEvents, getPatternTimeDivision, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, m2, m3, m6, m7, mc, metaTypeEq, midiToHzs, mpeNote, mpeZone, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage, program, programEq, q, root, rpn, rst, s, seemsActiveNote, seemsArrayOfMIDIMessages, seemsLoop, seemsMIDIMetaEvent, seemsMessage, seemsMessageAsArray, seemsSequence, sequencePlayer, spp, ss, st, start, stop, syx, tc, timeStamp, tun, value, valueEq, velocity, velocityEq, version, w };
+export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, channel, channelByKeyRange, clock, cont, control, controlEq, convertFromMidiParser, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, from$1 as from, getPatternEvents, getPatternTimeDivision, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, m2, m3, m6, m7, mc, meta, metaTypeEq, mpeNote, mpeZone, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, player, pp, prepareSequence, pressure, pressureEq, processMessage, program, programEq, q, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsMessageAsArray, seemsMetaEvent, seemsSequence, sequencePlayer, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeStamp, timer$1 as timer, timing, timingEvent, transport, tun, value, valueEq, velocity, velocityEq, version, w };

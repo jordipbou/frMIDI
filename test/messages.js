@@ -1,6 +1,6 @@
 const test = require ('ava')
 import {
-    as, cc, cont, cp, from, mc, msg, nrpn, off, on, 
+    as, cc, cont, cp, from, meta, mc, msg, nrpn, off, on, 
     pb, pc, pp, rpn, rst, spp, ss, start, stop, tc, tun, syx
   } from '../src/messages'
 import {
@@ -18,7 +18,7 @@ import { allPass, both, set } from 'ramda'
 
 // =================== MIDI Message creation =======================
 
-test ('MIDI Message creation', t => {
+test ('MIDI Message creation', (t) => {
   t.deepEqual (
     msg ([145, 64, 96]), 
     { type: 'midimessage',
@@ -41,7 +41,7 @@ test ('MIDI Message creation', t => {
       data: [145, 64, 96]})
 })
 
-test ('MIDI Message cloning', t => {
+test ('MIDI Message cloning', (t) => {
   let msgs = [ msg ([248]), msg ([144, 64, 96])]
   let combine = from (msgs)
 
@@ -54,7 +54,7 @@ test ('MIDI Message cloning', t => {
 
 // -------------- Channel Voice messages generation ----------------
 
-test ('Note Off message creation', t => {
+test ('Note Off message creation', (t) => {
   let preds = (n, v, ch) => 
     [isNoteOff, noteEq (n), velocityEq (v), isOnChannel (ch)]
 
@@ -65,7 +65,7 @@ test ('Note Off message creation', t => {
   t.true (allPass (preds (64, 96, 0)) (off ()))
 })
 
-test ('Note On message creation', t => {
+test ('Note On message creation', (t) => {
   let preds = (n, v, ch) => 
     [isNoteOn, noteEq (n), velocityEq (v), isOnChannel (ch)]
 
@@ -76,7 +76,7 @@ test ('Note On message creation', t => {
   t.true (allPass (preds (64, 96, 0)) (on ()))
 })
 
-test ('Poly Pressure message creation', t => {
+test ('Poly Pressure message creation', (t) => {
   let preds = (n, v, ch) => 
     [isPolyPressure, noteEq (n), 
      pressureEq (v), isOnChannel (ch)]
@@ -88,7 +88,7 @@ test ('Poly Pressure message creation', t => {
   t.true (allPass (preds (64, 96, 0)) (pp ()))
 })
 
-test ('Control Change message creation', t => {
+test ('Control Change message creation', (t) => {
   let preds = (n, v, ch) => 
     [isControlChange, controlEq (n), 
      valueEq (v), isOnChannel (ch)]
@@ -100,7 +100,7 @@ test ('Control Change message creation', t => {
   t.true (allPass (preds (32, 127, 0)) (cc (32)))
 })
 
-test ('Program Change message creation', t => {
+test ('Program Change message creation', (t) => {
   let preds = (p, ch) => 
     [isProgramChange, programEq (p), isOnChannel (ch)]
 
@@ -110,7 +110,7 @@ test ('Program Change message creation', t => {
   t.true (allPass (preds (0 ,0)) (pc ()))
 })
 
-test ('Channel Pressure message creation', t => {
+test ('Channel Pressure message creation', (t) => {
   let preds = (p, ch) =>
     [isChannelPressure, pressureEq (p), isOnChannel (ch)]
 
@@ -120,7 +120,7 @@ test ('Channel Pressure message creation', t => {
   t.true (allPass (preds (96, 0)) (cp ()))
 })
 
-test ('Pitch Bend message creation', t => {
+test ('Pitch Bend message creation', (t) => {
   let preds = (pb, ch) =>
     [isPitchBend, pitchBendEq (pb), isOnChannel (ch)]
 
@@ -130,7 +130,7 @@ test ('Pitch Bend message creation', t => {
   t.true (allPass (preds (8192, 0)) (pb ()))
 })
 
-test ('RPN message creation', t => {
+test ('RPN message creation', (t) => {
   let preds = (n, v, ch) =>
     [isRPN, isOnChannel (ch)]
 
@@ -140,7 +140,7 @@ test ('RPN message creation', t => {
   t.true (allPass (preds (0, 8192, 0)) (rpn ()))
 })
 
-test ('NRPN message creation', t => {
+test ('NRPN message creation', (t) => {
   let preds = (n, v, ch) =>
     [isNRPN, isOnChannel (ch)]
 
@@ -152,7 +152,7 @@ test ('NRPN message creation', t => {
 
 // --------- Channel Voice messages modification helpers -----------
 
-test ('Change channel modification helper', t => {
+test ('Change channel modification helper', (t) => {
   let msg = on (64)
 
   t.true (isOnChannel (0) (msg))
@@ -161,7 +161,7 @@ test ('Change channel modification helper', t => {
 
 // -------------- System common messages generation ----------------
 
-test ('System Common messages creation', t => {
+test ('System Common messages creation', (t) => {
   t.true (isSystemExclusive (syx ([0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41])))
   t.true (isMIDITimeCodeQuarterFrame (tc (12, 48)))
   t.true (isSongPositionPointer (spp (100)))
@@ -171,7 +171,7 @@ test ('System Common messages creation', t => {
 
 // ------------ System Real Time messages generation ---------------
 
-test ('System Real Time messages creation', t => {
+test ('System Real Time messages creation', (t) => {
   t.true (isMIDIClock (mc ()))
   t.true (isStart (start ()))
   t.true (isContinue (cont ()))
@@ -180,6 +180,28 @@ test ('System Real Time messages creation', t => {
   t.true (isReset (rst ()))
 })
 
-//test ('Panic message creation', t => {
+//test ('Panic message creation', (t) => {
 //  // TODO: Useful having parsing for implementing this one
 //})
+
+test ('MIDI File Meta Event message creation', (t) => {
+  t.deepEqual (
+    meta (88, [4, 2, 48, 8]),
+    { 
+      type: 'metaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: 88,
+      data: [ 4, 2, 48, 8 ]
+    })
+
+  t.deepEqual (
+    meta (88, 96),
+    {
+      type: 'metaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: 88,
+      data: [96]
+    })
+})

@@ -20,10 +20,6 @@ export const seemsMessage = (msg) =>
             propEq ('type', 'midimessage'),
             propSatisfies (seemsMessageAsArray, 'data')]) (msg)
 
-export const seemsArrayOfMIDIMessages =
-  both (is (Array))
-       (all (seemsMessage))
-
 // -------- Utilities for comparing MIDI messages byte array values ------
 
 export const dataEq = curry ((data, msg) =>
@@ -282,7 +278,7 @@ export const isActiveSensing = (msg) =>
 // Events are several bytes long. It's not possible to
 // differentiate them based on first byte, it's the
 // programmer responsability to only use isReset outside
-// MIDI Files and seemsMIDIMetaEvent inside MIDI Files.
+// MIDI Files and seemsMetaEvent inside MIDI Files.
 export const isReset = (msg) =>
   both (seemsMessage)
        (dataEq ([255]))
@@ -292,7 +288,7 @@ export const isReset = (msg) =>
 // ------------------ MIDI File Meta Events predicates -------------------
 
 // TODO: Check that length is correct !!!
-export const seemsMIDIMetaEvent = (msg) =>
+export const seemsMetaEvent = (msg) =>
   allPass ([is (Object),
             propEq ('type', 'metaevent'),
             has ('metaType'),
@@ -300,9 +296,12 @@ export const seemsMIDIMetaEvent = (msg) =>
           (msg)
 
 export const metaTypeEq = curry ((type, msg) => 
-  seemsMIDIMetaEvent (msg) ?
+  seemsMetaEvent (msg) ?
     propEq ('metaType') (type) (msg)
     : false)
 
 export const isTempoChange = (msg) =>
   metaTypeEq (81) (msg)
+
+export const isTimingEvent = (msg) =>
+  metaTypeEq (96) (msg)

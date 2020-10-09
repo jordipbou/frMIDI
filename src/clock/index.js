@@ -1,1 +1,5 @@
-export { createTimer, MIDIClock } from './clock.js' 
+export { 
+    timer, 
+    clock, 
+    transport 
+  } from './clock.js' 

@@ -1,78 +1,78 @@
-import { isTempoChange } from '../predicates'
+import { isMIDIClock, isTempoChange } from '../predicates'
 import { from } from '../messages'
 import { timeStamp } from '../lenses'
-import { createTimer, MIDIClock } from '../clock'
-import { pipe as rx_pipe } from 'rxjs'
+import { timer, clock } from '../clock'
 import { 
-    map as rxo_map, tap as rxo_tap, scan as rxo_scan 
+   from as rx_from, NEVER as rx_NEVER, pipe as rx_pipe 
+ } from 'rxjs'
+import { 
+    map as rxo_map, 
+    mergeMap as rxo_mergeMap,
+    tap as rxo_tap, 
+    scan as rxo_scan,
+    switchMap as rxo_switchMap
   } from 'rxjs/operators'
 import {
-    __, addIndex, always, allPass, append, assoc, both, concat, 
-    either, evolve, filter, forEach, has, head, is, isEmpty, last,
-    map, mergeLeft, objOf, pipe, prop, propIs, propEq, reduce, 
-    reduceWhile, scan, set, slice, sort, tail
+    __, addIndex, always, all, allPass, append, assoc, both, 
+    clone, concat, curry,
+    either, evolve, filter, flatten, forEach, 
+    has, head, is, isEmpty, last,
+    map, mapAccum, mergeLeft, objOf, 
+    pipe, prop, propIs, propEq, propSatisfies,
+    reduce, reduceWhile, scan, set, slice, sort, sortBy, splitWhen,
+    tail, view
   } from 'ramda'
 
 // ------------------------- Predicates ----------------------------
 
-export const seemsSequence =
+export const seemsSequence = (sequence) =>
   allPass ([is (Object),
             has ('formatType'),
             has ('timeDivision'),
             has ('tracks'),
-            has ('track'),
-            propIs (Array, 'track')])
+            propIs (Array) ('tracks'),
+            propSatisfies (all (is (Array))) ('tracks')])
+          (sequence)
 
-export const seemsLoop =
+export const seemsLoop = (sequence) =>
   both (seemsSequence)
        (propEq ('loop', true))
+       (sequence)
 
 // -------------------------- Helpers ------------------------------
 
-export const withAbsoluteDeltaTimes =
-  evolve ({
-    track: map (
-      evolve ({
-        event: pipe (
-          scan
-            (([tick, _], msg) => [tick + msg.deltaTime, msg])
-            ([0, null]),
-          map
-            (([tick, msg]) =>
-              msg !== null ?
-                from (mergeLeft ({ absoluteDeltaTime: tick }, msg))
-                : null),
-              tail)}))})
+export const withAbsoluteDeltaTime = curry ((acc_tick, msg) =>
+  [
+    acc_tick + msg.deltaTime,
+    assoc ('absoluteDeltaTime') (acc_tick + msg.deltaTime) (msg)
+  ]
+)
 
-export const mergeTracks =
+export const withAbsoluteDeltaTimes = (sequence) => 
   evolve ({
-    tracks: always (1),
-    track: pipe (
-      reduce ((acc, v) => concat(acc, v.event), []),
-      map (v => from (v)),
-      objOf ('event'),
-      append (__, []))})
+    tracks: map (pipe (mapAccum (withAbsoluteDeltaTime) (0), last))
+  }) (sequence)
 
-export const sortEvents =
-    evolve ({
-  track: pipe (
-    map (v =>
-      pipe (
-        sort ((a, b) => a.absoluteDeltaTime - b.absoluteDeltaTime),
-        map (v => from (v))
-      )(v.event)),
-    head,
-    objOf ('event'),
-    append (__, []))})
-
-export const filterTracks =	(tracks, midiFile) => 
+export const mergeTracks = (sequence) =>
   evolve ({
-    tracks: () => tracks.length,
-    track: pipe (
-        addIndex (filter) ((v, k) => tracks.includes (k)),
-        map (v => objOf ('event', map (from, v.event)))
-      )
-    }, midiFile)
+    tracks: (tracks) => [flatten (tracks)]
+  }) (sequence)
+    
+export const sortEvents = (sequence) =>
+  evolve ({
+    tracks: (tracks) => [sortBy (prop ('absoluteDeltaTime')) (tracks [0])]
+  }) (sequence)
+
+//export const filterTracks =	curry((tracks, sequence) => 
+//  evolve ({
+//    tracks: () => tracks.length,
+//    track: pipe (
+//      addIndex (filter) ((v, k) => tracks.includes (k)),
+//      map (v => objOf ('event', map (from, v.event)))
+//    )
+//  }) (sequence))
+
+// export const flattenTimestamps = 
 
 // TODO
 //export let addTrack/s = (midiFile, tracks) => 
@@ -83,86 +83,80 @@ export const filterTracks =	(tracks, midiFile) =>
 // TODO
 // export let commonTimeDivision = (midiFile1, midiFile2, ...) => 
 
-// ------------------ MIDI File creation from tracks ---------------------
+// -------------- MIDI Sequence creation from tracks ---------------------
 
-export const createSequence = (track, timeDivision = 24) => ({
+// TODO: createSequence should allow several tracks at once
+
+export const createSequence = curry ((track, timeDivision) => ({
   formatType: 1,
-  tracks: 1,
   timeDivision: timeDivision,
-  track: [{ event: map (from, track) }]
-})
+  tracks: [track]
+}))
 
-export const createLoop =	(midifile) => ({
-  ...midifile,
-  loop: true,
-  track: map (
-    pipe (
-      prop ('event'),
-      map (from),
-      objOf ('event')
-    )
-  ) (midifile.track)
-})
+export const createLoop =	(sequence) => 
+  assoc ('loop') (true) (sequence)
 
-// ---------------------------- Playing MIDI -----------------------------
+// ------------------------ Playing MIDI Sequences -----------------------
 
-export const sequencePlayer = (midifile) => {
-  let playable = pipe (
+// sequence player must be able to maintain state to not need to 
+// constantly filter everything
+export const prepareSequence = (sequence) =>
+  pipe (
     withAbsoluteDeltaTimes,
     mergeTracks,
     sortEvents
-  ) (midifile)
+  ) (sequence)
 
-  let track = playable.track [0].event
-  let loop = playable.loop
-  let maxTick = last (track).absoluteDeltaTime
+// TODO: Important having loops into account !!!!
+export const sequencePlayer = (sequence) => 
+  (currentAbsoluteDeltaTime, playable) => 
+    (now) => {
+      // TODO: Filter first events if playable is null and
+      // currentAbsoluteDeltaTime is not 0
+      if (playable === undefined || playable === null) {
+        playable = prepareSequence (sequence)
+      }
 
-  return (tick, midi_clocks) => 
-    slice 
-      (0, 2)
-      (reduceWhile 
-        (([events, tick, bpm_not_found], midi_clock) => bpm_not_found)
-        (([events, tick, bpm_not_found], midi_clock) => {
-          let tick_events = pipe (
-            filter (e => 
-              e.absoluteDeltaTime === tick ||
-              (loop &&  e.absoluteDeltaTime === (tick % maxTick))),
-            map (set (timeStamp) (midi_clock.timeStamp)),
-          ) (track)
+      let events = 
+        splitWhen ((e) => e.absoluteDeltaTime > currentAbsoluteDeltaTime)
+                  (playable.tracks [0])
 
-          return [
-            concat (events, tick_events), 
-            loop ? (tick + 1) % maxTick : tick + 1,
-            isEmpty (filter (isTempoChange) (tick_events))
-          ]
-        })
-        ([[], tick, true])
-        (midi_clocks))
-}
+      return [
+        currentAbsoluteDeltaTime + 1,
+        createSequence (events [1]) (playable.timeDivision),
+        map (set (timeStamp) (now)) (events [0])
+      ]
+    }
 
-export const player = (midifile) => {
-  let player = sequencePlayer (midifile)
+export const player = (sequence) => {
+  let seqPlayer = sequencePlayer (sequence)
 
   return rx_pipe (
-    rxo_scan (
-      ([events, tick], midi_clocks) => player (tick, midi_clocks), 
-      [null, 0]),
-    rxo_map (([events, tick]) => events)
+    // TODO: player should respond to start, continue and stop !
+    rxo_scan (([currentTick, playable, _events], msg) => 
+      isMIDIClock (msg) ?
+        seqPlayer (currentTick, playable) (view (timeStamp) (msg))
+        : [currentTick, playable, [msg]]
+    , [0, null, null]),
+    rxo_mergeMap (([_dt, _s, events]) => 
+      isEmpty (events) ?
+        rx_NEVER
+        : rx_from (events))
   )
 }
 
-export const play = (midifile) => {
-    let t = createTimer ()
-    let clock = MIDIClock (midifile.timeDivision, 30)
-
-    return t.pipe (
-      clock,
-      player (midifile),
-      rxo_tap ((events) => 
-        forEach ((m) => clock.bpm (QNPM2BPM (m.data [0])))
-                (filter (isTempoChange) (events)))
-    )
-  }
-  
-export const QNPM2BPM = (qnpm) => 60 * 1000000 / qnpm
-
+//export const play = (midifile) => {
+//    let t = timer ()
+//    let clock = clock (30, midifile.timeDivision)
+//
+//    return t.pipe (
+//      clock,
+//      player (midifile),
+//      rxo_tap ((events) => 
+//        forEach ((m) => clock.bpm (QNPM2BPM (m.data [0])))
+//                (filter (isTempoChange) (events)))
+//    )
+//  }
+//  
+//export const QNPM2BPM = (qnpm) => 60 * 1000000 / qnpm
+//

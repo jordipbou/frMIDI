@@ -133,11 +133,6 @@ test ('Send function', (t) => {
   send (output.send) (on (65))
   t.deepEqual (midi_output, [[144, 65, 96]])
 
-  // Sending array of midi messages as objects
-  midi_output = []
-  send (output.send) ([on (67), off (67)])
-  t.deepEqual (midi_output, [[144, 67, 96], [128, 67, 96]])
-
   // Sending (subscribing to) an observable
   let s = new Subject ()
   let sx = send (output.send) (s)
@@ -168,3 +163,4 @@ test ('Output instantiation', async (t) => {
   t.deepEqual (midi_output, [[144, 64, 96], [128, 64, 96]])
   t.deepEqual (alt_midi_output, [off (64)])
 })
+

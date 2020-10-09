@@ -3,6 +3,7 @@ export {
     logPorts,
     input,
     output,
+    convertFromMidiParser,
     loadMIDIFile
   } from './io.js'
 

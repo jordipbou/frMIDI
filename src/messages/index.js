@@ -1,5 +1,5 @@
 export {
-    // ----------------------------------- MIDI Message creation utilities
+    // ============================ Generic MIDI Message creation utilities
     msg,
     from,
     // ================================= Standard MIDI Messages definition 
@@ -27,4 +27,9 @@ export {
     as,
     rst,
     panic,
- } from './messages.js'
+    // ========================== MIDI File Meta Event messages generation
+    meta,
+    tempoChange,
+    bpmChange,
+    timingEvent
+  } from './messages.js'

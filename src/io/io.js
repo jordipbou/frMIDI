@@ -1,19 +1,16 @@
 import * as rx from 'rxjs'
 import * as rxo from 'rxjs/operators'
 import { 
-    bind, complement, cond, curry, filter, forEach, 
+    bind, complement, cond, curry, evolve,
+    filter, forEach, 
     head, is, isEmpty, last, 
     map, pipe, prop, propEq
   } from 'ramda'
 import { 
-    seemsArrayOfMIDIMessages, seemsMessage, isTempoChange
+    seemsMessage, isTempoChange
   } from '../predicates'
 import { msg, from } from '../messages'
-import { sequencePlayer, QNPM2BPM } from '../sequences'
 import { 
-    MidiParser 
-  } from '../../node_modules/midi-parser-js/src/midi-parser.js'
-export { 
     MidiParser 
   } from '../../node_modules/midi-parser-js/src/midi-parser.js'
 
@@ -125,13 +122,11 @@ export const input = (n = '') =>
 // - observable emitting any of the above
 
 export const send = (sendfn) => (msg) => 
-  seemsArrayOfMIDIMessages (msg) ?
-    forEach (m => sendfn (m.data, m.timeStamp)) (msg)
-    : seemsMessage (msg) ?
-      sendfn (msg.data, msg.timeStamp)
-      : is (rx.Observable) (msg) ?
-        msg.subscribe (send (sendfn))
-        : null
+  seemsMessage (msg) ?
+    sendfn (msg.data, msg.timeStamp)
+    : is (rx.Observable) (msg) ?
+      msg.subscribe (send (sendfn))
+      : null
 
 // Sends first output that matches indicated name as argument and
 // returns send function instantiated with selected output.
@@ -181,6 +176,36 @@ export const output = (n = '') =>
 //
 // Returns a promise that returns parsed MIDI file as object.
 
+export const convertFromMidiParser = (midifile) => ({
+  formatType: midifile.formatType, 
+  timeDivision: midifile.timeDivision,
+  tracks: 
+    map 
+      (map 
+        ((e) => {
+          e.timeStamp = 0
+          if (e.type > 7 && e.type < 14) {
+            if (is (Array) (e.data)) {
+              e.data = [
+                (e.type << 4) + e.channel,
+                ...e.data
+              ]
+            } else {
+              e.data = [
+                (e.type << 4) + e.channel,
+                e.data
+              ]
+            }
+            e.type = 'midimessage'
+          } else if (e.type === 255) {
+            e.type = 'metaevent'
+            e.data = [ e.data ]
+          }
+
+          return e }))
+      (map (prop ('event')) (midifile.track))
+})
+
 export const loadMIDIFile =	() => {
   let input_file_element = document.createElement ('input')
   let type = document.createAttribute ('type')
@@ -188,29 +213,11 @@ export const loadMIDIFile =	() => {
   input_file_element.setAttributeNode (type)
 
 	let promise = 
-		new Promise((s, r) => 
-			MidiParser.parse(input_file_element, o => { 
-				// Convert data from each event to a format compatible
-				// with rest of library
-				for (let t of o.track) {
-					for (let e of t.event) {
-						e.timeStamp = 0
-						if (e.type > 7 && e.type < 14) {
-							if (e.data instanceof Array) {
-								e.data = [(e.type << 4) + e.channel, ...e.data]
-							} else {
-								e.data = [(e.type << 4) + e.channel, e.data]
-							}
-							e.type = 'midimessage'
-						} else if (e.type === 255) {
-							e.type = 'metaevent'
-              e.data = [ e.data ]
-						}
-					}
-				}
-
-				return s (o)
-			}))
+		new Promise((solve, reject) => 
+			MidiParser.parse(
+        input_file_element, 
+        midifile => solve (convertFromMidiParser (midifile))
+      ))
 
 	input_file_element.click()
 

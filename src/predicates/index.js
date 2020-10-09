@@ -2,7 +2,6 @@ export {
     // ----------------------- Generic functions to validate MIDI messages
     seemsMessageAsArray,
     seemsMessage,
-    seemsArrayOfMIDIMessages, // TODO: Change name to seemsArrayOfMessages
     // ----------- Utilities for comparing MIDI messages byte array values
     dataEq,
     byteEq,
@@ -67,7 +66,8 @@ export {
     isActiveSensing,
     isReset,
     // ---------------------------------- MIDI File Meta Events predicates
-    seemsMIDIMetaEvent, // TODO: Change name to seemsMetaEvent
+    seemsMetaEvent, // TODO: Change name to seemsMetaEvent
     metaTypeEq,
-    isTempoChange
+    isTempoChange,
+    isTimingEvent
   } from './predicates.js'

@@ -2,6 +2,8 @@
 
 Timing on frMIDI is based around MIDI timing messages. This allows using frMIDI as MIDI master clock or as MIDI clock receiver.
 
+
+
 ## Architecture
 
 frMIDI separates timing into 3 parts:

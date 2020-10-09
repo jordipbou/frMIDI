@@ -166,6 +166,10 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.0.47 [2020/10/09] - Correction on previous upload.
+* 1.0.46 [2020/10/09] - LoadMIDIFile was not setting type as 'midimessage' on conversion. (sequence) player working (but not for loops).
+* 1.0.45 [2020/10/08] - Forgot timeDivision on MIDI File.
+* 1.0.44 [2020/10/08] - In the process of rewriting sequence stuff, modified loadMidiFile to adapt format to new sequence format. Removed the possibility of using arrays of messages.
 * 1.0.43 [2020/10/05] - Big refactor. Some modules moved to its own directory, this way it will be possible to export functions for testing but don't export for public API. Everything related to MIDI File refactored to Sequence.
 * 1.0.42 [2020/10/04] - Moved clock functions from helper to clock.js. Added tests for rxjs based code. Reworked lookAheadClock.
 * 1.0.41 [2020/09/30] - Added playMIDIFile function.

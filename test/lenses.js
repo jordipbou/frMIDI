@@ -1,11 +1,11 @@
 const test = require ('ava')
 import { add, gt, lt, view, set, over } from 'ramda'
 import { 
-  cc, cp, mc, off, on, pb, pp 
+  cc, cp, mc, off, on, pb, pp, tempoChange
 } from '../src/messages'
 import { 
   channel, control, deltaTime, lensP, note, 
-  pitchBend, pressure, timeStamp, velocity
+  pitchBend, pressure, timeStamp, tempo, velocity
 } from '../src/lenses/lenses.js'
 
 // TODO: Test getByte, setByte and lensWhen
@@ -98,4 +98,17 @@ test ('lens predicates', (t) => {
   t.true (lensP (velocity, gt, 64) (on (54, 96)))
   t.true (lensP (velocity, lt, 100) (on (54, 96)))
   t.false (lensP (velocity, lt, 64) (on (54, 96)))
+})
+
+test ('tempo change message: tempo lens', (t) => {
+  t.is (view (tempo) (tempoChange (59800)), 59800)
+  t.is (view (tempo) (on (64)), undefined)
+
+  t.deepEqual (set (tempo) (32000) (tempoChange (59800)),
+               tempoChange (32000))
+  t.deepEqual (set (tempo) (32000) (on (64)), on (64))
+
+  t.deepEqual (over (tempo) (add (200)) (tempoChange (59800)),
+               tempoChange (60000))
+  t.deepEqual (over (tempo) (add (200)) (on (64)), on (64))
 })

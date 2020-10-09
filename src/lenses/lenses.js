@@ -2,7 +2,8 @@ import {
     isChannelMessage, isControlChange,
     isPitchBend, isPolyPressure, isProgramChange,
     hasNote, hasPressure, hasVelocity,
-    seemsMessage
+    seemsMessage,
+    isTempoChange, isTimingEvent
   } from '../predicates'
 import { 
     assoc, curry, evolve, ifElse, lens,
@@ -11,10 +12,10 @@ import {
 
 // ---------------- Generic property modification helpers ----------------
 
-export const getByte = curry ((n, msg) =>
+export const getData = curry ((n, msg) =>
   msg.data [n])
 
-export const setByte = curry ((n, v, msg) => 
+export const setData = curry ((n, v, msg) => 
   evolve ({
     data: ((d) => [...slice (0, n, d), v, ...slice (n + 1, Infinity, d)])
   }) (msg))
@@ -41,39 +42,55 @@ export const deltaTime =
            (prop ('deltaTime'))
            (assoc ('deltaTime'))
 
+export const absoluteDeltaTime =
+  lensWhen (seemsMessage)
+           (prop ('absoluteDeltaTime'))
+           (assoc ('absoluteDeltaTime'))
+
 export const channel =
   lensWhen (isChannelMessage) 
-           ((m) => getByte (0) (m) & 0xF)
-           ((v, m) => setByte (0) ((getByte (0, m) & 0xF0) + v) (m))
+           ((m) => getData (0) (m) & 0xF)
+           ((v, m) => setData (0) ((getData (0, m) & 0xF0) + v) (m))
 
 export const note =
-  lensWhen (hasNote) (getByte (1)) (setByte (1))
+  lensWhen (hasNote) (getData (1)) (setData (1))
 
 export const velocity =
-  lensWhen (hasVelocity) (getByte (2)) (setByte (2))
+  lensWhen (hasVelocity) (getData (2)) (setData (2))
 
 export const pressure =
   lensWhen (hasPressure)
-           (ifElse (isPolyPressure) (getByte (2)) (getByte (1)))
+           (ifElse (isPolyPressure) (getData (2)) (getData (1)))
            ((v, m) => isPolyPressure (m) ?
-                        setByte (2) (v) (m)
-                        : setByte (1) (v) (m))
+                        setData (2) (v) (m)
+                        : setData (1) (v) (m))
 
 export const control =
-  lensWhen (isControlChange) (getByte (1)) (setByte (1))
+  lensWhen (isControlChange) (getData (1)) (setData (1))
 
 export const value =
-  lensWhen (isControlChange) (getByte (2)) (setByte (2))
+  lensWhen (isControlChange) (getData (2)) (setData (2))
 
 export const program =
-  lensWhen (isProgramChange) (getByte (1)) (setByte (1))
+  lensWhen (isProgramChange) (getData (1)) (setData (1))
 
 export const pitchBend =
   lensWhen (isPitchBend)
-           ((m) => (getByte (2) (m) << 7) + getByte (1) (m))
-           ((v, m) => setByte (1) (v & 0x7F) (setByte (2) (v >> 7) (m)))
+           ((m) => (getData (2) (m) << 7) + getData (1) (m))
+           ((v, m) => setData (1) (v & 0x7F) (setData (2) (v >> 7) (m)))
 
 // ----------------------- Predicate helpers -----------------------------
 
 export const lensP = curry((lens, pred, v) => 
   (msg) => pred (view (lens) (msg)) (v))  
+
+// ------------ Lenses for MIDI File and frMIDI Meta events --------------
+
+export const tempo =
+  lensWhen (isTempoChange) (getData (0)) (setData (0))
+
+export const timing =
+  lensWhen (isTimingEvent) (getData (0)) (setData (0))
+
+export const lookAhead =
+  lensWhen (isTimingEvent) (getData (1)) (setData (1))

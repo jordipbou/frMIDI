@@ -1,3 +1,4 @@
+import { BPM2QNPM, frNow } from '../utils.js'
 import { 
     assoc, clone, curry, flatten, head, is, 
     map, prop, tail
@@ -12,7 +13,7 @@ export const msg = (data, timeStamp = 0, deltaTime = 0) =>
 	type: 'midimessage', 
 	timeStamp: timeStamp,
 	deltaTime: deltaTime,
-	data: [ ...data ],
+	data: [ ...data ]
 })
 
 export const from = (msg) =>
@@ -118,3 +119,24 @@ export const panic = (ts = 0, dt = 0) =>
 
 	return from (panic_msgs)
 }
+
+// ================= MIDI File Meta Events generation ====================
+
+export const meta = (metaType, data, timeStamp = 0, deltaTime = 0) => 
+({ 
+	type: 'metaevent', 
+	timeStamp: timeStamp,
+	deltaTime: deltaTime,
+  metaType: metaType,
+	data: is (Array) (data) ? [ ...data ] : [ data ]
+})
+
+export const tempoChange = (qnpm) =>
+  meta (81, [qnpm])
+
+export const bpmChange = (bpm) =>
+  meta (81, BPM2QNPM (bpm))
+
+// Internal meta event from frMIDI to manage own timers
+export const timingEvent = (now = frNow (), look_ahead_window = 150) =>
+  meta (96, [now, look_ahead_window])

@@ -25,23 +25,6 @@ test ('seems a MIDI message', (t) => {
   t.true (P.seemsMessage (msg ([144, 64, 96])))
 })
 
-test ('seemsArrayOfMIDIMessages', (t) => {
-  let seq = [
-    [144, 64, 96],
-    [144, 67, 96],
-    [128, 67, 65],
-    [128, 64, 30]
-  ]
-
-  let seq2 = [
-    { type: 'midimessage', data: [144, 64, 96] },
-    { type: 'midimessage', data: [128, 64, 96] }
-  ]
-
-  t.false (P.seemsArrayOfMIDIMessages (seq))
-  t.true (P.seemsArrayOfMIDIMessages (seq2))
-})
-
 test ('dataEq', (t) => {
   t.false (P.dataEq ([144, 64, 96]) (null))
   t.false (P.dataEq ([144, 64, 96]) (undefined))
