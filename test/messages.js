@@ -1,8 +1,18 @@
 const test = require ('ava')
 import {
-    as, cc, cont, cp, from, meta, mc, msg, nrpn, off, on, 
-    pb, pc, pp, rpn, rst, spp, ss, start, stop, tc, tun, syx
-  } from '../src/messages'
+    as, cc, cont, cp, from, mc, msg, nrpn, off, on, 
+    pb, pc, pp, rpn, rst, spp, ss, start, stop, 
+    tc, tun, syx
+  } from '../src/messages/messages.js'
+import { 
+    meta, endOfTrack, tempoChange, bpmChange 
+  } from '../src/messages/meta.js'
+import {
+    SEQUENCE_EVENT, TIMING_EVENT, TIME_DIVISION_EVENT,
+    BAR_EVENT, BEAT_EVENT, REST_EVENT, SUBDIVISION_EVENT,
+    frMeta, sequenceEvent, timeDivisionEvent, timingEvent,
+    barEvent, beatEvent, restEvent, subdivisionEvent
+  } from '../src/messages/frmeta.js'
 import {
     controlEq, isActiveSensing,
     isContinue, isControlChange, isChannelPressure, 
@@ -184,6 +194,8 @@ test ('System Real Time messages creation', (t) => {
 //  // TODO: Useful having parsing for implementing this one
 //})
 
+// ================= MIDI File Meta Events generation ====================
+
 test ('MIDI File Meta Event message creation', (t) => {
   t.deepEqual (
     meta (88, [4, 2, 48, 8]),
@@ -203,5 +215,151 @@ test ('MIDI File Meta Event message creation', (t) => {
       deltaTime: 0,
       metaType: 88,
       data: [96]
+    })
+})
+
+test ('End of track MIDI File meta message', (t) => {
+  t.deepEqual (
+    endOfTrack (), 
+    {
+      type: 'metaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: 47,
+      data: []
+    })
+
+  // TODO: With deltatime and timestamp!
+})
+
+test ('Set tempo (as qnpm) MIDI File meta message', (t) => {
+  t.deepEqual (
+    tempoChange (60000),
+    {
+      type: 'metaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: 81,
+      data: [ 60000 ]
+    })
+})
+
+test ('Set tempo (as bpm) MIDI File meta message', (t) => {
+  t.deepEqual (
+    bpmChange (120),
+    {
+      type: 'metaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: 81,
+      data: [ 500000 ]
+    })
+})
+
+// =================== frMIDI Meta Events generation =====================
+
+test ('frMIDI Meta Event message creation', (t) => {
+  t.deepEqual (
+    frMeta (0, [10, 45]),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: 0,
+      data: [10, 45]
+    })
+
+  t.deepEqual (
+    frMeta (1, { a: 1, b: 2 }, 15, 26),
+    {
+      type: 'frmetaevent',
+      timeStamp: 15,
+      deltaTime: 26,
+      metaType: 1,
+      data: [ { a: 1, b: 2 } ]
+    })
+})
+
+test ('frMIDI timing Meta Event', (t) => {
+  t.deepEqual (
+    timingEvent (100, 150),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: TIMING_EVENT,
+      data: [100, 150]
+    })
+})
+
+test ('frMIDI timeDivision Meta Event', (t) => {
+  t.deepEqual (
+    timeDivisionEvent (48),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: TIME_DIVISION_EVENT,
+      data: [ 48 ]
+    })
+})
+
+test ('frMIDI sequence Meta Event', (t) => {
+  t.deepEqual (
+    sequenceEvent ({ timeDivision: 24, formatType: 1, tracks: [[]] }),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: SEQUENCE_EVENT,
+      data: [{ timeDivision: 24, formatType: 1, tracks: [[]] }]
+    })
+})
+
+test ('frMIDI bar event', (t) => {
+  t.deepEqual (
+    barEvent (),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: BAR_EVENT,
+      data: [ ]
+    })
+})
+
+test ('frMIDI beat event', (t) => {
+  t.deepEqual (
+    beatEvent (),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: BEAT_EVENT,
+      data: [ ]
+    })
+})
+
+test ('frMIDI subdivision event', (t) => {
+  t.deepEqual (
+    subdivisionEvent (),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: SUBDIVISION_EVENT,
+      data: [ ]
+    })
+})
+
+test ('frMIDI rest event', (t) => {
+  t.deepEqual (
+    restEvent (),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      deltaTime: 0,
+      metaType: REST_EVENT,
+      data: [ ]
     })
 })

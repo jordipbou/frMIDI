@@ -3,7 +3,7 @@ import * as rxo from 'rxjs/operators'
 import { 
     bind, complement, cond, curry, evolve,
     filter, forEach, 
-    head, is, isEmpty, last, 
+    hasIn, head, is, isEmpty, last, 
     map, pipe, prop, propEq
   } from 'ramda'
 import { 
@@ -126,7 +126,11 @@ export const send = (sendfn) => (msg) =>
     sendfn (msg.data, msg.timeStamp)
     : is (rx.Observable) (msg) ?
       msg.subscribe (send (sendfn))
-      : null
+      // Sometimes is (Observable) returns false, so...
+      : msg.constructor.name === 'Observable' 
+        && hasIn ('subscribe') (msg) ?
+          msg.subscribe (send (sendfn))
+          : null
 
 // Sends first output that matches indicated name as argument and
 // returns send function instantiated with selected output.

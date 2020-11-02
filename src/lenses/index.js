@@ -12,5 +12,6 @@ export {
     lensP,
     tempo,
     timing,
-    lookAhead
+    lookAhead,
+    sequence
   } from './lenses.js'

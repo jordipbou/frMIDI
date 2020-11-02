@@ -1,7 +1,16 @@
 export {
     seemsSequence, seemsLoop,
     createSequence, createLoop,
-    sequencePlayer, player,
-    //play, QNPM2BPM
-    prepareSequence
+    player,
+    play,
+    recorder
   } from './sequences.js'
+
+export {
+    pattern
+  } from './patterns.js'
+
+export {
+    meter,
+    metronome
+  } from './metronome.js'

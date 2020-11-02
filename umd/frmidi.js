@@ -1,8 +1,8 @@
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-  typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.frmidi = {}));
-}(this, (function (exports) { 'use strict';
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('mathjs/main/index.js')) :
+  typeof define === 'function' && define.amd ? define(['exports', 'mathjs/main/index.js'], factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.frmidi = {}, global.index_js));
+}(this, (function (exports, index_js) { 'use strict';
 
   /**
    * A function that always returns `false`. Any passed in parameters are ignored.
@@ -285,6 +285,50 @@
     }
 
     return _arity(length, _curryN(length, [], fn));
+  });
+
+  /**
+   * Creates a new list iteration function from an existing one by adding two new
+   * parameters to its callback function: the current index, and the entire list.
+   *
+   * This would turn, for instance, [`R.map`](#map) function into one that
+   * more closely resembles `Array.prototype.map`. Note that this will only work
+   * for functions in which the iteration callback function is the first
+   * parameter, and where the list is the last parameter. (This latter might be
+   * unimportant if the list parameter is not used.)
+   *
+   * @func
+   * @memberOf R
+   * @since v0.15.0
+   * @category Function
+   * @category List
+   * @sig ((a ... -> b) ... -> [a] -> *) -> ((a ..., Int, [a] -> b) ... -> [a] -> *)
+   * @param {Function} fn A list iteration function that does not pass index or list to its callback
+   * @return {Function} An altered list iteration function that passes (item, index, list) to its callback
+   * @example
+   *
+   *      const mapIndexed = R.addIndex(R.map);
+   *      mapIndexed((val, idx) => idx + '-' + val, ['f', 'o', 'o', 'b', 'a', 'r']);
+   *      //=> ['0-f', '1-o', '2-o', '3-b', '4-a', '5-r']
+   */
+
+  var addIndex =
+  /*#__PURE__*/
+  _curry1(function addIndex(fn) {
+    return curryN(fn.length, function () {
+      var idx = 0;
+      var origFn = arguments[0];
+      var list = arguments[arguments.length - 1];
+      var args = Array.prototype.slice.call(arguments, 0);
+
+      args[0] = function () {
+        var result = origFn.apply(this, _concat(arguments, [idx, list]));
+        idx += 1;
+        return result;
+      };
+
+      return fn.apply(this, args);
+    });
   });
 
   /**
@@ -1415,6 +1459,33 @@
   });
 
   /**
+   * Applies function `fn` to the argument list `args`. This is useful for
+   * creating a fixed-arity function from a variadic function. `fn` should be a
+   * bound function if context is significant.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.7.0
+   * @category Function
+   * @sig (*... -> a) -> [*] -> a
+   * @param {Function} fn The function which will be called with `args`
+   * @param {Array} args The arguments to call `fn` with
+   * @return {*} result The result, equivalent to `fn(...args)`
+   * @see R.call, R.unapply
+   * @example
+   *
+   *      const nums = [1, 2, 3, -99, 42, 6, 7];
+   *      R.apply(Math.max, nums); //=> 42
+   * @symb R.apply(f, [a, b, c]) = f(a, b, c)
+   */
+
+  var apply =
+  /*#__PURE__*/
+  _curry2(function apply(fn, args) {
+    return fn.apply(this, args);
+  });
+
+  /**
    * Makes a shallow clone of an object, setting or overriding the specified
    * property with the given value. Note that this copies and flattens prototype
    * properties onto the new object as well. All non-primitive properties are
@@ -2292,6 +2363,25 @@
     return _indexOf(list, a, 0) >= 0;
   }
 
+  function _quote(s) {
+    var escaped = s.replace(/\\/g, '\\\\').replace(/[\b]/g, '\\b') // \b matches word boundary; [\b] matches backspace
+    .replace(/\f/g, '\\f').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t').replace(/\v/g, '\\v').replace(/\0/g, '\\0');
+    return '"' + escaped.replace(/"/g, '\\"') + '"';
+  }
+
+  /**
+   * Polyfill from <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString>.
+   */
+  var pad = function pad(n) {
+    return (n < 10 ? '0' : '') + n;
+  };
+
+  var _toISOString = typeof Date.prototype.toISOString === 'function' ? function _toISOString(d) {
+    return d.toISOString();
+  } : function _toISOString(d) {
+    return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + '.' + (d.getUTCMilliseconds() / 1000).toFixed(3).slice(2, 5) + 'Z';
+  };
+
   function _complement(f) {
     return function () {
       return !f.apply(this, arguments);
@@ -2416,6 +2506,161 @@
     return filter(_complement(pred), filterable);
   });
 
+  function _toString(x, seen) {
+    var recur = function recur(y) {
+      var xs = seen.concat([x]);
+      return _includes(y, xs) ? '<Circular>' : _toString(y, xs);
+    }; //  mapPairs :: (Object, [String]) -> [String]
+
+
+    var mapPairs = function (obj, keys) {
+      return _map(function (k) {
+        return _quote(k) + ': ' + recur(obj[k]);
+      }, keys.slice().sort());
+    };
+
+    switch (Object.prototype.toString.call(x)) {
+      case '[object Arguments]':
+        return '(function() { return arguments; }(' + _map(recur, x).join(', ') + '))';
+
+      case '[object Array]':
+        return '[' + _map(recur, x).concat(mapPairs(x, reject(function (k) {
+          return /^\d+$/.test(k);
+        }, keys(x)))).join(', ') + ']';
+
+      case '[object Boolean]':
+        return typeof x === 'object' ? 'new Boolean(' + recur(x.valueOf()) + ')' : x.toString();
+
+      case '[object Date]':
+        return 'new Date(' + (isNaN(x.valueOf()) ? recur(NaN) : _quote(_toISOString(x))) + ')';
+
+      case '[object Null]':
+        return 'null';
+
+      case '[object Number]':
+        return typeof x === 'object' ? 'new Number(' + recur(x.valueOf()) + ')' : 1 / x === -Infinity ? '-0' : x.toString(10);
+
+      case '[object String]':
+        return typeof x === 'object' ? 'new String(' + recur(x.valueOf()) + ')' : _quote(x);
+
+      case '[object Undefined]':
+        return 'undefined';
+
+      default:
+        if (typeof x.toString === 'function') {
+          var repr = x.toString();
+
+          if (repr !== '[object Object]') {
+            return repr;
+          }
+        }
+
+        return '{' + mapPairs(x, keys(x)).join(', ') + '}';
+    }
+  }
+
+  /**
+   * Returns the string representation of the given value. `eval`'ing the output
+   * should result in a value equivalent to the input value. Many of the built-in
+   * `toString` methods do not satisfy this requirement.
+   *
+   * If the given value is an `[object Object]` with a `toString` method other
+   * than `Object.prototype.toString`, this method is invoked with no arguments
+   * to produce the return value. This means user-defined constructor functions
+   * can provide a suitable `toString` method. For example:
+   *
+   *     function Point(x, y) {
+   *       this.x = x;
+   *       this.y = y;
+   *     }
+   *
+   *     Point.prototype.toString = function() {
+   *       return 'new Point(' + this.x + ', ' + this.y + ')';
+   *     };
+   *
+   *     R.toString(new Point(1, 2)); //=> 'new Point(1, 2)'
+   *
+   * @func
+   * @memberOf R
+   * @since v0.14.0
+   * @category String
+   * @sig * -> String
+   * @param {*} val
+   * @return {String}
+   * @example
+   *
+   *      R.toString(42); //=> '42'
+   *      R.toString('abc'); //=> '"abc"'
+   *      R.toString([1, 2, 3]); //=> '[1, 2, 3]'
+   *      R.toString({foo: 1, bar: 2, baz: 3}); //=> '{"bar": 2, "baz": 3, "foo": 1}'
+   *      R.toString(new Date('2001-02-03T04:05:06Z')); //=> 'new Date("2001-02-03T04:05:06.000Z")'
+   */
+
+  var toString$1 =
+  /*#__PURE__*/
+  _curry1(function toString(val) {
+    return _toString(val, []);
+  });
+
+  /**
+   * Returns the result of concatenating the given lists or strings.
+   *
+   * Note: `R.concat` expects both arguments to be of the same type,
+   * unlike the native `Array.prototype.concat` method. It will throw
+   * an error if you `concat` an Array with a non-Array value.
+   *
+   * Dispatches to the `concat` method of the first argument, if present.
+   * Can also concatenate two members of a [fantasy-land
+   * compatible semigroup](https://github.com/fantasyland/fantasy-land#semigroup).
+   *
+   * @func
+   * @memberOf R
+   * @since v0.1.0
+   * @category List
+   * @sig [a] -> [a] -> [a]
+   * @sig String -> String -> String
+   * @param {Array|String} firstList The first list
+   * @param {Array|String} secondList The second list
+   * @return {Array|String} A list consisting of the elements of `firstList` followed by the elements of
+   * `secondList`.
+   *
+   * @example
+   *
+   *      R.concat('ABC', 'DEF'); // 'ABCDEF'
+   *      R.concat([4, 5, 6], [1, 2, 3]); //=> [4, 5, 6, 1, 2, 3]
+   *      R.concat([], []); //=> []
+   */
+
+  var concat =
+  /*#__PURE__*/
+  _curry2(function concat(a, b) {
+    if (_isArray(a)) {
+      if (_isArray(b)) {
+        return a.concat(b);
+      }
+
+      throw new TypeError(toString$1(b) + ' is not an array');
+    }
+
+    if (_isString(a)) {
+      if (_isString(b)) {
+        return a + b;
+      }
+
+      throw new TypeError(toString$1(b) + ' is not a string');
+    }
+
+    if (a != null && _isFunction(a['fantasy-land/concat'])) {
+      return a['fantasy-land/concat'](b);
+    }
+
+    if (a != null && _isFunction(a.concat)) {
+      return a.concat(b);
+    }
+
+    throw new TypeError(toString$1(a) + ' does not have a method named "concat" or "fantasy-land/concat"');
+  });
+
   /**
    * Returns a function, `fn`, which encapsulates `if/else, if/else, ...` logic.
    * `R.cond` takes a list of [predicate, transformer] pairs. All of the arguments
@@ -2487,6 +2732,82 @@
   var last =
   /*#__PURE__*/
   nth(-1);
+
+  var XDropWhile =
+  /*#__PURE__*/
+  function () {
+    function XDropWhile(f, xf) {
+      this.xf = xf;
+      this.f = f;
+    }
+
+    XDropWhile.prototype['@@transducer/init'] = _xfBase.init;
+    XDropWhile.prototype['@@transducer/result'] = _xfBase.result;
+
+    XDropWhile.prototype['@@transducer/step'] = function (result, input) {
+      if (this.f) {
+        if (this.f(input)) {
+          return result;
+        }
+
+        this.f = null;
+      }
+
+      return this.xf['@@transducer/step'](result, input);
+    };
+
+    return XDropWhile;
+  }();
+
+  var _xdropWhile =
+  /*#__PURE__*/
+  _curry2(function _xdropWhile(f, xf) {
+    return new XDropWhile(f, xf);
+  });
+
+  /**
+   * Returns a new list excluding the leading elements of a given list which
+   * satisfy the supplied predicate function. It passes each value to the supplied
+   * predicate function, skipping elements while the predicate function returns
+   * `true`. The predicate function is applied to one argument: *(value)*.
+   *
+   * Dispatches to the `dropWhile` method of the second argument, if present.
+   *
+   * Acts as a transducer if a transformer is given in list position.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.9.0
+   * @category List
+   * @sig (a -> Boolean) -> [a] -> [a]
+   * @sig (a -> Boolean) -> String -> String
+   * @param {Function} fn The function called per iteration.
+   * @param {Array} xs The collection to iterate over.
+   * @return {Array} A new array.
+   * @see R.takeWhile, R.transduce, R.addIndex
+   * @example
+   *
+   *      const lteTwo = x => x <= 2;
+   *
+   *      R.dropWhile(lteTwo, [1, 2, 3, 4, 3, 2, 1]); //=> [3, 4, 3, 2, 1]
+   *
+   *      R.dropWhile(x => x !== 'd' , 'Ramda'); //=> 'da'
+   */
+
+  var dropWhile =
+  /*#__PURE__*/
+  _curry2(
+  /*#__PURE__*/
+  _dispatchable(['dropWhile'], _xdropWhile, function dropWhile(pred, xs) {
+    var idx = 0;
+    var len = xs.length;
+
+    while (idx < len && pred(xs[idx])) {
+      idx += 1;
+    }
+
+    return slice(idx, Infinity, xs);
+  }));
 
   /**
    * Returns `true` if one or both of its arguments are `true`. Returns `false`
@@ -2844,6 +3165,39 @@
   });
 
   /**
+   * Returns whether or not an object or its prototype chain has a property with
+   * the specified name
+   *
+   * @func
+   * @memberOf R
+   * @since v0.7.0
+   * @category Object
+   * @sig s -> {s: x} -> Boolean
+   * @param {String} prop The name of the property to check for.
+   * @param {Object} obj The object to query.
+   * @return {Boolean} Whether the property exists.
+   * @example
+   *
+   *      function Rectangle(width, height) {
+   *        this.width = width;
+   *        this.height = height;
+   *      }
+   *      Rectangle.prototype.area = function() {
+   *        return this.width * this.height;
+   *      };
+   *
+   *      const square = new Rectangle(2, 2);
+   *      R.hasIn('width', square);  //=> true
+   *      R.hasIn('area', square);  //=> true
+   */
+
+  var hasIn =
+  /*#__PURE__*/
+  _curry2(function hasIn(prop, obj) {
+    return prop in obj;
+  });
+
+  /**
    * Creates a function that will process either the `onTrue` or the `onFalse`
    * function depending upon the result of the `condition` predicate.
    *
@@ -3103,6 +3457,38 @@
     return a * b;
   });
 
+  /**
+   * Returns `true` if no elements of the list match the predicate, `false`
+   * otherwise.
+   *
+   * Dispatches to the `all` method of the second argument, if present.
+   *
+   * Acts as a transducer if a transformer is given in list position.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.12.0
+   * @category List
+   * @sig (a -> Boolean) -> [a] -> Boolean
+   * @param {Function} fn The predicate function.
+   * @param {Array} list The array to consider.
+   * @return {Boolean} `true` if the predicate is not satisfied by every element, `false` otherwise.
+   * @see R.all, R.any
+   * @example
+   *
+   *      const isEven = n => n % 2 === 0;
+   *      const isOdd = n => n % 2 === 1;
+   *
+   *      R.none(isEven, [1, 3, 5, 7, 9, 11]); //=> true
+   *      R.none(isOdd, [1, 3, 5, 7, 8, 11]); //=> false
+   */
+
+  var none =
+  /*#__PURE__*/
+  _curry2(function none(fn, input) {
+    return all(_complement(fn), input);
+  });
+
   // transforms the held value with the provided function.
 
   var Identity = function (x) {
@@ -3177,6 +3563,30 @@
   /*#__PURE__*/
   _curry3(function pathEq(_path, val, obj) {
     return equals(path(_path, obj), val);
+  });
+
+  /**
+   * Returns a new list with the given element at the front, followed by the
+   * contents of the list.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.1.0
+   * @category List
+   * @sig a -> [a] -> [a]
+   * @param {*} el The item to add to the head of the output list.
+   * @param {Array} list The array to add to the tail of the output list.
+   * @return {Array} A new array.
+   * @see R.append
+   * @example
+   *
+   *      R.prepend('fee', ['fi', 'fo', 'fum']); //=> ['fee', 'fi', 'fo', 'fum']
+   */
+
+  var prepend =
+  /*#__PURE__*/
+  _curry2(function prepend(el, list) {
+    return _concat([el], list);
   });
 
   /**
@@ -3608,13 +4018,11 @@
   // programmer responsability to only use isReset outside
   // MIDI Files and seemsMetaEvent inside MIDI Files.
 
-  const isReset = msg => both(seemsMessage)(dataEq([255]))(msg); // ------------------ MIDI File Meta Events predicates -------------------
-  // TODO: Check that length is correct !!!
+  const isReset = msg => both(seemsMessage)(dataEq([255]))(msg);
 
   const seemsMetaEvent = msg => allPass([is(Object), propEq('type', 'metaevent'), has('metaType'), has('data')])(msg);
   const metaTypeEq = curry((type, msg) => seemsMetaEvent(msg) ? propEq('metaType')(type)(msg) : false);
   const isTempoChange = msg => metaTypeEq(81)(msg);
-  const isTimingEvent = msg => metaTypeEq(96)(msg);
 
   /* global window self */
 
@@ -4445,45 +4853,6 @@
       return AnonymousSubject;
   }(Subject));
 
-  /** PURE_IMPORTS_START tslib,_Subject,_util_ObjectUnsubscribedError PURE_IMPORTS_END */
-  var BehaviorSubject = /*@__PURE__*/ (function (_super) {
-      __extends(BehaviorSubject, _super);
-      function BehaviorSubject(_value) {
-          var _this = _super.call(this) || this;
-          _this._value = _value;
-          return _this;
-      }
-      Object.defineProperty(BehaviorSubject.prototype, "value", {
-          get: function () {
-              return this.getValue();
-          },
-          enumerable: true,
-          configurable: true
-      });
-      BehaviorSubject.prototype._subscribe = function (subscriber) {
-          var subscription = _super.prototype._subscribe.call(this, subscriber);
-          if (subscription && !subscription.closed) {
-              subscriber.next(this._value);
-          }
-          return subscription;
-      };
-      BehaviorSubject.prototype.getValue = function () {
-          if (this.hasError) {
-              throw this.thrownError;
-          }
-          else if (this.closed) {
-              throw new ObjectUnsubscribedError();
-          }
-          else {
-              return this._value;
-          }
-      };
-      BehaviorSubject.prototype.next = function (value) {
-          _super.prototype.next.call(this, this._value = value);
-      };
-      return BehaviorSubject;
-  }(Subject));
-
   /** PURE_IMPORTS_START tslib,_Subscription PURE_IMPORTS_END */
   var Action = /*@__PURE__*/ (function (_super) {
       __extends(Action, _super);
@@ -4661,15 +5030,6 @@
       return AsyncScheduler;
   }(Scheduler));
 
-  /** PURE_IMPORTS_START _Observable PURE_IMPORTS_END */
-  var EMPTY = /*@__PURE__*/ new Observable(function (subscriber) { return subscriber.complete(); });
-  function empty$2(scheduler) {
-      return scheduler ? emptyScheduled(scheduler) : EMPTY;
-  }
-  function emptyScheduled(scheduler) {
-      return new Observable(function (subscriber) { return scheduler.schedule(function () { return subscriber.complete(); }); });
-  }
-
   /** PURE_IMPORTS_START  PURE_IMPORTS_END */
   function isScheduler(value) {
       return value && typeof value.schedule === 'function';
@@ -4729,86 +5089,6 @@
           return fromArray(args);
       }
   }
-
-  /** PURE_IMPORTS_START _Observable PURE_IMPORTS_END */
-  function throwError(error, scheduler) {
-      if (!scheduler) {
-          return new Observable(function (subscriber) { return subscriber.error(error); });
-      }
-      else {
-          return new Observable(function (subscriber) { return scheduler.schedule(dispatch, 0, { error: error, subscriber: subscriber }); });
-      }
-  }
-  function dispatch(_a) {
-      var error = _a.error, subscriber = _a.subscriber;
-      subscriber.error(error);
-  }
-
-  /** PURE_IMPORTS_START _observable_empty,_observable_of,_observable_throwError PURE_IMPORTS_END */
-  var Notification = /*@__PURE__*/ (function () {
-      function Notification(kind, value, error) {
-          this.kind = kind;
-          this.value = value;
-          this.error = error;
-          this.hasValue = kind === 'N';
-      }
-      Notification.prototype.observe = function (observer) {
-          switch (this.kind) {
-              case 'N':
-                  return observer.next && observer.next(this.value);
-              case 'E':
-                  return observer.error && observer.error(this.error);
-              case 'C':
-                  return observer.complete && observer.complete();
-          }
-      };
-      Notification.prototype.do = function (next, error, complete) {
-          var kind = this.kind;
-          switch (kind) {
-              case 'N':
-                  return next && next(this.value);
-              case 'E':
-                  return error && error(this.error);
-              case 'C':
-                  return complete && complete();
-          }
-      };
-      Notification.prototype.accept = function (nextOrObserver, error, complete) {
-          if (nextOrObserver && typeof nextOrObserver.next === 'function') {
-              return this.observe(nextOrObserver);
-          }
-          else {
-              return this.do(nextOrObserver, error, complete);
-          }
-      };
-      Notification.prototype.toObservable = function () {
-          var kind = this.kind;
-          switch (kind) {
-              case 'N':
-                  return of(this.value);
-              case 'E':
-                  return throwError(this.error);
-              case 'C':
-                  return empty$2();
-          }
-          throw new Error('unexpected notification kind value');
-      };
-      Notification.createNext = function (value) {
-          if (typeof value !== 'undefined') {
-              return new Notification('N', value);
-          }
-          return Notification.undefinedValueNotification;
-      };
-      Notification.createError = function (err) {
-          return new Notification('E', undefined, err);
-      };
-      Notification.createComplete = function () {
-          return Notification.completeNotification;
-      };
-      Notification.completeNotification = new Notification('C');
-      Notification.undefinedValueNotification = new Notification('N', undefined);
-      return Notification;
-  }());
 
   /** PURE_IMPORTS_START  PURE_IMPORTS_END */
   var nextHandle = 1;
@@ -5426,12 +5706,12 @@
           var due = isNumeric(dueTime)
               ? dueTime
               : (+dueTime - scheduler.now());
-          return scheduler.schedule(dispatch$1, due, {
+          return scheduler.schedule(dispatch, due, {
               index: 0, period: period, subscriber: subscriber
           });
       });
   }
-  function dispatch$1(state) {
+  function dispatch(state) {
       var index = state.index, period = state.period, subscriber = state.subscriber;
       subscriber.next(index);
       if (subscriber.closed) {
@@ -5443,66 +5723,6 @@
       state.index = index + 1;
       this.schedule(state, period);
   }
-
-  /** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
-  function dematerialize() {
-      return function dematerializeOperatorFunction(source) {
-          return source.lift(new DeMaterializeOperator());
-      };
-  }
-  var DeMaterializeOperator = /*@__PURE__*/ (function () {
-      function DeMaterializeOperator() {
-      }
-      DeMaterializeOperator.prototype.call = function (subscriber, source) {
-          return source.subscribe(new DeMaterializeSubscriber(subscriber));
-      };
-      return DeMaterializeOperator;
-  }());
-  var DeMaterializeSubscriber = /*@__PURE__*/ (function (_super) {
-      __extends(DeMaterializeSubscriber, _super);
-      function DeMaterializeSubscriber(destination) {
-          return _super.call(this, destination) || this;
-      }
-      DeMaterializeSubscriber.prototype._next = function (value) {
-          value.observe(this.destination);
-      };
-      return DeMaterializeSubscriber;
-  }(Subscriber));
-
-  /** PURE_IMPORTS_START tslib,_Subscriber,_Notification PURE_IMPORTS_END */
-  function materialize() {
-      return function materializeOperatorFunction(source) {
-          return source.lift(new MaterializeOperator());
-      };
-  }
-  var MaterializeOperator = /*@__PURE__*/ (function () {
-      function MaterializeOperator() {
-      }
-      MaterializeOperator.prototype.call = function (subscriber, source) {
-          return source.subscribe(new MaterializeSubscriber(subscriber));
-      };
-      return MaterializeOperator;
-  }());
-  var MaterializeSubscriber = /*@__PURE__*/ (function (_super) {
-      __extends(MaterializeSubscriber, _super);
-      function MaterializeSubscriber(destination) {
-          return _super.call(this, destination) || this;
-      }
-      MaterializeSubscriber.prototype._next = function (value) {
-          this.destination.next(Notification.createNext(value));
-      };
-      MaterializeSubscriber.prototype._error = function (err) {
-          var destination = this.destination;
-          destination.next(Notification.createError(err));
-          destination.complete();
-      };
-      MaterializeSubscriber.prototype._complete = function () {
-          var destination = this.destination;
-          destination.next(Notification.createComplete());
-          destination.complete();
-      };
-      return MaterializeSubscriber;
-  }(Subscriber));
 
   /** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
   function scan(accumulator, seed) {
@@ -5644,6 +5864,77 @@
       return SwitchMapSubscriber;
   }(SimpleOuterSubscriber));
 
+  /** PURE_IMPORTS_START tslib,_Subscriber,_util_noop,_util_isFunction PURE_IMPORTS_END */
+  function tap(nextOrObserver, error, complete) {
+      return function tapOperatorFunction(source) {
+          return source.lift(new DoOperator(nextOrObserver, error, complete));
+      };
+  }
+  var DoOperator = /*@__PURE__*/ (function () {
+      function DoOperator(nextOrObserver, error, complete) {
+          this.nextOrObserver = nextOrObserver;
+          this.error = error;
+          this.complete = complete;
+      }
+      DoOperator.prototype.call = function (subscriber, source) {
+          return source.subscribe(new TapSubscriber(subscriber, this.nextOrObserver, this.error, this.complete));
+      };
+      return DoOperator;
+  }());
+  var TapSubscriber = /*@__PURE__*/ (function (_super) {
+      __extends(TapSubscriber, _super);
+      function TapSubscriber(destination, observerOrNext, error, complete) {
+          var _this = _super.call(this, destination) || this;
+          _this._tapNext = noop;
+          _this._tapError = noop;
+          _this._tapComplete = noop;
+          _this._tapError = error || noop;
+          _this._tapComplete = complete || noop;
+          if (isFunction(observerOrNext)) {
+              _this._context = _this;
+              _this._tapNext = observerOrNext;
+          }
+          else if (observerOrNext) {
+              _this._context = observerOrNext;
+              _this._tapNext = observerOrNext.next || noop;
+              _this._tapError = observerOrNext.error || noop;
+              _this._tapComplete = observerOrNext.complete || noop;
+          }
+          return _this;
+      }
+      TapSubscriber.prototype._next = function (value) {
+          try {
+              this._tapNext.call(this._context, value);
+          }
+          catch (err) {
+              this.destination.error(err);
+              return;
+          }
+          this.destination.next(value);
+      };
+      TapSubscriber.prototype._error = function (err) {
+          try {
+              this._tapError.call(this._context, err);
+          }
+          catch (err) {
+              this.destination.error(err);
+              return;
+          }
+          this.destination.error(err);
+      };
+      TapSubscriber.prototype._complete = function () {
+          try {
+              this._tapComplete.call(this._context);
+          }
+          catch (err) {
+              this.destination.error(err);
+              return;
+          }
+          return this.destination.complete();
+      };
+      return TapSubscriber;
+  }(Subscriber));
+
   // performance.now or node-now function.
   // Using schedulers from timer timings allows easier testing
   // when using testScheduler and correct MIDI timings (which are
@@ -5666,6 +5957,41 @@
   const QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
   const BPM2QNPM = bpm => 60 * 1000000 / bpm;
   const multiSet = curry((lenses, values) => pipe(...map(([l, v]) => set$1(l)(v))(zip(lenses)(values))));
+
+  // This messages will flow between some frMIDI operators, but not all of
+  // them will forward them and will never go out a MIDI output.
+
+  const TIMING_EVENT = 0;
+  const TIME_DIVISION_EVENT = 1;
+  const SEQUENCE_EVENT = 2;
+  const BAR_EVENT = 3;
+  const BEAT_EVENT = 4;
+  const SUBDIVISION_EVENT = 5;
+  const REST_EVENT = 6;
+  const frMeta = (type, data, timeStamp = 0, deltaTime = 0) => ({
+    type: 'frmetaevent',
+    timeStamp: timeStamp,
+    deltaTime: deltaTime,
+    metaType: type,
+    data: is(Array)(data) ? [...data] : [data]
+  });
+  const timingEvent = (now = frNow(), look_ahead_window = 150, ts = 0, dt = 0) => frMeta(TIMING_EVENT, [now, look_ahead_window], ts, dt);
+  const timeDivisionEvent = (timeDivision, ts = 0, dt = 0) => frMeta(TIME_DIVISION_EVENT, timeDivision, ts, dt);
+  const sequenceEvent = (sequence, ts = 0, dt = 0) => frMeta(SEQUENCE_EVENT, sequence, ts, dt);
+  const barEvent = (ts = 0, dt = 0) => frMeta(BAR_EVENT, [], ts, dt);
+  const beatEvent = (ts = 0, dt = 0) => frMeta(BEAT_EVENT, [], ts, dt);
+  const subdivisionEvent = (ts = 0, dt = 0) => frMeta(SUBDIVISION_EVENT, [], ts, dt);
+  const restEvent = (ts = 0, dt = 0) => frMeta(REST_EVENT, [], ts, dt);
+
+  const seemsfrMetaEvent = msg => allPass([is(Object), propEq('type', 'frmetaevent'), has('metaType'), has('data')])(msg);
+  const frMetaTypeEq = curry((type, msg) => seemsfrMetaEvent(msg) ? propEq('metaType')(type)(msg) : false);
+  const isTimingEvent = msg => frMetaTypeEq(TIMING_EVENT)(msg);
+  const isTimeDivisionEvent = msg => frMetaTypeEq(TIME_DIVISION_EVENT)(msg);
+  const isSequenceEvent = msg => frMetaTypeEq(SEQUENCE_EVENT)(msg);
+  const isBarEvent = msg => frMetaTypeEq(BAR_EVENT)(msg);
+  const isBeatEvent = msg => frMetaTypeEq(BEAT_EVENT)(msg);
+  const isSubdivisionEvent = msg => frMetaTypeEq(SUBDIVISION_EVENT)(msg);
+  const isRestEvent = msg => frMetaTypeEq(REST_EVENT)(msg);
 
   // Converts a byte array to a MIDIMessageEvent compatible object.
 
@@ -5714,7 +6040,10 @@
     }
 
     return from$1(panic_msgs);
-  }; // ================= MIDI File Meta Events generation ====================
+  };
+
+  // This messages will flow freely around frMIDI operators, but will no
+  // pass thru a MIDI output.
 
   const meta = (metaType, data, timeStamp = 0, deltaTime = 0) => ({
     type: 'metaevent',
@@ -5722,11 +6051,25 @@
     deltaTime: deltaTime,
     metaType: metaType,
     data: is(Array)(data) ? [...data] : [data]
-  });
-  const tempoChange = qnpm => meta(81, [qnpm]);
-  const bpmChange = bpm => meta(81, BPM2QNPM(bpm)); // Internal meta event from frMIDI to manage own timers
+  }); // sequenceNumber     0
+  // text               1
+  // copyrightNotice    2
+  // trackName          3
+  // instrumentName     4
+  // lyrics             5
+  // marker             6
+  // cuePoint           7
+  // channelPrefix      32
+  // endOfTrack         47
+  // tempoChange        81
+  // SMPTEOffset        84
+  // timeSignature      88
+  // keySignature       89
+  // sequencerSpecific  127
 
-  const timingEvent = (now = frNow(), look_ahead_window = 150) => meta(96, [now, look_ahead_window]);
+  const endOfTrack = (timeStamp = 0, deltaTime = 0) => meta(47, [], timeStamp, deltaTime);
+  const tempoChange = (qnpm, timeStamp = 0, deltaTime = 0) => meta(81, [qnpm], timeStamp, deltaTime);
+  const bpmChange = (bpm, timeStamp = 0, deltaTime = 0) => meta(81, BPM2QNPM(bpm), timeStamp, deltaTime);
 
   const getData = curry((n, msg) => msg.data[n]);
   const setData = curry((n, v, msg) => evolve({
@@ -5736,9 +6079,9 @@
   // received MIDI message passes the predicate.
 
   const lensWhen = curry((p, v, s) => msg => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg)(msg));
-  const timeStamp = lensWhen(seemsMessage)(prop$1('timeStamp'))(assoc('timeStamp'));
-  const deltaTime = lensWhen(seemsMessage)(prop$1('deltaTime'))(assoc('deltaTime'));
-  const absoluteDeltaTime = lensWhen(seemsMessage)(prop$1('absoluteDeltaTime'))(assoc('absoluteDeltaTime'));
+  const timeStamp = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('timeStamp'))(assoc('timeStamp'));
+  const deltaTime = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('deltaTime'))(assoc('deltaTime'));
+  const absoluteDeltaTime = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('absoluteDeltaTime'))(assoc('absoluteDeltaTime'));
   const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)((v, m) => setData(0)((getData(0, m) & 0xF0) + v)(m));
   const note = lensWhen(hasNote)(getData(1))(setData(1));
   const velocity = lensWhen(hasVelocity)(getData(2))(setData(2));
@@ -5748,11 +6091,14 @@
   const program = lensWhen(isProgramChange)(getData(1))(setData(1));
   const pitchBend = lensWhen(isPitchBend)(m => (getData(2)(m) << 7) + getData(1)(m))((v, m) => setData(1)(v & 0x7F)(setData(2)(v >> 7)(m))); // ----------------------- Predicate helpers -----------------------------
 
-  const lensP = curry((lens, pred, v) => msg => pred(view(lens)(msg))(v)); // ------------ Lenses for MIDI File and frMIDI Meta events --------------
+  const lensP = curry((lens, pred, v) => msg => pred(view(lens)(msg))(v)); // ------------------ Lenses for MIDI File Meta events -------------------
 
-  const tempo = lensWhen(isTempoChange)(getData(0))(setData(0));
+  const tempo = lensWhen(isTempoChange)(getData(0))(setData(0)); // -------------------- Lenses for frMIDI Meta events --------------------
+
   const timing = lensWhen(isTimingEvent)(getData(0))(setData(0));
+  const timeDivision = lensWhen(isTimeDivisionEvent)(getData(0))(setData(0));
   const lookAhead = lensWhen(isTimingEvent)(getData(1))(setData(1));
+  const sequence = lensWhen(isSequenceEvent)(getData(0))(setData(0));
 
   /*! *****************************************************************************
   Copyright (c) Microsoft Corporation. All rights reserved.
@@ -5796,19 +6142,6 @@
       };
       return PausableObservable;
   }(Observable));
-  function pausable() {
-      return function pauseFn(source) {
-          var pausableProto = PausableObservable.prototype;
-          var pauser = new BehaviorSubject(false);
-          var newSource = pauser.pipe(switchMap(function (paused) { return (paused ? NEVER : source.pipe(materialize())); }), dematerialize());
-          var pausable = Object.create(newSource, {
-              pause: { value: pausableProto.pause },
-              resume: { value: pausableProto.resume },
-              pauser: { value: pauser }
-          });
-          return pausable;
-      };
-  }
 
   // The idea of a timer "independent" of the events with a look ahead
   // window was taken from this great article by Chris Wilson:
@@ -5860,37 +6193,127 @@
     }
   }; // ----------------------- MIDI Clock operator ---------------------------
   // Rx operator that transforms timing meta events into MIDI Clock
-  // messages. Also recognizes tempo change meta events to modify MIDI 
-  // Clock messages rate.
+  // messages. 
+  // Also recognizes tempo change meta events to modify MIDI 
+  // Clock messages rate (forwarded).
+  // Responds to timeDivisionChange (frMIDI meta event) to allow
+  // changing time division on the fly for changing sequences, for
+  // example.
   // Rest of MIDI messages are just forwarded.
 
-  const clock = (bpm = 120, td
-  /* time_division */
-  = 24) => pipe$1(scan(([_past_events, ltt
+  const clock = (bpm = 120, timeDivision$1 = 24) => pipe$1(scan(([_past_events, ltt
   /* last tick time */
-  , bpm, _last_msg], msg) => cond([[isTimingEvent, msg => [...futureClock(td, bpm, ltt, msg), null]], [isTempoChange, msg => [[], ltt, QNPM2BPM(view(tempo)(msg)), null]], [T, msg => [[], ltt, bpm, msg]]])(msg), [[], null, bpm, null]), switchMap(([events, _ltt, _bpm, msg]) => msg === null ? isEmpty(events) ? NEVER : from(events) : of(msg))); // -------------------------- MIDI Transport -----------------------------
-  // TODO: What's a transport ? It's something that is able to generate
-  // start/pause/continue commands (and maybe respond to them also)
-  // and also the song position pointer command.
+  , bpm, td, _last_msg], msg) => cond([[isTimingEvent, msg => [...futureClock(td, bpm, ltt, msg), td, null]], [isTempoChange, msg => [[], ltt, QNPM2BPM(view(tempo)(msg)), td, msg]], [isTimeDivisionEvent, msg => [[], ltt, bpm, view(timeDivision)(msg), msg]], [T, msg => [[], ltt, bpm, td, msg]]])(msg), [[], null, bpm, timeDivision$1, null]), switchMap(([events, _ltt, _bpm, _td, msg]) => msg === null ? isEmpty(events) ? NEVER : from(events) : of(msg))); // ------------------------ Metronome operator ---------------------------
+  //const metronomeNote = (note) => (msg) => [
+  //  msg,
+  //  set (timeStamp) (view (timeStamp) (msg)) (off (38, 96, 9)),
+  //  set (timeStamp) (view (timeStamp) (msg)) (off (48, 96, 9)),
+  //  set (timeStamp) (view (timeStamp) (msg)) (off (51, 96, 9)),
+  //  set (timeStamp) (view (timeStamp) (msg)) (on (note, 96, 9))
+  //]
+  //
+  //const processMIDIClock = (bpb, spb, td, cb, ctd, cs) => (msg) => [
+  //  bpb,
+  //  spb,
+  //  td,
+  //  cb === 0 ? (bpb * td) - 1 : cb - 1,
+  //  ctd === 0 ? td - 1 : ctd - 1,
+  //  cs === 0 ? (td / spb) - 1 : cs - 1,
+  //  cb === 0 && ctd === 0 && cs === 0 ?
+  //    metronomeNote (48) (msg)
+  //    : ctd === 0 && cs === 0 ?
+  //      metronomeNote (51) (msg)
+  //      : cs === 0 ?
+  //        metronomeNote (38) (msg)
+  //        : [msg]
+  //]
+  //
+  //// TODO: Idea, make complex metronome by changing observables (switchMap?)
+  //// when completing one cycle 
+  //export const metronome = (beatsPerBar, subbeatsPerBeat, timeDivision) =>
+  //  rx_pipe (
+  //
+  //    rxo_scan (([bpb, spb, td, cb, ctd, cs, _events], msg) =>
+  //      cond ([
+  //
+  //        [isMIDIClock, processMIDIClock (bpb, spb, td, cb, ctd, cs)],
+  //
+  //        [T, (msg) => [bpb, spb, td, cb, ctd, cs, [msg]]]
+  //
+  //      ]) (msg)
+  //    , [beatsPerBar, 
+  //       subbeatsPerBeat, 
+  //       timeDivision, 
+  //       0, // Current beat
+  //       0, // Current timeDivision
+  //       0, // Current subdivision
+  //       null]),
+  //
+  //    rxo_mergeMap (([_bpb, _spb, _td, _b, _ctd, _s, events]) =>
+  //      isEmpty (events) ?
+  //        rx_NEVER
+  //        : rx_from (events)))
+  //
+  //const defaultSounds = {
+  //  bar: 48,
+  //  beat: 51,
+  //  subdivision: 38,
+  //  channel: 9
+  //}
+  //
+  //// TODO: A metronome is not a fucking pattern ??
+  //// For example, 4 / 4 metronome with eighth notes:
+  //// [M, S, B, S, B, S, B]
+  //// Buleria:
+  //// [M, S, S, B, S, S, B, S, B, S, B, S]
+  //
+  //// The thing is that instead of notes, frMIDI events can be sent
+  //// for each type of event: start of measure, beat and subdivision,
+  //// that will be represented as bar_event, beat_event and
+  //// subdivision_event that can later be mapped to notes as desired.
+  //
+  //// -------------------------- MIDI Transport -----------------------------
+  //
+  //// TODO: What's a transport ? It's something that is able to generate
+  //// start/pause/continue commands (and maybe respond to them also)
+  //// and also the song position pointer command.
+  //export const transport = () => {
+  //  let op = rx_pipe (
+  //    pausable (),
+  //  ) ()
+  //
+  //  return op
+  //}
 
-  const transport = () => {
-    let op = pipe$1(pausable())();
-    return op;
-  };
+  // messages to mute output on player stop
+
+  const genericNoteOff = msg => off(view(note)(msg), 127, view(channel)(msg));
+
+  const noteIsPresent = state => msg => complement(equals)(0)(length(filter(n => view(note)(msg) === view(note)(n) && view(channel)(msg) === view(channel)(n))(state)));
+
+  const processNoteOn = state => msg => noteIsPresent(state)(msg) ? state : [...state, genericNoteOff(msg)];
+
+  const processNoteOff = state => msg => without([genericNoteOff(msg)])(state);
+
+  const processMessage = state => msg => cond([[isNoteOn, processNoteOn(state)], [isNoteOff$1, processNoteOff(state)], [T, always(state)]])(msg);
 
   const seemsSequence = sequence => allPass([is(Object), has('formatType'), has('timeDivision'), has('tracks'), propIs(Array)('tracks'), propSatisfies(all(is(Array)))('tracks')])(sequence);
   const seemsLoop = sequence => both(seemsSequence)(propEq('loop', true))(sequence); // -------------------------- Helpers ------------------------------
 
+  const mapTracks = curry((fn, sequence) => evolve({
+    tracks: fn
+  })(sequence));
   const withAbsoluteDeltaTime = curry((acc_tick, msg) => [acc_tick + msg.deltaTime, assoc('absoluteDeltaTime')(acc_tick + msg.deltaTime)(msg)]);
-  const withAbsoluteDeltaTimes = sequence => evolve({
-    tracks: map(pipe(mapAccum(withAbsoluteDeltaTime)(0), last))
-  })(sequence);
-  const mergeTracks = sequence => evolve({
-    tracks: tracks => [flatten(tracks)]
-  })(sequence);
-  const sortEvents = sequence => evolve({
-    tracks: tracks => [sortBy(prop$1('absoluteDeltaTime'))(tracks[0])]
-  })(sequence); //export const filterTracks =	curry((tracks, sequence) => 
+  const withAbsoluteDeltaTimes = sequence => mapTracks(map(pipe(mapAccum(withAbsoluteDeltaTime)(0), last)))(sequence);
+  const mergeTracks = sequence => mapTracks(tracks => [flatten(tracks)])(sequence);
+  const sortEvents = sequence => mapTracks(tracks => [sortBy(prop$1('absoluteDeltaTime'))(tracks[0])])(sequence);
+  const setTimeDivision = td => sequence => evolve({
+    timeDivision: always(td),
+    tracks: map(map(evt => set$1(deltaTime)(view(deltaTime)(evt) * td / sequence.timeDivision)(evt)))
+  })(sequence); // TODO: It's necessary to adapt deltaTimes based on a multiplier,
+  // if original time_division is 24 and new time_division is 960,
+  // multiplier will be 40
+  //export const filterTracks =	curry((tracks, sequence) => 
   //  evolve ({
   //    tracks: () => tracks.length,
   //    track: pipe (
@@ -5914,40 +6337,85 @@
     tracks: [track]
   }));
   const createLoop = sequence => assoc('loop')(true)(sequence); // ------------------------ Playing MIDI Sequences -----------------------
-  // sequence player must be able to maintain state to not need to 
-  // constantly filter everything
 
-  const prepareSequence = sequence => pipe(withAbsoluteDeltaTimes, mergeTracks, sortEvents)(sequence); // TODO: Important having loops into account !!!!
+  const prepareSequence = sequence => pipe(withAbsoluteDeltaTimes, mergeTracks, sortEvents)(sequence); // TODO: Analyze another implementation option:
+  // [ first_event if absTime === currentAbsTime, ...recurse more events ]
 
-  const sequencePlayer = sequence => (currentAbsoluteDeltaTime, playable) => now => {
-    // TODO: Filter first events if playable is null and
-    // currentAbsoluteDeltaTime is not 0
-    if (playable === undefined || playable === null) {
-      playable = prepareSequence(sequence);
-    }
+  const sequencePlayer = sequence => {
+    let prepared_sequence = prepareSequence(sequence);
+    let maxTick = prop$1('absoluteDeltaTime')(last(prepared_sequence.tracks[0]));
 
-    let events = splitWhen(e => e.absoluteDeltaTime > currentAbsoluteDeltaTime)(playable.tracks[0]);
-    return [currentAbsoluteDeltaTime + 1, createSequence(events[1])(playable.timeDivision), map(set$1(timeStamp)(now))(events[0])];
+    let rec = (currentAbsoluteDeltaTime, playable) => {
+      playable = playable || prepared_sequence;
+      return msg => {
+        let filtered = dropWhile(e => e.absoluteDeltaTime < currentAbsoluteDeltaTime)(playable.tracks[0]);
+        let events = splitWhen(e => e.absoluteDeltaTime > currentAbsoluteDeltaTime)(filtered);
+
+        if (sequence.loop && currentAbsoluteDeltaTime === maxTick) {
+          let [_, seq, events2] = rec(0, prepared_sequence)(msg);
+          return [1, seq, prepend(msg)(concat(map(set$1(timeStamp)(view(timeStamp)(msg)))(events[0]))(tail(events2)))];
+        } else {
+          return [currentAbsoluteDeltaTime + 1, createSequence(events[1])(playable.timeDivision), prepend(msg)(map(set$1(timeStamp)(view(timeStamp)(msg)))(events[0]))];
+        }
+      };
+    };
+
+    return rec;
   };
-  const player = sequence => {
-    let seqPlayer = sequencePlayer(sequence);
-    return pipe$1( // TODO: player should respond to start, continue and stop !
-    scan(([currentTick, playable, _events], msg) => isMIDIClock(msg) ? seqPlayer(currentTick, playable)(view(timeStamp)(msg)) : [currentTick, playable, [msg]], [0, null, null]), mergeMap(([_dt, _s, events]) => isEmpty(events) ? NEVER : from(events)));
-  }; //export const play = (midifile) => {
-  //    let t = timer ()
-  //    let clock = clock (30, midifile.timeDivision)
-  //
-  //    return t.pipe (
-  //      clock,
-  //      player (midifile),
-  //      rxo_tap ((events) => 
-  //        forEach ((m) => clock.bpm (QNPM2BPM (m.data [0])))
-  //                (filter (isTempoChange) (events)))
-  //    )
-  //  }
-  //  
-  //export const QNPM2BPM = (qnpm) => 60 * 1000000 / qnpm
-  //
+  const player = (sequence$1, paused = false) => pipe$1(scan(([seqPlayer, tick, playable, _events, playing, state], msg) => cond([[isMIDIClock, msg => {
+    if (playing) {
+      const [nextTick, nextPlayable, events] = seqPlayer(tick, playable)(msg);
+      return [seqPlayer, nextTick, nextPlayable, events, true, reduce((a, v) => processMessage(a)(v))(state)(events)];
+    } else {
+      return [seqPlayer, tick, playable, [msg], false, state];
+    }
+  }], [isStart, msg => [seqPlayer, 0, null, [msg], true, []]], [isContinue, msg => [seqPlayer, tick, playable, [msg], true, []]], [isStop, msg => [seqPlayer, tick, playable, [msg, ...state], false, []]], [isSequenceEvent, msg => [sequencePlayer(view(sequence)(msg)), tick, null, [msg, ...state], playing, []]], [T, msg => [seqPlayer, tick, playable, [msg], playing, state]]])(msg), [sequencePlayer(sequence$1), 0, null, null, !paused, []]), mergeMap(([_p, _dt, _s, events]) => either(isNil)(isEmpty)(events) ? NEVER : from(events)));
+  const play = midifile => {
+    let tempo_listener = new Subject();
+    return merge(timer$1(), tempo_listener).pipe(clock(30, midifile.timeDivision), player(midifile), tap(msg => {
+      if (isTempoChange(msg)) {
+        tempo_listener.next(msg);
+      }
+    }));
+  }; // --------------------- Recording MIDI Sequences ------------------------
+
+  const recordToTrack = delta => sequence => msg => evolve({
+    tracks: tracks => [append(set$1(deltaTime)(delta)(msg))(tracks[0])]
+  })(sequence);
+  const recorder = (timeDivision, paused = true) => pipe$1(scan(([seq, delta, recording, td, _], msg) => cond([[isMIDIClock, msg => recording ? [seq, delta + 1, true, td, [msg]] : [seq, delta, false, td, [msg]]], [isStart, msg => [createSequence([], td), 0, recording, td, [msg]]], [isContinue, msg => [seq, delta, true, td, [msg]]], [isStop, // stop message should add one end of track meta message to
+  // have a sequence with the correct length
+  msg => [seq, delta, false, td, [msg]]], [T, msg => cond([[T, () => {
+    const nextSeq = recordToTrack(delta)(seq)(msg);
+    return [nextSeq, delta, true, td, [msg, sequenceEvent(nextSeq)]];
+  }], [F, () => [seq, delta, false, td, [msg]]]])(recording)]])(msg), [createSequence([], timeDivision), 0, 0, !paused, timeDivision, null]), mergeMap(([_s, _d, _r, _td, events]) => either(isNil)(isEmpty)(events) ? NEVER : from(events))); // -------------------------------- Looper -------------------------------
+  //export const toLoop = () =>
+  //  rx_pipe (
+  //    rx_map ((msg) =>
+  //      isSequenceEvent (msg) ?
+  //        sequenceEvent (createLoop (view (sequence) (msg)))
+  //        : msg))
+  // looper = pipe (recorder, toLoop, player)
+  // Let's start without overdubs just record a loop and continue playing
+
+  // The idea here is expand the patterns to have always a 
+  // harmonic pattern and a rhythmic pattern. Both of them
+  // are independent and can be combined to form a unique
+  // pattern.
+  // ----------------------- Harmonic Pattern ------------------------------
+  // ----------------------- Rhythmic pattern ------------------------------
+
+  const getPatternTimeDivision = p => cond([[complement(is(Array)), always(1)], [none(is(Array)), length], [T, p => multiply(length(p))(pipe(map(getPatternTimeDivision), apply(index_js.lcm))(p))]])(p);
+  const getPatternEvents = (td, p, first = true) => cond([[is(Array), pipe(addIndex(map)((a, i) => getPatternEvents(td / length(p), a, i === 0)), flatten)], [isNoteOn, msg => [msg, off(view(note)(msg), 96, view(channel)(msg), 0, td)]], [T, set$1(deltaTime)(first ? 0 : td)]])(p);
+  const pattern = p => {
+    let timeDivision = getPatternTimeDivision(p);
+    return [getPatternEvents(timeDivision, p), timeDivision];
+  };
+
+  // Maybe define meter as minimum subdivision and accents ?
+
+  const meterSequence = (meterDef, timeDivision) => setTimeDivision(timeDivision)(createLoop(createSequence(...pattern(addIndex(map)((v, i) => v === 1 && i === 0 ? barEvent() : v === 1 ? beatEvent() : v === 2 ? subdivisionEvent() : v === 0 ? restEvent() : v)([...meterDef, endOfTrack()])))));
+  const meter = (meterDef, timeDivision = 24) => player(meterSequence(meterDef, timeDivision));
+  const metronome = (meterDef, timeDivision = 24) => pipe$1(meter(meterDef, timeDivision), mergeMap(cond([[isBarEvent, always(of(on(48, 96, 9)))], [isBeatEvent, always(of(on(51, 96, 9)))], [isSubdivisionEvent, always(of(on(38, 96, 9)))], [isRestEvent, always(NEVER)], [T, msg => of(msg)]])));
 
   const mpeNote = msg => ({
     note: view(note)(msg),
@@ -6010,7 +6478,7 @@
 
   const zonePred = mpeZone => predicate => allPass([isOnZone(mpeZone), complement(isOnMasterChannel(mpeZone)), predicate]);
 
-  const processMessage = mpeZone => (msg, pred = zonePred(mpeZone)) => cond([[pred(isNoteOn), processNoteOnMessage(mpeZone)], [pred(asNoteOff), processNoteOffMessage(mpeZone)], [pred(isChannelPressure), processChannelPressureMessage(mpeZone)], [pred(isTimbreChange), processTimbreMessage(mpeZone)], [pred(isPitchBend), processPitchBendMessage(mpeZone)], [T, always(mpeZone)]])(msg); // ------------------------ toMPE algorithms -----------------------------
+  const processMessage$1 = mpeZone => (msg, pred = zonePred(mpeZone)) => cond([[pred(isNoteOn), processNoteOnMessage(mpeZone)], [pred(asNoteOff), processNoteOffMessage(mpeZone)], [pred(isChannelPressure), processChannelPressureMessage(mpeZone)], [pred(isTimbreChange), processTimbreMessage(mpeZone)], [pred(isPitchBend), processPitchBendMessage(mpeZone)], [T, always(mpeZone)]])(msg); // ------------------------ toMPE algorithms -----------------------------
   // Helper function to find notes per channel on mpe zone
 
   const notesPerChannel = mpeZone => map(c => [c, length(filter(n => n.channel === c)(mpeZone.activeNotes))])(mpeZone.channels); // Algorithm: select channel on mpe zone as the one with least notes -----
@@ -6045,44 +6513,16 @@
     if (isNoteOn(msg)) {
       let ch = findChannel(z)(msg);
       let mod_msg = set(channel)(ch)(msg);
-      return [processMessage(z)(mod_msg), mod_msg];
+      return [processMessage$1(z)(mod_msg), mod_msg];
     } else if (isNoteOff(msg)) {
       let n = view(note)(msg);
       let ch = prop('channel')(head(filter(an => an.note === n)(z.activeNotes)));
       let mod_msg = set(channel)(ch)(msg);
-      return [processMessage(z)(mod_msg), mod_msg];
+      return [processMessage$1(z)(mod_msg), mod_msg];
     } else {
       return [z, msg];
     }
   }, [mpeZone(m, c), null]), map$1(([x, msg]) => msg)));
-
-  // The idea here is expand the patterns to have always a 
-  // harmonic pattern and a rhythmic pattern. Both of them
-  // are independent and can be combined to form a unique
-  // pattern.
-  // ----------------------- Harmonic Pattern ------------------------------
-  // ----------------------- Rhythmic pattern ------------------------------
-
-  let getPatternTimeDivision = p => {
-    if (type(p) !== 'Array') {
-      return 1;
-    } else if (length(filter(v => type(v) === 'Array', p)) === 0) {
-      return length(p);
-    } else {
-      return pipe(map(v => getPatternTimeDivision(v)), reduce(multiply, 1), multiply(length(p)))(p);
-    }
-  };
-  let getPatternEvents = (p, td) => {
-    if (type(p) !== 'Array') {
-      return [on(p, 96), off(p, 96, 0, 0, td)];
-    } else {
-      return flatten(map(v => getPatternEvents(v, td / length(p)), p));
-    }
-  };
-  let pattern = p => {
-    let timeDivision = getPatternTimeDivision(p);
-    return [getPatternEvents(p, timeDivision), timeDivision];
-  };
 
   // --- Durations ---
   const w = 96;
@@ -6108,7 +6548,7 @@
   const M7 = 11;
   const P8 = 12; // --- Pitch Classes ---
 
-  let pitchClass = n => n % 12;
+  const pitchClass = n => n % 12;
   const C = 0;
   const Cs = 1;
   const Df = 1;
@@ -6699,7 +7139,8 @@
   // - array of MIDIMessage objects
   // - observable emitting any of the above
 
-  const send = sendfn => msg => seemsMessage(msg) ? sendfn(msg.data, msg.timeStamp) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
+  const send = sendfn => msg => seemsMessage(msg) ? sendfn(msg.data, msg.timeStamp) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) // Sometimes is (Observable) returns false, so...
+  : msg.constructor.name === 'Observable' && hasIn('subscribe')(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
   // returns send function instantiated with selected output.
   // Some properties are added for inspection purposes.
 
@@ -6779,7 +7220,7 @@
     return promise;
   };
 
-  const version = '1.0.47';
+  const version = '1.0.51';
 
   exports.A = A;
   exports.A0 = A0;
@@ -6953,9 +7394,8 @@
   exports.deltaTime = deltaTime;
   exports.e = e;
   exports.et = et;
+  exports.frMeta = frMeta;
   exports.from = from$1;
-  exports.getPatternEvents = getPatternEvents;
-  exports.getPatternTimeDivision = getPatternTimeDivision;
   exports.h = h;
   exports.hasNote = hasNote;
   exports.hasPressure = hasPressure;
@@ -6996,6 +7436,7 @@
   exports.isRPN = isRPN;
   exports.isReset = isReset;
   exports.isResetAll = isResetAll;
+  exports.isSequenceEvent = isSequenceEvent;
   exports.isSongPositionPointer = isSongPositionPointer;
   exports.isSongSelect = isSongSelect;
   exports.isStart = isStart;
@@ -7018,6 +7459,8 @@
   exports.mc = mc;
   exports.meta = meta;
   exports.metaTypeEq = metaTypeEq;
+  exports.meter = meter;
+  exports.metronome = metronome;
   exports.mpeNote = mpeNote;
   exports.mpeZone = mpeZone;
   exports.msg = msg;
@@ -7034,15 +7477,16 @@
   exports.pitchBend = pitchBend;
   exports.pitchBendEq = pitchBendEq;
   exports.pitchClass = pitchClass;
+  exports.play = play;
   exports.player = player;
   exports.pp = pp;
-  exports.prepareSequence = prepareSequence;
   exports.pressure = pressure;
   exports.pressureEq = pressureEq;
-  exports.processMessage = processMessage;
+  exports.processMessage = processMessage$1;
   exports.program = program;
   exports.programEq = programEq;
   exports.q = q;
+  exports.recorder = recorder;
   exports.root = root;
   exports.rpn = rpn;
   exports.rst = rst;
@@ -7053,6 +7497,9 @@
   exports.seemsMessageAsArray = seemsMessageAsArray;
   exports.seemsMetaEvent = seemsMetaEvent;
   exports.seemsSequence = seemsSequence;
+  exports.seemsfrMetaEvent = seemsfrMetaEvent;
+  exports.sequence = sequence;
+  exports.sequenceEvent = sequenceEvent;
   exports.sequencePlayer = sequencePlayer;
   exports.spp = spp;
   exports.ss = ss;
@@ -7063,11 +7510,11 @@
   exports.tc = tc;
   exports.tempo = tempo;
   exports.tempoChange = tempoChange;
+  exports.timeDivisionEvent = timeDivisionEvent;
   exports.timeStamp = timeStamp;
   exports.timer = timer$1;
   exports.timing = timing;
   exports.timingEvent = timingEvent;
-  exports.transport = transport;
   exports.tun = tun;
   exports.value = value;
   exports.valueEq = valueEq;

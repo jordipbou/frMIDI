@@ -1,11 +1,15 @@
 const test = require ('ava')
 import { map, prop } from 'ramda'
-import { mc, on, bpmChange, timingEvent } from '../src/messages'
 import { 
-  timer, futureClock, clock 
+    mc, off, on, bpmChange, timeDivisionEvent, timingEvent 
+  } from '../src/messages'
+import { isNoteOn } from '../src/predicates/predicates.js'
+import { isTimingEvent } from '../src/predicates/frmeta.js'
+import { 
+  timer, futureClock, metronome, clock 
   } from '../src/clock/clock.js'
 import { from, merge, of } from 'rxjs'
-import { take } from 'rxjs/operators'
+import { filter as rxo_filter, take as rxo_take } from 'rxjs/operators'
 import { TestScheduler } from 'rxjs/testing'
 
 const setup_scheduler = (t) =>
@@ -27,7 +31,7 @@ test ('create timer', (t) => {
     }
 
     expectObservable (
-      timer (10, 150, scheduler).pipe (take (5))
+      timer (10, 150, scheduler).pipe (rxo_take (5))
     ).toBe (expected, values)
   })
 
@@ -44,7 +48,7 @@ test ('create timer', (t) => {
     }
 
     expectObservable (
-      timer (1, 75, scheduler).pipe (take (5))
+      timer (1, 75, scheduler).pipe (rxo_take (5))
     ).toBe (expected, values)
   })
 })
@@ -65,7 +69,7 @@ test ('timer second test', (t) => {
     expectObservable (
       timer (500, 100, scheduler)
         .pipe (
-          take (5))
+          rxo_take (5))
     ).toBe (expected, values)
   })
 })
@@ -138,7 +142,9 @@ test ('futureClock: if last tick time is not null, first event should not occur 
 test ('futureClock: last tick time is after now but look ahead window expands after last tick time, some events should be generated', (t) => {
   t.deepEqual (
      futureClock (1000, 60, 150, timingEvent (145, 10)),
-     [[mc (151), mc (152), mc (153), mc (154)], 154, 60])
+     [[mc (151), mc (152), mc (153), mc (154)], 
+      154, 
+      60])
 })
 
 test ('futureClock: last tick time is after now and look ahead window is smaller than the difference, no events should be generated', (t) => {
@@ -189,7 +195,7 @@ test ('MIDI Clock operator, big look ahead window generates several midi clocks 
       timer (1, 5000, scheduler)
         .pipe (
           clock (60, 1),
-          take (5))
+          rxo_take (5))
     ).toBe (expected, values)
   })
 })
@@ -212,7 +218,7 @@ test ('MIDI Clock operator, small look ahead window (but at clock times) generat
       timer (500, 100, scheduler)
         .pipe (
           clock (60, 1),
-          take (5))
+          rxo_take (5))
     ).toBe (expected, values)
   })
 })
@@ -230,7 +236,7 @@ test ('MIDI Clock operator should forward not timing events', (t) => {
     expectObservable (
       of (on (64), on (72)).pipe (
         clock (60, 1),
-        take (2)
+        rxo_take (2)
     )).toBe (expected, values)
   })
 })
@@ -251,13 +257,14 @@ test ('MIDI Clock should accept tempo change messages and modify the rate of MID
         g: timingEvent (2500, 150),
         h: timingEvent (3000, 150)
       })
-    const expected = 'a 999ms b 999ms c 499ms d 499ms e'
+    const expected = 'a 999ms b 999ms cd 498ms e 499ms f'
     const values = {
       a: mc (0),
       b: mc (1000),
       c: mc (2000),
-      d: mc (2500),
-      e: mc (3000)
+      d: bpmChange (120),
+      e: mc (2500),
+      f: mc (3000)
     }
 
     expectObservable (
@@ -265,3 +272,66 @@ test ('MIDI Clock should accept tempo change messages and modify the rate of MID
     ).toBe (expected, values)
   })
 })
+
+test ('MIDI Clock should accept TimeDivision frMIDI meta messages to change its defined time division', (t) => {
+  let scheduler = setup_scheduler (t)
+
+  scheduler.run (({ cold, expectObservable }) => {
+    const source = cold (
+      'a 499ms b 499ms c 499ms d 499ms ef 498ms g 499ms h',
+      {
+        a: timingEvent (0, 150),
+        b: timingEvent (500, 150),
+        c: timingEvent (1000, 150),
+        d: timingEvent (1500, 150),
+        e: timingEvent (2000, 150),
+        f: timeDivisionEvent (2),
+        g: timingEvent (2500, 150),
+        h: timingEvent (3000, 150)
+      })
+    const expected = 'a 999ms b 999ms cd 498ms e 499ms f'
+    const values = {
+      a: mc (0),
+      b: mc (1000),
+      c: mc (2000),
+      d: timeDivisionEvent (2),
+      e: mc (2500),
+      f: mc (3000)
+    }
+
+    expectObservable (
+      source.pipe (clock (60, 1))
+    ).toBe (expected, values)
+  })
+})
+
+//test ('metronome', (t) => {
+//  let scheduler = setup_scheduler (t)
+//
+//  scheduler.run (({ cold, expectObservable }) => {
+//    const source = cold (
+//      'abcd',
+//      {
+//        a: mc (0),
+//        b: mc (500),
+//        c: mc (1000),
+//        d: mc (1500)
+//      })
+//
+//    const expected = 'abc(d|)'
+//    const values = {
+//      a: on (48, 96, 9, 0),
+//      b: on (38, 96, 9, 500),
+//      c: on (51, 96, 9, 1000),
+//      d: on (38, 96, 9, 1500)
+//    }
+//
+//    expectObservable (
+//      source.pipe (
+//        metronome (2, 2, 2),
+//        rxo_filter (isNoteOn),
+//        rxo_take (4)
+//      )
+//    ).toBe (expected, values)
+//  })
+//})

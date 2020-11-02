@@ -2,11 +2,16 @@ import {
     isChannelMessage, isControlChange,
     isPitchBend, isPolyPressure, isProgramChange,
     hasNote, hasPressure, hasVelocity,
-    seemsMessage,
-    isTempoChange, isTimingEvent
-  } from '../predicates'
+    seemsMessage
+  } from '../predicates/predicates.js'
+import {
+    isTempoChange, seemsMetaEvent
+  } from '../predicates/meta.js'
+import {
+    isSequenceEvent, isTimeDivisionEvent, isTimingEvent, seemsfrMetaEvent
+  } from '../predicates/frmeta.js'
 import { 
-    assoc, curry, evolve, ifElse, lens,
+    anyPass, assoc, curry, evolve, ifElse, lens,
     prop, slice, view
   } from 'ramda'
 
@@ -33,17 +38,17 @@ export const lensWhen = curry ((p, v, s) => (msg) =>
 
 
 export const timeStamp =
-  lensWhen (seemsMessage)
+  lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
            (prop ('timeStamp')) 
            (assoc ('timeStamp'))
 
 export const deltaTime =
-  lensWhen (seemsMessage)
+  lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
            (prop ('deltaTime'))
            (assoc ('deltaTime'))
 
 export const absoluteDeltaTime =
-  lensWhen (seemsMessage)
+  lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
            (prop ('absoluteDeltaTime'))
            (assoc ('absoluteDeltaTime'))
 
@@ -84,13 +89,21 @@ export const pitchBend =
 export const lensP = curry((lens, pred, v) => 
   (msg) => pred (view (lens) (msg)) (v))  
 
-// ------------ Lenses for MIDI File and frMIDI Meta events --------------
+// ------------------ Lenses for MIDI File Meta events -------------------
 
 export const tempo =
   lensWhen (isTempoChange) (getData (0)) (setData (0))
 
+// -------------------- Lenses for frMIDI Meta events --------------------
+
 export const timing =
   lensWhen (isTimingEvent) (getData (0)) (setData (0))
 
+export const timeDivision =
+  lensWhen (isTimeDivisionEvent) (getData (0)) (setData (0))
+
 export const lookAhead =
   lensWhen (isTimingEvent) (getData (1)) (setData (1))
+
+export const sequence =
+  lensWhen (isSequenceEvent) (getData (0)) (setData (0))

@@ -283,25 +283,3 @@ export const isReset = (msg) =>
   both (seemsMessage)
        (dataEq ([255]))
        (msg)
-
-
-// ------------------ MIDI File Meta Events predicates -------------------
-
-// TODO: Check that length is correct !!!
-export const seemsMetaEvent = (msg) =>
-  allPass ([is (Object),
-            propEq ('type', 'metaevent'),
-            has ('metaType'),
-            has ('data')])
-          (msg)
-
-export const metaTypeEq = curry ((type, msg) => 
-  seemsMetaEvent (msg) ?
-    propEq ('metaType') (type) (msg)
-    : false)
-
-export const isTempoChange = (msg) =>
-  metaTypeEq (81) (msg)
-
-export const isTimingEvent = (msg) =>
-  metaTypeEq (96) (msg)

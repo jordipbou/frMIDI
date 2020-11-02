@@ -24,7 +24,7 @@ export const M7 = 11
 export const P8 = 12
 
 // --- Pitch Classes ---
-export let pitchClass = (n) => n % 12
+export const pitchClass = (n) => n % 12
 export const C = 0
 export const Cs = 1
 export const Df = 1

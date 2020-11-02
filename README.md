@@ -166,6 +166,10 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.0.51 [2020/10/19] - Added metronome operator. Sends different notes on channel 10 for first beat, subdivision and rest of beats.
+* 1.0.50 [2020/10/13] - Added play function, uses timer, clock and player under the hood and returns an observable that can be directly sent to an output or subscribed to (in both cases returning unsubscription objects)
+* 1.0.49 [2020/10/11] - player operator works correctly with loops now.
+* 1.0.48 [2020/10/11] - player operator now responds to start, stop and continue messages. Also forwards any message that is not one of previous messages or MIDIClock messages.
 * 1.0.47 [2020/10/09] - Correction on previous upload.
 * 1.0.46 [2020/10/09] - LoadMIDIFile was not setting type as 'midimessage' on conversion. (sequence) player working (but not for loops).
 * 1.0.45 [2020/10/08] - Forgot timeDivision on MIDI File.

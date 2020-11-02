@@ -1,5 +1,4 @@
 export { 
     timer, 
-    clock, 
-    transport 
+    clock
   } from './clock.js' 

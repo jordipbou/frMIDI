@@ -64,10 +64,17 @@ export {
     isContinue,
     isStop,
     isActiveSensing,
-    isReset,
-    // ---------------------------------- MIDI File Meta Events predicates
-    seemsMetaEvent, // TODO: Change name to seemsMetaEvent
-    metaTypeEq,
-    isTempoChange,
-    isTimingEvent
+    isReset
   } from './predicates.js'
+
+export {
+    // ---------------------------------- MIDI File Meta Events predicates
+    isEndOfTrack,
+    isTempoChange
+  } from './meta.js'
+
+export {
+    // ---------------------------------- MIDI File Meta Events predicates
+    isTimingEvent,
+    isSequenceEvent
+  } from './frmeta.js'

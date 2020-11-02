@@ -1,33 +1,67 @@
 const test = require ('ava')
 import { add, gt, lt, view, set, over } from 'ramda'
 import { 
-  cc, cp, mc, off, on, pb, pp, tempoChange
-} from '../src/messages'
+    cc, cp, mc, off, on, pb, pp
+  } from '../src/messages/messages.js'
+import { tempoChange } from '../src/messages/meta.js'
+import { timingEvent } from '../src/messages/frmeta.js'
 import { 
-  channel, control, deltaTime, lensP, note, 
-  pitchBend, pressure, timeStamp, tempo, velocity
+  channel, control, deltaTime, getData, lensP, note, 
+  pitchBend, pressure, setData, timeStamp, tempo, velocity
 } from '../src/lenses/lenses.js'
 
-// TODO: Test getByte, setByte and lensWhen
+test ('getData', (t) => {
+  t.is (getData (0) (on (64)), 144)
+  t.is (getData (1) (on (64)), 64)
+  t.is (getData (2) (on (64)), 96)
+  t.is (getData (3) (on (64)), undefined)
+})
+
+test ('setData', (t) => {
+  t.deepEqual (
+    setData (0) (666) (on (64)), 
+    {
+      type: 'midimessage',
+      deltaTime: 0,
+      timeStamp: 0,
+      data: [666, 64, 96]
+    })
+})
+
+//test ('lensWhen', (t) => {
+//})
 
 test ('timeStamp lens', (t) => {
   t.is (view (timeStamp) (on (64)), 0)
   t.is (view (timeStamp) ([144, 64, 96]), undefined)
+  t.is (view (timeStamp) (tempoChange (5000)), 0)
+  t.is (view (timeStamp) (timingEvent ()), 0)
 
   t.is ((set (timeStamp) (100) (on (64))).timeStamp, 100)
   t.deepEqual (set (timeStamp) (100) ([144, 64, 96]), [144, 64, 96])
+  t.is (view (timeStamp) (set (timeStamp) (2) (tempoChange (5000))), 2)
+  t.is (view (timeStamp) (set (timeStamp) (2) (timingEvent ())), 2)
 
   t.is ((over (timeStamp) (add (3)) (on (64))).timeStamp, 3)
+  t.is ((over (timeStamp) (add (3)) (tempoChange (5000))).timeStamp, 3)
+  t.is ((over (timeStamp) (add (3)) (timingEvent ())).timeStamp, 3)
+
 })
 
 test ('deltaTime lens', (t) => {
   t.is (view (deltaTime) (on (64)), 0)
   t.is (view (deltaTime) ([144, 64, 96]), undefined)
+  t.is (view (deltaTime) (tempoChange (5000)), 0)
+  t.is (view (deltaTime) (timingEvent ()), 0)
 
   t.is ((set (deltaTime) (100) (on (64))).deltaTime, 100)
   t.deepEqual (set (deltaTime) (100) ([144, 64, 96]), [144, 64, 96])
+  t.is (view (deltaTime) (set (deltaTime) (2) (tempoChange (5000))), 2)
+  t.is (view (deltaTime) (set (deltaTime) (2) (timingEvent ())), 2)
 
   t.is ((over (deltaTime) (add (3)) (on (64))).deltaTime, 3)
+  t.is ((over (deltaTime) (add (3)) (tempoChange (5000))).deltaTime, 3)
+  t.is ((over (deltaTime) (add (3)) (timingEvent ())).deltaTime, 3)
 })
 
 test ('channel lens', (t) => {

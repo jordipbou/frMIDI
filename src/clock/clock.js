@@ -1,6 +1,12 @@
-import { isTempoChange, isTimingEvent } from '../predicates'
-import { lookAhead, tempo, timing, timeStamp } from '../lenses'
-import { mc, timingEvent } from '../messages'
+import { isMIDIClock } from '../predicates/predicates.js'
+import { isTempoChange } from '../predicates/meta.js'
+import { 
+    isTimingEvent, isTimeDivisionEvent 
+  } from '../predicates/frmeta.js'
+import { 
+    lookAhead, tempo, timeDivision as lTimeDivision, timing, timeStamp
+  } from '../lenses/lenses.js'
+import { mc, off, on, timingEvent } from '../messages'
 import { QNPM2BPM, frScheduler } from '../utils.js'
 import { 
     cond, complement, curry, isEmpty, last, length, prop, set, T, view
@@ -88,27 +94,34 @@ export const futureClock =
 // ----------------------- MIDI Clock operator ---------------------------
 
 // Rx operator that transforms timing meta events into MIDI Clock
-// messages. Also recognizes tempo change meta events to modify MIDI 
-// Clock messages rate.
+// messages. 
+// Also recognizes tempo change meta events to modify MIDI 
+// Clock messages rate (forwarded).
+// Responds to timeDivisionChange (frMIDI meta event) to allow
+// changing time division on the fly for changing sequences, for
+// example.
 // Rest of MIDI messages are just forwarded.
 
-export const clock = (bpm = 120, td /* time_division */ = 24) =>
+export const clock = (bpm = 120, timeDivision = 24) =>
   rx_pipe (
     rxo_scan (
-      ([_past_events, ltt /* last tick time */, bpm, _last_msg], msg) =>
+      ([_past_events, ltt /* last tick time */, bpm, td, _last_msg], msg) =>
         cond ([
 
           [isTimingEvent, 
-            (msg) => [...futureClock (td, bpm, ltt, msg), null]],
+            (msg) => [...futureClock (td, bpm, ltt, msg), td, null]],
 
           [isTempoChange, 
-            (msg) => [[], ltt, QNPM2BPM (view (tempo) (msg)), null]],
+            (msg) => [[], ltt, QNPM2BPM (view (tempo) (msg)), td, msg]],
 
-          [T, (msg) => [[], ltt, bpm, msg]]
+          [isTimeDivisionEvent,
+            (msg) => [[], ltt, bpm, view (lTimeDivision) (msg), msg]],
+
+          [T, (msg) => [[], ltt, bpm, td, msg]]
 
         ]) (msg)
-      , [[], null, bpm, null]),
-    rxo_switchMap (([events, _ltt, _bpm, msg]) =>
+      , [[], null, bpm, timeDivision, null]),
+    rxo_switchMap (([events, _ltt, _bpm, _td, msg]) =>
       msg === null ?
         isEmpty (events) ?
           rx_NEVER
@@ -116,15 +129,85 @@ export const clock = (bpm = 120, td /* time_division */ = 24) =>
         : rx_of (msg))
   )
 
-// -------------------------- MIDI Transport -----------------------------
+// ------------------------ Metronome operator ---------------------------
 
-// TODO: What's a transport ? It's something that is able to generate
-// start/pause/continue commands (and maybe respond to them also)
-// and also the song position pointer command.
-export const transport = () => {
-  let op = rx_pipe (
-    pausable (),
-  ) ()
-
-  return op
-}
+//const metronomeNote = (note) => (msg) => [
+//  msg,
+//  set (timeStamp) (view (timeStamp) (msg)) (off (38, 96, 9)),
+//  set (timeStamp) (view (timeStamp) (msg)) (off (48, 96, 9)),
+//  set (timeStamp) (view (timeStamp) (msg)) (off (51, 96, 9)),
+//  set (timeStamp) (view (timeStamp) (msg)) (on (note, 96, 9))
+//]
+//
+//const processMIDIClock = (bpb, spb, td, cb, ctd, cs) => (msg) => [
+//  bpb,
+//  spb,
+//  td,
+//  cb === 0 ? (bpb * td) - 1 : cb - 1,
+//  ctd === 0 ? td - 1 : ctd - 1,
+//  cs === 0 ? (td / spb) - 1 : cs - 1,
+//  cb === 0 && ctd === 0 && cs === 0 ?
+//    metronomeNote (48) (msg)
+//    : ctd === 0 && cs === 0 ?
+//      metronomeNote (51) (msg)
+//      : cs === 0 ?
+//        metronomeNote (38) (msg)
+//        : [msg]
+//]
+//
+//// TODO: Idea, make complex metronome by changing observables (switchMap?)
+//// when completing one cycle 
+//export const metronome = (beatsPerBar, subbeatsPerBeat, timeDivision) =>
+//  rx_pipe (
+//
+//    rxo_scan (([bpb, spb, td, cb, ctd, cs, _events], msg) =>
+//      cond ([
+//
+//        [isMIDIClock, processMIDIClock (bpb, spb, td, cb, ctd, cs)],
+//
+//        [T, (msg) => [bpb, spb, td, cb, ctd, cs, [msg]]]
+//
+//      ]) (msg)
+//    , [beatsPerBar, 
+//       subbeatsPerBeat, 
+//       timeDivision, 
+//       0, // Current beat
+//       0, // Current timeDivision
+//       0, // Current subdivision
+//       null]),
+//
+//    rxo_mergeMap (([_bpb, _spb, _td, _b, _ctd, _s, events]) =>
+//      isEmpty (events) ?
+//        rx_NEVER
+//        : rx_from (events)))
+//
+//const defaultSounds = {
+//  bar: 48,
+//  beat: 51,
+//  subdivision: 38,
+//  channel: 9
+//}
+//
+//// TODO: A metronome is not a fucking pattern ??
+//// For example, 4 / 4 metronome with eighth notes:
+//// [M, S, B, S, B, S, B]
+//// Buleria:
+//// [M, S, S, B, S, S, B, S, B, S, B, S]
+//
+//// The thing is that instead of notes, frMIDI events can be sent
+//// for each type of event: start of measure, beat and subdivision,
+//// that will be represented as bar_event, beat_event and
+//// subdivision_event that can later be mapped to notes as desired.
+//
+//// -------------------------- MIDI Transport -----------------------------
+//
+//// TODO: What's a transport ? It's something that is able to generate
+//// start/pause/continue commands (and maybe respond to them also)
+//// and also the song position pointer command.
+//export const transport = () => {
+//  let op = rx_pipe (
+//    pausable (),
+//  ) ()
+//
+//  return op
+//}

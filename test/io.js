@@ -9,7 +9,7 @@ import {
   } from '../src/io/io.js'
 import { on, off } from '../src/messages'
 import { bind, concat } from 'ramda'
-import { Subject } from 'rxjs'
+import { of, Subject } from 'rxjs'
 
 const MIDIInputs = new Map ()
 const Input1 = new EventEmitter ()
@@ -141,6 +141,16 @@ test ('Send function', (t) => {
   t.deepEqual (midi_output, [[144, 68, 96]])
   s.next (off (68))
   t.deepEqual (midi_output, [[144, 68, 96], [128, 68, 96]])
+})
+
+test ('Cold observables should work on send too', (t) => {
+  let midi_output = []
+  let output = {
+    send: (d) => midi_output = concat (midi_output) ([d])
+  }
+
+  send (output.send) (of (on (64), off (64)))
+  t.deepEqual (midi_output, [[144, 64, 96], [128, 64, 96]])
 })
 
 test ('Output instantiation', async (t) => {

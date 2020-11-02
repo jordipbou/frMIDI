@@ -27,9 +27,18 @@ export {
     as,
     rst,
     panic,
+  } from './messages.js'
+
+export {
     // ========================== MIDI File Meta Event messages generation
     meta,
     tempoChange,
-    bpmChange,
-    timingEvent
-  } from './messages.js'
+    bpmChange
+  } from './meta.js'
+
+export {
+    frMeta,
+    timingEvent,
+    timeDivisionEvent,
+    sequenceEvent
+  } from './frmeta.js'

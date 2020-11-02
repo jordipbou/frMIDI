@@ -1,14 +1,13 @@
 const test = require ('ava')
 import * as P from '../src/predicates/predicates.js'
+import * as M from '../src/predicates/meta.js'
+import * as F from '../src/predicates/frmeta.js'
+import { 
+    msg, meta, frMeta, sequenceEvent, timeDivisionEvent, timingEvent 
+  } from '../src/messages'
 import { allPas } from 'ramda'
 import { from } from 'rxjs'
 import { filter } from 'rxjs/operators'
-
-let msg = (data) => 
-  ({ type: 'midimessage', data: data })
-
-let meta = (t, data = []) => 
-  ({ type: 'metaevent', metaType: t, data: [255, t, ...data] })
 
 test ('seems a MIDI message', (t) => {
   t.false (P.seemsMessage (null))
@@ -274,7 +273,7 @@ test ('isEndOfExclusive', (t) => {
   t.true (P.isEndOfExclusive (msg ([247])))
 })
 
-// ---------------- System Real Time Messages ----------------------
+// -------------------- System Real Time Messages ------------------------
 
 test ('system real time midi messages predicates', (t) => {
   t.true (P.isMIDIClock (msg ([248])))
@@ -285,7 +284,7 @@ test ('system real time midi messages predicates', (t) => {
   t.true (P.isReset (msg ([255])))
 })
 
-// ----------------------- RPN / NRPN ------------------------------
+// --------------------------- RPN / NRPN --------------------------------
 
 test ('isRPN', (t) => {
   t.true (P.isRPN (msg ([176, 101, 25, 176, 100, 0, 176, 6, 33, 176, 38, 0, 176, 101, 127, 176, 100, 127]))) 
@@ -295,8 +294,22 @@ test ('isNRPN', (t) => {
   t.true (P.isNRPN (msg ([176, 99, 25, 176, 98, 0, 176, 6, 33, 176, 38, 0, 176, 101, 127, 176, 100, 127]))) 
 })
 
-// ------------------ MIDI File Meta Events ------------------------
+// ---------------------- MIDI File Meta Events --------------------------
 
 test ('isTempoChange', (t) => {
-  t.true (P.isTempoChange (meta (81)))
+  t.true (M.isTempoChange (meta (81)))
+})
+
+// ------------------------ frMIDI Meta Events ---------------------------
+
+test ('isTimingEvent', (t) => {
+  t.true (F.isTimingEvent (timingEvent (100, 150)))
+})
+
+test ('isTimeDivisionEvent', (t) => {
+  t.true (F.isTimeDivisionEvent (timeDivisionEvent (48)))
+})
+
+test ('isSequenceEvent', (t) => {
+  t.true (F.isSequenceEvent (sequenceEvent ({ timeDivision: 240 })))
 })
