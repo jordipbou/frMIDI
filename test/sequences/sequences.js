@@ -11,12 +11,9 @@ import {
     createSequence,
     createLoop,
     filterTracks,
+    filterEvents,
     mergeTracks,
-    player,
-    prepareSequence,
-    recorder,
-    recordToTrack,
-    sequencePlayer,
+    rejectEvents,
     seemsSequence,
     sortEvents,
     setTimeDivision,
@@ -69,6 +66,76 @@ test ('add absolute delta time to single message', (t) => {
   t.deepEqual (
     withAbsoluteDeltaTime (150) (on (64, 96, 0, 0, 15)),
     [165, assoc ('absoluteDeltaTime') (165) (on (64, 96, 0, 0, 15))])
+})
+
+test ('create sequence', (t) => {
+  let track = [
+    set (deltaTime) (0) (on (64)),
+    set (deltaTime) (1) (off (64)),
+    set (deltaTime) (0) (on (67)),
+    set (deltaTime) (2) (off (67)),
+    set (deltaTime) (1) (on (71)),
+    set (deltaTime) (3) (off (71))
+  ]
+  let newsequence = createSequence (track) (1)
+
+  t.true (seemsSequence (newsequence))
+  t.deepEqual (track, newsequence.tracks [0])
+
+  newsequence = createSequence (track) (96)
+
+  t.true (seemsSequence (newsequence))
+  t.is (newsequence.timeDivision, 96)
+  t.deepEqual (track, newsequence.tracks [0])
+})
+
+test ('createLoop', (t) => {
+  let loop = createLoop (sequence)
+
+  t.true (loop.loop)
+  t.deepEqual (dissoc ('loop') (loop), sequence)
+})
+
+test ('filterEvents', (t) => {
+  t.deepEqual (
+    filterEvents (isNoteOff, sequence.tracks [0]),
+    [
+        set (deltaTime) (1) (off (64)),
+        set (deltaTime) (2) (off (67)),
+        set (deltaTime) (4) (off (71))
+    ])
+})
+
+test ('filterEvents with repeated events', (t) => {
+  t.deepEqual (
+    filterEvents (
+      isNoteOff, 
+      [
+          set (deltaTime) (0) (on (64)),
+          set (deltaTime) (1) (off (64)),
+          set (deltaTime) (0) (on (67)),
+          set (deltaTime) (2) (off (67)),
+          set (deltaTime) (1) (on (71)),
+          set (deltaTime) (0) (on (73)),
+          set (deltaTime) (3) (off (71)),
+          set (deltaTime) (1) (off (73))
+      ]),
+    [
+        set (deltaTime) (1) (off (64)),
+        set (deltaTime) (2) (off (67)),
+        set (deltaTime) (4) (off (71)),
+        set (deltaTime) (1) (off (73))
+    ])
+})
+
+test ('rejectEvents', (t) => {
+  t.deepEqual (
+    rejectEvents (isNoteOff, sequence.tracks [0]),
+    [
+        set (deltaTime) (0) (on (64)),
+        set (deltaTime) (1) (on (67)),
+        set (deltaTime) (3) (on (71)),
+    ])
 })
 
 test ('withAbsoluteDeltaTimes', (t) => {
@@ -183,30 +250,4 @@ test ('setTimeDivision', (t) => {
 //  t.false (identical (track [1], original_track [1]))
 //})
 
-test ('create sequence', (t) => {
-  let track = [
-    set (deltaTime) (0) (on (64)),
-    set (deltaTime) (1) (off (64)),
-    set (deltaTime) (0) (on (67)),
-    set (deltaTime) (2) (off (67)),
-    set (deltaTime) (1) (on (71)),
-    set (deltaTime) (3) (off (71))
-  ]
-  let newsequence = createSequence (track) (1)
 
-  t.true (seemsSequence (newsequence))
-  t.deepEqual (track, newsequence.tracks [0])
-
-  newsequence = createSequence (track) (96)
-
-  t.true (seemsSequence (newsequence))
-  t.is (newsequence.timeDivision, 96)
-  t.deepEqual (track, newsequence.tracks [0])
-})
-
-test ('createLoop', (t) => {
-  let loop = createLoop (sequence)
-
-  t.true (loop.loop)
-  t.deepEqual (dissoc ('loop') (loop), sequence)
-})

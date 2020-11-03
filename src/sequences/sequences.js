@@ -19,11 +19,11 @@ import {
     switchMap as rxo_switchMap
   } from 'rxjs/operators'
 import {
-    __, addIndex, always, all, allPass, and, append, assoc, both, 
-    clone, concat, cond, curry, dropWhile,
+    __, add, addIndex, always, all, allPass, and, append, assoc, both, 
+    clone, concat, complement, cond, curry, dropWhile,
     either, evolve, F, filter, flatten, forEach, 
     has, head, is, isEmpty, isNil, last,
-    map, mapAccum, mergeLeft, not, objOf, 
+    map, mapAccum, mergeLeft, not, objOf, over,
     pipe, prepend, prop, propIs, propEq, propSatisfies,
     reduce, reduceWhile, scan, set, slice, sort, sortBy, splitWhen,
     T, tail, view
@@ -45,11 +45,39 @@ export const seemsLoop = (sequence) =>
        (propEq ('loop', true))
        (sequence)
 
-// -------------------------- Helpers ------------------------------
+// -------------- MIDI Sequence creation from tracks ---------------------
+
+// TODO: createSequence should allow several tracks at once
+
+export const createSequence = curry ((track, timeDivision) => ({
+  formatType: 1,
+  timeDivision: timeDivision,
+  tracks: [track]
+}))
+
+export const createLoop =	(sequence) => 
+  assoc ('loop') (true) (sequence)
+
+// ---------------------- Operations on one track ------------------------
+
+export const filterEvents = curry ((p, track) =>
+  head
+    (reduce
+      (([ filtered, prev_delta ], evt) =>
+        p (evt) ?
+          [[ ...filtered, over (deltaTime) (add (prev_delta)) (evt) ], 0]
+          : [ filtered, evt.deltaTime + prev_delta ])
+      ([[], 0])
+      (track)))
+
+export const rejectEvents = curry ((p, track) =>
+  filterEvents (complement (p)) (track))
+
+// ----------------------- Operations on tracks --------------------------
 
 export const mapTracks = curry((fn, sequence) =>
   evolve ({
-    tracks: fn
+    tracks: map (fn)
   }) (sequence)
 )
 
@@ -62,18 +90,18 @@ export const withAbsoluteDeltaTime = curry ((acc_tick, msg) =>
 
 export const withAbsoluteDeltaTimes = (sequence) =>
   mapTracks 
-    (map (pipe (mapAccum (withAbsoluteDeltaTime) (0), last)))
+    (pipe (mapAccum (withAbsoluteDeltaTime) (0), last))
     (sequence)
 
 export const mergeTracks = (sequence) =>
-  mapTracks 
-    ((tracks) => [flatten (tracks)]) 
-    (sequence)
+  evolve ({ 
+    tracks: (tracks) => [flatten (tracks)]
+  }) (sequence)
 
 export const sortEvents = (sequence) =>
-  mapTracks 
-    ((tracks) => [sortBy (prop ('absoluteDeltaTime')) (tracks [0])])
-    (sequence)
+  evolve ({
+    tracks: (tracks) => [sortBy (prop ('absoluteDeltaTime')) (tracks [0])]
+  }) (sequence)
 
 export const setTimeDivision = (td) => (sequence) =>
   evolve ({
@@ -87,11 +115,6 @@ export const setTimeDivision = (td) => (sequence) =>
                 (evt)))
   }) (sequence)
 
-export const filterEvents = curry ((p, sequence) =>
-  evolve ({
-    tracks: map (filter (p))
-  }) (sequence)
-)
 //export const filterTracks =	curry((tracks, sequence) => 
 //  evolve ({
 //    tracks: () => tracks.length,
@@ -111,19 +134,6 @@ export const filterEvents = curry ((p, sequence) =>
 
 // TODO
 // export let commonTimeDivision = (midiFile1, midiFile2, ...) => 
-
-// -------------- MIDI Sequence creation from tracks ---------------------
-
-// TODO: createSequence should allow several tracks at once
-
-export const createSequence = curry ((track, timeDivision) => ({
-  formatType: 1,
-  timeDivision: timeDivision,
-  tracks: [track]
-}))
-
-export const createLoop =	(sequence) => 
-  assoc ('loop') (true) (sequence)
 
 // -------------------------------- Looper -------------------------------
 
