@@ -1,10 +1,16 @@
 export {
     seemsSequence, seemsLoop,
     createSequence, createLoop,
-    player,
-    play,
-    recorder
   } from './sequences.js'
+
+export {
+    player,
+    play
+  } from './player.js'
+
+export {
+    recorder
+  } from './recorder.js'
 
 export {
     pattern

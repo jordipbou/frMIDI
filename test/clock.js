@@ -1,13 +1,13 @@
 const test = require ('ava')
 import { map, prop } from 'ramda'
 import { 
-    mc, off, on, bpmChange, timeDivisionEvent, timingEvent 
-  } from '../src/messages'
+  mc, off, on, bpmChange, timeDivisionEvent, timingEvent 
+} from '../src/messages'
 import { isNoteOn } from '../src/predicates/predicates.js'
 import { isTimingEvent } from '../src/predicates/frmeta.js'
 import { 
   timer, futureClock, metronome, clock 
-  } from '../src/clock/clock.js'
+} from '../src/clock/clock.js'
 import { from, merge, of } from 'rxjs'
 import { filter as rxo_filter, take as rxo_take } from 'rxjs/operators'
 import { TestScheduler } from 'rxjs/testing'

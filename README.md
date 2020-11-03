@@ -1,6 +1,6 @@
 # frMIDI
 
-JavaScript functional reactive MIDI library.
+JavaScript functional reactive MIDI library for WebMIDI applications.
 
 ## Why reactive?
 
@@ -155,7 +155,6 @@ Filtering note on/off that has velocity between 64 and 96.
 	…                                  lensP (velocity, R.gte, 64), 
 	…                                  lensP (velocity, R.lte, 96)])))
 	…   .subscribe (console.log)
-
 
 
 # License

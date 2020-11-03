@@ -1,15 +1,16 @@
 import { pattern } from './patterns.js'
 import { 
-    createLoop, createSequence, player, setTimeDivision 
-  } from './sequences.js'
+  createLoop, createSequence, setTimeDivision 
+} from './sequences.js'
+import { player } from './player.js'
 import { on } from '../messages/messages.js'
 import { endOfTrack } from '../messages/meta.js'
 import { 
-    barEvent, beatEvent, restEvent, subdivisionEvent 
-  } from '../messages/frmeta.js'
+  barEvent, beatEvent, restEvent, subdivisionEvent 
+} from '../messages/frmeta.js'
 import {
-    isBarEvent, isBeatEvent, isRestEvent, isSubdivisionEvent
-  } from '../predicates/frmeta.js'
+  isBarEvent, isBeatEvent, isRestEvent, isSubdivisionEvent
+} from '../predicates/frmeta.js'
 import { timeDivision } from '../lenses/lenses.js'
 import { addIndex, always, cond, identity, map, T } from 'ramda'
 import { pipe as rx_pipe, of as rx_of, NEVER as rx_NEVER } from 'rxjs'
