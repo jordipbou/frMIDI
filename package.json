@@ -1,6 +1,6 @@
 {
   "name": "frmidi",
-  "version": "1.0.51",
+  "version": "1.0.52",
   "description": "Functional reactive MIDI library",
   "main": "umd/frmidi.js",
   "module": "es/frmidi.js",
@@ -30,7 +30,6 @@
     "ava": "^3.13.0",
     "esm": "^3.2.25",
     "local-repl": "^4.0.0",
-    "mathjs": "^7.5.1",
     "midi-parser-js": "^4.0.4",
     "performance-now": "^2.1.0",
     "ramda": "^0.27.1",

@@ -2,19 +2,13 @@ import { on, off } from '../messages/messages.js'
 import { isNoteOn } from '../predicates/predicates.js'
 import { isEndOfTrack } from '../predicates/meta.js'
 import { channel, deltaTime, note } from '../lenses/lenses.js'
+import { lcm } from '../utils.js'
 import { 
   addIndex, always, append, apply, both, complement, cond,
   filter, flatten, identity, is, isEmpty, length, 
   map, multiply, none, objOf, pipe, reduce, set,
   T, type, view
 } from 'ramda'
-
-// Until mathjs v8 import of lcm from mathjs generates an
-// error on bundling. Import from mathjs/number does not and, although
-// functionality is not exact the same (mathjs/number/lcm
-// only accepts 2 parameters) it's not possible to change
-// until version 8.
-import { lcm } from 'mathjs/number'
 
 // Patterns are totally based on Tidal Cycles.
 

@@ -4,7 +4,7 @@ import {
     pipe as rx_pipe
   } from 'rxjs'
 import { map as rx_map } from 'rxjs/operators'
-import { curry, map, pipe, set, zip } from 'ramda'
+import { curry, map, pipe, reduce, set, zip } from 'ramda'
 
 // asapScheduler's now function is modified to use browser's
 // performance.now or node-now function.
@@ -41,3 +41,25 @@ export const midiToHzs = (n, tuning = 440) =>
 export const multiSet = curry((lenses, values) =>
   pipe (...map (([l, v]) => set (l) (v)) (zip (lenses) (values)))
 )
+
+// Until mathjs works well with rollup, we only need this functions
+
+export const gcd_two_numbers = (x, y) => {
+  x = Math.abs(x);
+  y = Math.abs(y);
+  while(y) {
+    var t = y;
+    y = x % y;
+    x = t;
+  }
+  return x;
+}
+
+export const lcm_two_numbers = (x, y) => {
+   if ((typeof x !== 'number') || (typeof y !== 'number'))
+    return false;
+  return (!x || !y) ? 0 : Math.abs((x * y) / gcd_two_numbers(x, y));
+}
+
+export const lcm = (...args) =>
+  reduce (lcm_two_numbers) (1) (args)
