@@ -1,30 +1,25 @@
 const test = require ('ava')
 import { 
-    isNoteOn, isNoteOff, seemsMessage 
-  } from '../../src/predicates'
+  isNoteOn, isNoteOff, seemsMessage 
+} from '../../src/predicates'
 import { on, off, mc, start, stop, cont } from '../../src/messages'
 import { sequenceEvent } from '../../src/messages/frmeta.js'
 import { 
-    absoluteDeltaTime, deltaTime, note, timeStamp
-  } from '../../src/lenses/lenses.js'
+  absoluteDeltaTime, deltaTime, note, timeStamp
+} from '../../src/lenses/lenses.js'
 import { 
-    createSequence,
-    createLoop,
-    filterTracks,
-    filterEvents,
-    mergeTracks,
-    rejectEvents,
-    seemsSequence,
-    sortEvents,
-    setTimeDivision,
-    withAbsoluteDeltaTime,
-    withAbsoluteDeltaTimes
-  } from '../../src/sequences/sequences.js'
+  createSequence, createLoop, filterTracks, filterEvents,
+  insertEvent, insertAllEvents,
+  mergeTracks, rejectEvents, seemsSequence, sortEvents, setTimeDivision,
+  withAbsoluteDeltaTime, withAbsoluteDeltaTimes
+} from '../../src/sequences/sequences.js'
 import { multiSet } from '../../src/utils.js'
 import { 
   assoc, dissoc, drop, identical, is, last, map, prepend, set, take, view 
-  } from 'ramda'
+} from 'ramda'
 import { TestScheduler } from 'rxjs/testing'
+
+// ------------------------- Test Helpers --------------------------------
 
 export const setup_scheduler = (t) =>
   new TestScheduler ((actual, expected) => {
@@ -50,9 +45,13 @@ export const sequence = {
   ]
 }
 
+// -------------------------- Predicates ---------------------------------
+
 test ('seems sequence', (t) => {
   t.true (seemsSequence (sequence))
 })
+
+// -------------------- Set absolute delta times -------------------------
 
 test ('add absolute delta time to single message', (t) => {
   t.deepEqual (
@@ -67,6 +66,33 @@ test ('add absolute delta time to single message', (t) => {
     withAbsoluteDeltaTime (150) (on (64, 96, 0, 0, 15)),
     [165, assoc ('absoluteDeltaTime') (165) (on (64, 96, 0, 0, 15))])
 })
+
+test ('withAbsoluteDeltaTimes (on multiple tracks)', (t) => {
+  let modified = withAbsoluteDeltaTimes (sequence)
+
+  t.true (seemsSequence (modified))
+  t.not (modified.tracks, sequence.tracks)
+  t.not (modified.tracks [0], sequence.tracks [0])
+  t.not (modified.tracks [1], sequence.tracks [1])
+
+  let track = modified.tracks [0]
+
+  t.is (track.length, 6)
+  t.is (track [0].absoluteDeltaTime, 0)
+  t.is (track [1].absoluteDeltaTime, 1)
+  t.is (track [2].absoluteDeltaTime, 1)
+  t.is (track [3].absoluteDeltaTime, 3)
+  t.is (track [4].absoluteDeltaTime, 4)
+  t.is (track [5].absoluteDeltaTime, 7)
+
+  let track1 = modified.tracks [1]
+
+  t.is (track1.length, 2)
+  t.is (track1 [0].absoluteDeltaTime, 0)
+  t.is (track1 [1].absoluteDeltaTime, 8)
+})
+
+// ------------------------ Sequence creation ----------------------------
 
 test ('create sequence', (t) => {
   let track = [
@@ -96,6 +122,8 @@ test ('createLoop', (t) => {
   t.deepEqual (dissoc ('loop') (loop), sequence)
 })
 
+// ------------------ Manipulating events on a track ---------------------
+
 test ('filterEvents', (t) => {
   t.deepEqual (
     filterEvents (isNoteOff, sequence.tracks [0]),
@@ -103,6 +131,28 @@ test ('filterEvents', (t) => {
         set (deltaTime) (1) (off (64)),
         set (deltaTime) (2) (off (67)),
         set (deltaTime) (4) (off (71))
+    ])
+})
+
+test ('filterEvents, checking absolute delta times', (t) => {
+  t.deepEqual (
+    filterEvents (
+      isNoteOff, 
+      [
+        set (absoluteDeltaTime) (0) (set (deltaTime) (0) (on (64))),
+        set (absoluteDeltaTime) (1) (set (deltaTime) (1) (off (64))),
+        set (absoluteDeltaTime) (1) (set (deltaTime) (0) (on (67))),
+        set (absoluteDeltaTime) (3) (set (deltaTime) (2) (off (67))),
+        set (absoluteDeltaTime) (4) (set (deltaTime) (1) (on (71))),
+        set (absoluteDeltaTime) (4) (set (deltaTime) (0) (on (73))),
+        set (absoluteDeltaTime) (7) (set (deltaTime) (3) (off (71))),
+        set (absoluteDeltaTime) (8) (set (deltaTime) (1) (off (73))),
+      ]),
+    [
+        set (absoluteDeltaTime) (1) (set (deltaTime) (1) (off (64))),
+        set (absoluteDeltaTime) (3) (set (deltaTime) (2) (off (67))),
+        set (absoluteDeltaTime) (7) (set (deltaTime) (4) (off (71))),
+        set (absoluteDeltaTime) (8) (set (deltaTime) (1) (off (73))),
     ])
 })
 
@@ -136,32 +186,6 @@ test ('rejectEvents', (t) => {
         set (deltaTime) (1) (on (67)),
         set (deltaTime) (3) (on (71)),
     ])
-})
-
-test ('withAbsoluteDeltaTimes', (t) => {
-  let modified = withAbsoluteDeltaTimes (sequence)
-
-  t.true (seemsSequence (modified))
-  t.not (modified.tracks, sequence.tracks)
-  t.not (modified.tracks [0], sequence.tracks [0])
-  t.not (modified.tracks [1], sequence.tracks [1])
-
-  let track = modified.tracks [0]
-  let original_track = sequence.tracks [0]
-
-  t.is (track.length, 6)
-  t.is (track [0].absoluteDeltaTime, 0)
-  t.is (track [1].absoluteDeltaTime, 1)
-  t.is (track [2].absoluteDeltaTime, 1)
-  t.is (track [3].absoluteDeltaTime, 3)
-  t.is (track [4].absoluteDeltaTime, 4)
-  t.is (track [5].absoluteDeltaTime, 7)
-
-  let track1 = modified.tracks [1]
-
-  t.is (track1.length, 2)
-  t.is (track1 [0].absoluteDeltaTime, 0)
-  t.is (track1 [1].absoluteDeltaTime, 8)
 })
 
 test ('mergeTracks', (t) => {

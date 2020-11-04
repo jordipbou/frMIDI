@@ -6,10 +6,10 @@ import {
     hasIn, head, is, isEmpty, last, 
     map, pipe, prop, propEq
   } from 'ramda'
-import { 
-    seemsMessage, isTempoChange
-  } from '../predicates'
-import { msg, from } from '../messages'
+import { seemsMessage } from '../predicates/predicates.js'
+import { isTempoChange } from '../predicates/meta.js'
+import { msg, from } from '../messages/messages.js'
+import { withAbsoluteDeltaTimes } from '../sequences/sequences.js'
 import { 
     MidiParser 
   } from '../../node_modules/midi-parser-js/src/midi-parser.js'
@@ -220,7 +220,8 @@ export const loadMIDIFile =	() => {
 		new Promise((solve, reject) => 
 			MidiParser.parse(
         input_file_element, 
-        midifile => solve (convertFromMidiParser (midifile))
+        midifile => 
+          solve (withAbsoluteDeltaTimes (convertFromMidiParser (midifile)))
       ))
 
 	input_file_element.click()

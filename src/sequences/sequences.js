@@ -29,7 +29,7 @@ import {
     T, tail, view
   } from 'ramda'
 
-// ------------------------- Predicates ----------------------------
+// --------------------------- Predicates --------------------------------
 
 export const seemsSequence = (sequence) =>
   allPass ([is (Object),
@@ -45,20 +45,39 @@ export const seemsLoop = (sequence) =>
        (propEq ('loop', true))
        (sequence)
 
+// ---------------------- Absolute delta times ---------------------------
+
+export const withAbsoluteDeltaTime = curry ((acc_tick, msg) =>
+  [
+    acc_tick + msg.deltaTime,
+    assoc ('absoluteDeltaTime') (acc_tick + msg.deltaTime) (msg)
+  ]
+)
+
+export const withAbsoluteDeltaTimes = (sequence) =>
+  mapTracks 
+    (pipe (mapAccum (withAbsoluteDeltaTime) (0), last))
+    (sequence)
+
+// TODO: Make every function that manipulates events (or tracks) aware
+// of both absoluteDeltaTimes and deltaTimes. Both will be in use
+// constantly.
+
 // -------------- MIDI Sequence creation from tracks ---------------------
 
-// TODO: createSequence should allow several tracks at once
-
-export const createSequence = curry ((track, timeDivision) => ({
+export const createSequence = curry ((tracks, timeDivision) => ({
   formatType: 1,
   timeDivision: timeDivision,
-  tracks: [track]
+  tracks: is (Array) (tracks [0]) ? tracks : [ tracks ]
 }))
 
 export const createLoop =	(sequence) => 
   assoc ('loop') (true) (sequence)
 
 // ---------------------- Operations on one track ------------------------
+
+// Functions that add or remove events from track/s have to be implemented
+// because deltaTimes and absoluteTimes will be modified.
 
 export const filterEvents = curry ((p, track) =>
   head
@@ -80,18 +99,6 @@ export const mapTracks = curry((fn, sequence) =>
     tracks: map (fn)
   }) (sequence)
 )
-
-export const withAbsoluteDeltaTime = curry ((acc_tick, msg) =>
-  [
-    acc_tick + msg.deltaTime,
-    assoc ('absoluteDeltaTime') (acc_tick + msg.deltaTime) (msg)
-  ]
-)
-
-export const withAbsoluteDeltaTimes = (sequence) =>
-  mapTracks 
-    (pipe (mapAccum (withAbsoluteDeltaTime) (0), last))
-    (sequence)
 
 export const mergeTracks = (sequence) =>
   evolve ({ 
