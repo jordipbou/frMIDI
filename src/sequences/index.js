@@ -1,6 +1,8 @@
 export {
     seemsSequence, seemsLoop,
     createSequence, createLoop,
+    filterEvents, rejectEvents,
+    mergeTracks
   } from './sequences.js'
 
 export {

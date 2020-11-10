@@ -6,11 +6,10 @@ import { is } from 'ramda'
 // This messages will flow freely around frMIDI operators, but will no
 // pass thru a MIDI output.
 
-export const meta = (metaType, data, timeStamp = 0, deltaTime = 0) => 
+export const meta = (metaType, data, timeStamp = 0) => 
 ({ 
 	type: 'metaevent', 
 	timeStamp: timeStamp,
-	deltaTime: deltaTime,
   metaType: metaType,
 	data: is (Array) (data) ? [ ...data ] : [ data ]
 })
@@ -31,11 +30,11 @@ export const TIME_SIGNATURE = 88
 export const KEY_SIGNATURE = 89
 export const SEQUENCER_SPECIFIC = 127
 
-export const endOfTrack = (timeStamp = 0, deltaTime = 0) =>
-  meta (47, [], timeStamp, deltaTime)
+export const endOfTrack = (timeStamp = 0) =>
+  meta (47, [], timeStamp)
   
-export const tempoChange = (qnpm, timeStamp = 0, deltaTime = 0) =>
-  meta (81, [qnpm], timeStamp, deltaTime)
+export const tempoChange = (qnpm, timeStamp = 0) =>
+  meta (81, [qnpm], timeStamp)
 
-export const bpmChange = (bpm, timeStamp = 0, deltaTime = 0) =>
-  meta (81, BPM2QNPM (bpm), timeStamp, deltaTime)
+export const bpmChange = (bpm, timeStamp = 0) =>
+  meta (81, BPM2QNPM (bpm), timeStamp)

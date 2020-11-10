@@ -9,7 +9,7 @@ import { isTempoChange } from '../predicates/meta.js'
 import { isSequenceEvent } from '../predicates/frmeta.js'
 import { timeStamp, sequence as sequenceLens } from '../lenses/lenses.js'
 import {
-  concat, cond, dropWhile, either, isNil, isEmpty,
+  concat, cond, dissoc, dropWhile, either, isNil, isEmpty,
   last, map, pipe, prepend, prop, reduce,
   set, splitWhen, T, tail, view
 } from 'ramda'
@@ -20,53 +20,57 @@ import {
 
 // ------------------------ Playing MIDI Sequences -----------------------
 
-export const prepareSequence = (sequence) =>
-  pipe (
-    withAbsoluteDeltaTimes,
-    mergeTracks,
-    sortEvents
-  ) (sequence)
-
 // NOTE: Analyze another implementation option:
 // [ first_event if absTime === currentAbsTime, ...recurse more events ]
 export const sequencePlayer = (sequence) => {
-  const preparedSequence = prepareSequence (sequence)
+  const preparedSequence = withAbsoluteDeltaTimes (mergeTracks (sequence))
   const maxTick = prop ('absoluteDeltaTime')
                        (last (preparedSequence.tracks [0]))
 
-  let rec = (currentAbsoluteDeltaTime, playable) => {
-    playable = playable || preparedSequence
+  let rec = (currentAbsoluteDeltaTime, track) => {
+    track = track || preparedSequence.tracks [0]
 
     return (msg) => {
-      let filtered = 
-        dropWhile 
+      let filtered =
+        dropWhile
           ((e) => e.absoluteDeltaTime < currentAbsoluteDeltaTime)
-          (playable.tracks [0])
+          (track)
 
       let events = 
         splitWhen 
           ((e) => e.absoluteDeltaTime > currentAbsoluteDeltaTime)
           (filtered)
 
+      let msg_ts = view (timeStamp) (msg)
+
       if (sequence.loop && currentAbsoluteDeltaTime === maxTick) {
-        let [_, seq, events2] = rec (0, preparedSequence) (msg)
+        let [_, seq, events2] = rec (0) (msg)
 
         return [
           1,
           seq,
           prepend 
             (msg)
-            (concat (map (set (timeStamp) (view (timeStamp) (msg))) 
-                         (events [0])) 
-                    (tail (events2)))
+            (concat 
+              (map
+                (pipe (
+                  set (timeStamp) (msg_ts),
+                  dissoc ('absoluteDeltaTime'),
+                  dissoc ('deltaTime')))
+                (events [0])) 
+              (tail (events2)))
         ]
       } else {
         return [
           currentAbsoluteDeltaTime + 1,
-          createSequence (events [1]) (playable.timeDivision),
+          events [1],
           prepend (msg)
-                  (map (set (timeStamp) (view (timeStamp) (msg))) 
-                       (events [0]))
+                  (map
+                    (pipe (
+                      set (timeStamp) (msg_ts),
+                      dissoc ('absoluteDeltaTime'),
+                      dissoc ('deltaTime')))
+                    (events [0]))
         ]
       }
     }

@@ -1,5 +1,4 @@
 const test = require ('ava')
-import { add, gt, lt, view, set, over } from 'ramda'
 import { 
     cc, cp, mc, off, on, pb, pp
   } from '../src/messages/messages.js'
@@ -9,6 +8,7 @@ import {
   channel, control, deltaTime, getData, lensP, note, 
   pitchBend, pressure, setData, timeStamp, tempo, velocity
 } from '../src/lenses/lenses.js'
+import { add, assoc, gt, lt, view, set, over } from 'ramda'
 
 test ('getData', (t) => {
   t.is (getData (0) (on (64)), 144)
@@ -22,7 +22,6 @@ test ('setData', (t) => {
     setData (0) (666) (on (64)), 
     {
       type: 'midimessage',
-      deltaTime: 0,
       timeStamp: 0,
       data: [666, 64, 96]
     })
@@ -49,19 +48,18 @@ test ('timeStamp lens', (t) => {
 })
 
 test ('deltaTime lens', (t) => {
-  t.is (view (deltaTime) (on (64)), 0)
+  t.is (view (deltaTime) (tempoChange (5000)), undefined)
+  t.is (view (deltaTime) (assoc ('deltaTime') (15) (on (64))), 15)
   t.is (view (deltaTime) ([144, 64, 96]), undefined)
-  t.is (view (deltaTime) (tempoChange (5000)), 0)
-  t.is (view (deltaTime) (timingEvent ()), 0)
 
   t.is ((set (deltaTime) (100) (on (64))).deltaTime, 100)
   t.deepEqual (set (deltaTime) (100) ([144, 64, 96]), [144, 64, 96])
   t.is (view (deltaTime) (set (deltaTime) (2) (tempoChange (5000))), 2)
   t.is (view (deltaTime) (set (deltaTime) (2) (timingEvent ())), 2)
 
-  t.is ((over (deltaTime) (add (3)) (on (64))).deltaTime, 3)
-  t.is ((over (deltaTime) (add (3)) (tempoChange (5000))).deltaTime, 3)
-  t.is ((over (deltaTime) (add (3)) (timingEvent ())).deltaTime, 3)
+  t.is ((over (deltaTime) (add (3)) (set (deltaTime) (0) (on (64)))).deltaTime, 3)
+  t.is ((over (deltaTime) (add (3)) (set (deltaTime) (5) (tempoChange (5000)))).deltaTime, 8)
+  t.is ((over (deltaTime) (add (3)) (set (deltaTime) (1) (timingEvent ()))).deltaTime, 4)
 })
 
 test ('channel lens', (t) => {

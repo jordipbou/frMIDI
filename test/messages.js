@@ -33,21 +33,18 @@ test ('MIDI Message creation', (t) => {
     msg ([145, 64, 96]), 
     { type: 'midimessage',
       timeStamp: 0,
-      deltaTime: 0,
       data: [145, 64, 96]})
 
   t.deepEqual (
     msg ([145, 64, 96], 25), 
     { type: 'midimessage',
       timeStamp: 25,
-      deltaTime: 0,
       data: [145, 64, 96]})
 
   t.deepEqual (
-    msg ([145, 64, 96], 25, 100), 
+    msg ([145, 64, 96], 25), 
     { type: 'midimessage',
       timeStamp: 25,
-      deltaTime: 100,
       data: [145, 64, 96]})
 })
 
@@ -56,7 +53,6 @@ test ('MIDI Message cloning', (t) => {
   let combine = from (msgs)
 
   t.is (combine.timeStamp, msgs[0].timeStamp)
-  t.is (combine.deltaTime, msgs[0].deltaTime)
   t.deepEqual (combine.data, [248, 144, 64, 96])
 })
 
@@ -202,7 +198,6 @@ test ('MIDI File Meta Event message creation', (t) => {
     { 
       type: 'metaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: 88,
       data: [ 4, 2, 48, 8 ]
     })
@@ -212,7 +207,6 @@ test ('MIDI File Meta Event message creation', (t) => {
     {
       type: 'metaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: 88,
       data: [96]
     })
@@ -224,12 +218,9 @@ test ('End of track MIDI File meta message', (t) => {
     {
       type: 'metaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: 47,
       data: []
     })
-
-  // TODO: With deltatime and timestamp!
 })
 
 test ('Set tempo (as qnpm) MIDI File meta message', (t) => {
@@ -238,7 +229,6 @@ test ('Set tempo (as qnpm) MIDI File meta message', (t) => {
     {
       type: 'metaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: 81,
       data: [ 60000 ]
     })
@@ -250,7 +240,6 @@ test ('Set tempo (as bpm) MIDI File meta message', (t) => {
     {
       type: 'metaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: 81,
       data: [ 500000 ]
     })
@@ -264,7 +253,6 @@ test ('frMIDI Meta Event message creation', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: 0,
       data: [10, 45]
     })
@@ -274,7 +262,6 @@ test ('frMIDI Meta Event message creation', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 15,
-      deltaTime: 26,
       metaType: 1,
       data: [ { a: 1, b: 2 } ]
     })
@@ -286,7 +273,6 @@ test ('frMIDI timing Meta Event', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: TIMING_EVENT,
       data: [100, 150]
     })
@@ -298,7 +284,6 @@ test ('frMIDI timeDivision Meta Event', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: TIME_DIVISION_EVENT,
       data: [ 48 ]
     })
@@ -310,7 +295,6 @@ test ('frMIDI sequence Meta Event', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: SEQUENCE_EVENT,
       data: [{ timeDivision: 24, formatType: 1, tracks: [[]] }]
     })
@@ -322,7 +306,6 @@ test ('frMIDI bar event', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: BAR_EVENT,
       data: [ ]
     })
@@ -334,7 +317,6 @@ test ('frMIDI beat event', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: BEAT_EVENT,
       data: [ ]
     })
@@ -346,7 +328,6 @@ test ('frMIDI subdivision event', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: SUBDIVISION_EVENT,
       data: [ ]
     })
@@ -358,7 +339,6 @@ test ('frMIDI rest event', (t) => {
     {
       type: 'frmetaevent',
       timeStamp: 0,
-      deltaTime: 0,
       metaType: REST_EVENT,
       data: [ ]
     })

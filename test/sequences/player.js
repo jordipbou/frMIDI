@@ -1,90 +1,71 @@
 const test = require ('ava')
 import { 
-  prepareSequence, player, sequencePlayer
+  player, sequencePlayer
 } from '../../src/sequences/player.js'
 import { sequence, setup_scheduler } from './sequences.js'
 import { 
-  createLoop, createSequence 
+  adjustTrack, createLoop, dropEvents, createSequence, 
+  getTrack, mergeTracks,
+  trackWithAbsoluteDeltaTimes, trackWithoutDeltaTimes
 } from '../../src/sequences/sequences.js'
 import { 
   cont, mc, off, on, start, stop 
 } from '../../src/messages/messages.js'
-import { absoluteDeltaTime, timeStamp } from '../../src/lenses/lenses.js'
+import { 
+  withAbsoluteDeltaTimes, withoutAbsoluteDeltaTimes
+} from '../../src/sequences/sequences.js'
+import { 
+  absoluteDeltaTime, deltaTime, timeStamp 
+} from '../../src/lenses/lenses.js'
 import { multiSet } from '../../src/utils.js'
-import { drop, last, map, prepend, set, take } from 'ramda'
-
-test ('prepare sequence for playing by merging its tracks into one and sorting its events by absoluteDeltaTime', (t) => {
-  t.deepEqual (
-    prepareSequence (sequence),
-    {
-      formatType: 1,
-      timeDivision: 1,
-      tracks: [
-        [
-          set (absoluteDeltaTime) (0) (on (64, 96, 0, 0, 0)),
-          set (absoluteDeltaTime) (0) (on (32, 96, 0, 0, 0)),
-          set (absoluteDeltaTime) (1) (off (64, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (1) (on (67, 96, 0, 0, 0)),
-          set (absoluteDeltaTime) (3) (off (67, 96, 0, 0, 2)),
-          set (absoluteDeltaTime) (4) (on (71, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (7) (off (71, 96, 0, 0, 3)),
-          set (absoluteDeltaTime) (8) (off (32, 96, 0, 0, 8))
-        ]
-      ]
-   })
-})
+import { 
+  dissoc, drop, head, last, map, pipe, prepend, set, take 
+} from 'ramda'
 
 test ('sequencePlayer', (t) => {
-  let player = sequencePlayer (sequence)
-  let playable = prepareSequence (sequence)
+  const player = sequencePlayer (sequence)
+  const track = getTrack (0) (mergeTracks (sequence))
 
   t.deepEqual (
     player (0) (mc (0)),
     [
       1, 
-      createSequence 
-        ([
-          set (absoluteDeltaTime) (1) (off (64, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (1) (on (67, 96, 0, 0, 0)),
-          set (absoluteDeltaTime) (3) (off (67, 96, 0, 0, 2)),
-          set (absoluteDeltaTime) (4) (on (71, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (7) (off (71, 96, 0, 0, 3)),
-          set (absoluteDeltaTime) (8) (off (32, 96, 0, 0, 8))
-        ])
-        (playable.timeDivision),
-      prepend
-        (mc (0))
-        (take (2) (playable.tracks [0]))
+      trackWithAbsoluteDeltaTimes (drop (2) (track)),
+      [mc (0), ...trackWithoutDeltaTimes (take (2) (track))]
     ])
+})
+
+test ('sequencePlayer 2', (t) => {
+  const player = sequencePlayer (sequence)
+  const track = getTrack (0) (mergeTracks (sequence))
 
   t.deepEqual (
     player (...player (0) (mc (0))) (mc (1)),
     [
       2, 
-      createSequence 
-        ([
-          set (absoluteDeltaTime) (3) (off (67, 96, 0, 0, 2)),
-          set (absoluteDeltaTime) (4) (on (71, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (7) (off (71, 96, 0, 0, 3)),
-          set (absoluteDeltaTime) (8) (off (32, 96, 0, 0, 8))
-        ])
-        (playable.timeDivision),
-      prepend (mc (1))
-              (take (2) 
-                    (map (set (timeStamp) (1))
-                         (drop (2) (playable.tracks [0]))))
+      drop (4) (trackWithAbsoluteDeltaTimes (track)),
+      //adjustTrack (0) (drop (4)) (withAbsoluteDeltaTimes (playable)),
+      [
+        mc (1), 
+        ...pipe (
+          trackWithoutDeltaTimes,
+          drop (2),
+          take (2),
+          map (set (timeStamp) (1))
+        ) (track)
+      ]
     ])
+})
+
+test ('sequencePlayer 3', (t) => {
+  const player = sequencePlayer (sequence)
+  const track = getTrack (0) (mergeTracks (sequence))
 
   t.deepEqual (
     player (...player (4) (mc (4))) (mc (5)),
     [
       6, 
-      createSequence 
-        ([
-          set (absoluteDeltaTime) (7) (off (71, 96, 0, 0, 3)),
-          set (absoluteDeltaTime) (8) (off (32, 96, 0, 0, 8))
-        ])
-        (playable.timeDivision),
+      drop (6) (trackWithAbsoluteDeltaTimes (track)),
       [mc (5)]
     ])
 
@@ -92,26 +73,56 @@ test ('sequencePlayer', (t) => {
     player (...player (7) (mc (7))) (mc (8)),
     [
       9, 
-      createSequence ([]) (playable.timeDivision),
-      [mc (8), set (timeStamp) (8) (last (playable.tracks [0]))]
+      drop (8) (trackWithAbsoluteDeltaTimes (track)),
+      [
+        mc (8),
+        set (timeStamp) (8) (last (trackWithoutDeltaTimes (track)))
+      ]
     ])
 })
 
 test ('sequencePlayer should filter events happening before currentAbsoluteDeltaTime', (t) => {
   let player = sequencePlayer (sequence)
-  let playable = prepareSequence (sequence)
+  let track = getTrack (0) (mergeTracks (sequence))
 
   t.deepEqual (
     player (4) (mc (0)),
     [
       5, 
-      createSequence 
-        ([
-          set (absoluteDeltaTime) (7) (off (71, 96, 0, 0, 3)),
-          set (absoluteDeltaTime) (8) (off (32, 96, 0, 0, 8))
-        ])
-        (playable.timeDivision),
-      [mc (0), ...take (1) (drop (5) (playable.tracks [0]))]
+      drop (6) (trackWithAbsoluteDeltaTimes (track)),
+      [
+        mc (0),
+        head (drop (5) (trackWithoutDeltaTimes (track)))
+      ]
+    ])
+})
+
+test ('sequencePlayer with a loop should return last events and first events if tick is last, rest being equal to non loop', (t) => {
+  const player = sequencePlayer (createLoop (sequence))
+  const track = getTrack (0) (mergeTracks (createLoop (sequence)))
+
+  t.deepEqual (
+    player (0) (mc (0)),
+    [
+      1, 
+      drop (2) (trackWithAbsoluteDeltaTimes (track)),
+      [
+        mc (0),
+        ...take (2) (trackWithoutDeltaTimes (track))
+      ]
+    ])
+
+  t.deepEqual (
+    player (...player (7) (mc (7))) (mc (8)),
+    [
+      1, 
+      drop (2) (trackWithAbsoluteDeltaTimes (track)),
+      [
+        mc (8),
+        ...map 
+          (set (timeStamp) (8)) 
+          ([off (32, 96), on (64, 96), on (32, 96)])
+      ]
     ])
 })
 
@@ -136,36 +147,30 @@ test ('player operator', (t) => {
     const expected = '(abc)(def)g(hi)(jk)lm(no)(pq|)' 
     const values = {
       a: mc (0),
-      b: set (absoluteDeltaTime) (0) (on (64, 96, 0, 0, 0)),
-      c: set (absoluteDeltaTime) (0) (on (32, 96, 0, 0, 0)),
+      b: on (64, 96),
+      c: on (32, 96),
       //
       d: mc (1),
-      e: multiSet ([timeStamp, absoluteDeltaTime]) ([1, 1]) 
-                  (off (64, 96, 0, 0, 1)),
-      f: multiSet ([timeStamp, absoluteDeltaTime]) ([1, 1]) 
-                  (on (67, 96, 0, 0, 0)),
+      e: set (timeStamp) (1) (off (64, 96)),
+      f: set (timeStamp) (1) (on (67, 96)),
       //
       g: mc (2),
       //
       h: mc (3),
-      i: multiSet ([timeStamp, absoluteDeltaTime]) ([3, 3]) 
-                  (off (67, 96, 0, 0, 2)),
+      i: set (timeStamp) (3) (off (67, 96)),
       //
       j: mc (4),
-      k: multiSet ([timeStamp, absoluteDeltaTime]) ([4, 4]) 
-                  (on (71, 96, 0, 0, 1)),
+      k: set (timeStamp) (4) (on (71, 96)),
       //
       l: mc (5),
       //
       m: mc (6),
       //
       n: mc (7),
-      o: multiSet ([timeStamp, absoluteDeltaTime]) ([7, 7]) 
-                  (off (71, 96, 0, 0, 3)),
+      o: set (timeStamp) (7) (off (71, 96)),
       //
       p: mc (8),
-      q: multiSet ([timeStamp, absoluteDeltaTime]) ([8, 8]) 
-                  (off (32, 96, 0, 0, 8))
+      q: set (timeStamp) (8) (off (32, 96))
     }
 
     expectObservable (
@@ -197,14 +202,12 @@ test ('player operator must respond to start, continue and stop messages', (t) =
     const expected = '(abc)(def)(gxy)hij(kl)m(nop)(qrs)t(uvw|)'
     const values = {
       a: mc (0),
-      b: set (absoluteDeltaTime) (0) (on (64, 96, 0, 0, 0)),
-      c: set (absoluteDeltaTime) (0) (on (32, 96, 0, 0, 0)),
+      b: on (64, 96),
+      c: on (32, 96),
       //
       d: mc (1),
-      e: multiSet ([timeStamp, absoluteDeltaTime]) ([1, 1]) 
-                  (off (64, 96, 0, 0, 1)),
-      f: multiSet ([timeStamp, absoluteDeltaTime]) ([1, 1]) 
-                  (on (67, 96, 0, 0, 0)),
+      e: set (timeStamp) (1) (off (64, 96)),
+      f: set (timeStamp) (1) (on (67, 96)),
       //
       g: stop (),
       x: off (32, 127),
@@ -217,74 +220,27 @@ test ('player operator must respond to start, continue and stop messages', (t) =
       j: mc (5),
       //
       k: mc (6),
-      l: multiSet ([timeStamp, absoluteDeltaTime]) ([6, 3]) 
-                  (off (67, 96, 0, 0, 2)),
+      l: set (timeStamp) (6) (off (67, 96)),
       //
       m: start (),
       //
       n: mc (8),
-      o: multiSet ([timeStamp, absoluteDeltaTime]) ([8, 0]) 
-                  (on (64, 96, 0, 0, 0)),
-      p: multiSet ([timeStamp, absoluteDeltaTime]) ([8, 0]) 
-                  (on (32, 96, 0, 0, 0)),
+      o: set (timeStamp) (8) (on (64, 96)),
+      p: set (timeStamp) (8) (on (32, 96)),
       //
       q: stop (),
-      r: off (64, 127, 0, 0, 0),
-      s: off (32, 127, 0, 0, 0),
+      r: off (64, 127),
+      s: off (32, 127),
       //
       t: start (),
       //
       u: mc (11),
-      v: multiSet ([timeStamp, absoluteDeltaTime]) ([11, 0]) 
-                  (on (64, 96, 0, 0, 0)),
-      w: multiSet ([timeStamp, absoluteDeltaTime]) ([11, 0]) 
-                  (on (32, 96, 0, 0, 0))
+      v: set (timeStamp) (11) (on (64, 96)),
+      w: set (timeStamp) (11) (on (32, 96))
     }
 
     expectObservable (
       source.pipe (player (sequence))
     ).toBe (expected, values)
   })
-})
-
-test ('sequencePlayer with a loop should return last events and first events if tick is last, rest being equal to non loop', (t) => {
-  let player = sequencePlayer (createLoop (sequence))
-  let playable = prepareSequence (createLoop (sequence))
-
-  t.deepEqual (
-    player (0) (mc (0)),
-    [
-      1, 
-      createSequence 
-        ([
-          set (absoluteDeltaTime) (1) (off (64, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (1) (on (67, 96, 0, 0, 0)),
-          set (absoluteDeltaTime) (3) (off (67, 96, 0, 0, 2)),
-          set (absoluteDeltaTime) (4) (on (71, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (7) (off (71, 96, 0, 0, 3)),
-          set (absoluteDeltaTime) (8) (off (32, 96, 0, 0, 8))
-        ])
-        (playable.timeDivision),
-      [mc (0), ...take (2) (playable.tracks [0])]
-    ])
-
-  t.deepEqual (
-    player (...player (7) (mc (7))) (mc (8)),
-    [
-      1, 
-      createSequence 
-        ([
-          set (absoluteDeltaTime) (1) (off (64, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (1) (on (67, 96, 0, 0, 0)),
-          set (absoluteDeltaTime) (3) (off (67, 96, 0, 0, 2)),
-          set (absoluteDeltaTime) (4) (on (71, 96, 0, 0, 1)),
-          set (absoluteDeltaTime) (7) (off (71, 96, 0, 0, 3)),
-          set (absoluteDeltaTime) (8) (off (32, 96, 0, 0, 8))
-        ])
-        (playable.timeDivision),
-      prepend (mc (8))
-              (map (set (timeStamp) (8))
-                   (prepend (last (playable.tracks [0])) 
-                            (take (2) (playable.tracks [0]))))
-    ])
 })

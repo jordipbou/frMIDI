@@ -14,33 +14,32 @@ export const BEAT_EVENT = 4
 export const SUBDIVISION_EVENT = 5
 export const REST_EVENT = 6
 
-export const frMeta = (type, data, timeStamp = 0, deltaTime = 0) =>
+export const frMeta = (type, data, timeStamp = 0) =>
 ({
   type: 'frmetaevent',
   timeStamp: timeStamp,
-  deltaTime: deltaTime,
   metaType: type,
   data: is (Array) (data) ? [ ...data ] : [ data ]
 })
 
 export const timingEvent = 
-  (now = frNow (), look_ahead_window = 150, ts = 0, dt = 0) =>
-    frMeta (TIMING_EVENT, [now, look_ahead_window], ts, dt)
+  (now = frNow (), look_ahead_window = 150, ts = 0) =>
+    frMeta (TIMING_EVENT, [now, look_ahead_window], ts)
 
-export const timeDivisionEvent = (timeDivision, ts = 0, dt = 0) =>
-  frMeta (TIME_DIVISION_EVENT, timeDivision, ts, dt)
+export const timeDivisionEvent = (timeDivision, ts = 0) =>
+  frMeta (TIME_DIVISION_EVENT, timeDivision, ts)
 
-export const sequenceEvent = (sequence, ts = 0, dt = 0) =>
-  frMeta (SEQUENCE_EVENT, sequence, ts, dt)
+export const sequenceEvent = (sequence, ts = 0) =>
+  frMeta (SEQUENCE_EVENT, sequence, ts)
 
-export const barEvent = (ts = 0, dt = 0) =>
-  frMeta (BAR_EVENT, [], ts, dt)
+export const barEvent = (ts = 0) =>
+  frMeta (BAR_EVENT, [], ts)
 
-export const beatEvent = (ts = 0, dt = 0) =>
-  frMeta (BEAT_EVENT, [], ts, dt)
+export const beatEvent = (ts = 0) =>
+  frMeta (BEAT_EVENT, [], ts)
 
-export const subdivisionEvent = (ts = 0, dt = 0) =>
-  frMeta (SUBDIVISION_EVENT, [], ts, dt)
+export const subdivisionEvent = (ts = 0) =>
+  frMeta (SUBDIVISION_EVENT, [], ts)
 
-export const restEvent = (ts = 0, dt = 0) =>
-  frMeta (REST_EVENT, [], ts, dt)
+export const restEvent = (ts = 0) =>
+  frMeta (REST_EVENT, [], ts)

@@ -4,6 +4,8 @@ import { endOfTrack } from '../../src/messages/meta.js'
 import { 
     barEvent, beatEvent, restEvent, subdivisionEvent 
   } from '../../src/messages/frmeta.js'
+import { deltaTime } from '../../src/lenses/lenses.js'
+import { set } from 'ramda'
 
 test ('meterSequence', (t) => {
   t.deepEqual (
@@ -14,13 +16,13 @@ test ('meterSequence', (t) => {
       loop: true,
       tracks: [
         [
-          barEvent (),
-          restEvent (0, 40),
-          subdivisionEvent (0, 40),
-          beatEvent (0, 40),
-          subdivisionEvent (0, 40),
-          restEvent (0, 40),
-          endOfTrack (0, 40)
+          set (deltaTime) (0) (barEvent ()),
+          set (deltaTime) (40) (restEvent (0)),
+          set (deltaTime) (40) (subdivisionEvent (0)),
+          set (deltaTime) (40) (beatEvent (0)),
+          set (deltaTime) (40) (subdivisionEvent (0, 40)),
+          set (deltaTime) (40) (restEvent (0, 40)),
+          set (deltaTime) (40) (endOfTrack (0))
         ]
       ]
     })

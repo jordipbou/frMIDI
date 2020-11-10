@@ -221,7 +221,7 @@ export const loadMIDIFile =	() => {
 			MidiParser.parse(
         input_file_element, 
         midifile => 
-          solve (withAbsoluteDeltaTimes (convertFromMidiParser (midifile)))
+          solve (convertFromMidiParser (midifile))
       ))
 
 	input_file_element.click()
