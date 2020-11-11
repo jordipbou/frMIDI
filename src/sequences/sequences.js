@@ -1,7 +1,8 @@
 import { 
   isContinue, isMIDIClock, isStart,
   isSequenceEvent, isStop, isTempoChange
-} from '../predicates'
+} from '../predicates/predicates.js'
+import { seemsfrMessage } from '../predicates/frmeta.js'
 import { from } from '../messages'
 import { sequenceEvent } from '../messages/frmeta.js'
 import { 
@@ -32,7 +33,18 @@ import {
   T, tail, view
 } from 'ramda'
 
+// DOUBTS
+// - It's logical that loop is a property of a sequence, or should
+//   it be a property of the player ? I don't really like it being
+//   a property of the sequence.
+// - 
+
 // --------------------------- Predicates --------------------------------
+
+export const seemsTrack = (track) => 
+  both (is (Array)) 
+       (all (seemsfrMessage))
+    (track)
 
 export const seemsSequence = (sequence) =>
   allPass ([is (Object),
@@ -40,7 +52,7 @@ export const seemsSequence = (sequence) =>
             has ('timeDivision'),
             has ('tracks'),
             propIs (Array) ('tracks'),
-            propSatisfies (all (is (Array))) ('tracks')])
+            propSatisfies (all (seemsTrack)) ('tracks')])
           (sequence)
 
 export const seemsLoop = (sequence) =>

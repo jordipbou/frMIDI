@@ -1,8 +1,10 @@
-import { allPass, curry, is, has, propEq } from 'ramda'
+import { seemsMessage } from './predicates.js'
+import { seemsMetaEvent } from './meta.js'
 import { 
-    SEQUENCE_EVENT, TIMING_EVENT, TIME_DIVISION_EVENT,
-    BAR_EVENT, BEAT_EVENT, SUBDIVISION_EVENT, REST_EVENT
-  } from '../messages/frmeta.js'
+  SEQUENCE_EVENT, TIMING_EVENT, TIME_DIVISION_EVENT,
+  BAR_EVENT, BEAT_EVENT, SUBDIVISION_EVENT, REST_EVENT
+} from '../messages/frmeta.js'
+import { allPass, anyPass, curry, is, has, propEq } from 'ramda'
 
 // -------------------- frMIDI Meta Events predicates --------------------
 
@@ -12,6 +14,15 @@ export const seemsfrMetaEvent = (msg) =>
             has ('metaType'),
             has ('data')])
           (msg)
+
+// ---------------------- frMIDI Message predicates ----------------------
+
+export const seemsfrMessage = (msg) =>
+  anyPass 
+    ([ seemsMessage, seemsMetaEvent, seemsfrMetaEvent ])
+    (msg)
+
+// ------------------- frMIDI Meta Events definitions --------------------
 
 export const frMetaTypeEq = curry ((type, msg) =>
   seemsfrMetaEvent (msg) ?

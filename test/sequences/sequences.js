@@ -12,8 +12,9 @@ import {
   dropEvents,
   filterEvents, insertEvent, insertAllEvents,
   mapEvents, mapTracks, mergeTracks, 
-  rejectEvents, seemsSequence, sortEvents, setTimeDivision,
-  eventWithAbsoluteDeltaTime, trackWithAbsoluteDeltaTimes,
+  rejectEvents, seemsTrack, seemsSequence, sortEvents, setTimeDivision,
+  eventWithAbsoluteDeltaTime, 
+  trackWithAbsoluteDeltaTimes, trackWithoutAbsoluteDeltaTimes,
   withAbsoluteDeltaTimes, withoutAbsoluteDeltaTimes
 } from '../../src/sequences/sequences.js'
 import { multiSet } from '../../src/utils.js'
@@ -51,8 +52,14 @@ export const sequence = {
 
 // -------------------------- Predicates ---------------------------------
 
-test ('seems sequence', (t) => {
+test ('seemsSequence', (t) => {
   t.true (seemsSequence (sequence))
+  t.false (seemsSequence (sequence.tracks [0]))
+})
+
+test ('seemsTrack', (t) => {
+  t.true (seemsTrack (sequence.tracks [0]))
+  t.false (seemsTrack (sequence))
 })
 
 // ---------------- Operations on tracks and events ----------------------
@@ -134,6 +141,28 @@ test ('add absolute delta time to single message', (t) => {
         (set (deltaTime) (15) (on (64, 96)))])
 })
 
+test ('withAbsoluteDeltaTimes (one track)', (t) => {
+  const modified = trackWithAbsoluteDeltaTimes (sequence.tracks [0])
+
+  t.true (seemsTrack (modified))
+  t.not (modified, sequence.tracks [0])
+
+  t.is (modified.length, 6)
+  t.is (modified [0].absoluteDeltaTime, 0)
+  t.is (modified [1].absoluteDeltaTime, 1)
+  t.is (modified [2].absoluteDeltaTime, 1)
+  t.is (modified [3].absoluteDeltaTime, 3)
+  t.is (modified [4].absoluteDeltaTime, 4)
+  t.is (modified [5].absoluteDeltaTime, 7)
+})
+
+test ('withAbsoluteDeltaTimes (one track) should be idempotent', (t) => {
+  t.deepEqual (
+    trackWithAbsoluteDeltaTimes (sequence.tracks [0]),
+    trackWithAbsoluteDeltaTimes (
+      trackWithAbsoluteDeltaTimes (sequence.tracks [0])))
+})
+
 test ('withAbsoluteDeltaTimes (on multiple tracks)', (t) => {
   let modified = withAbsoluteDeltaTimes (sequence)
 
@@ -159,16 +188,51 @@ test ('withAbsoluteDeltaTimes (on multiple tracks)', (t) => {
   t.is (track1 [1].absoluteDeltaTime, 8)
 })
 
-test ('withAbsoluteDeltaTimes should return the same on several calls', (t) => {
+test ('withAbsoluteDeltaTimes (sequence) should be idempotent', (t) => {
   t.deepEqual (
     withAbsoluteDeltaTimes (sequence),
     withAbsoluteDeltaTimes (withAbsoluteDeltaTimes (sequence)))
 })
 
-test ('withoutAbsoluteDeltaTimes', (t) => {
+test ('withoutAbsoluteDeltaTimes (track)', (t) => {
+  t.deepEqual (
+    sequence.tracks [0],
+    trackWithoutAbsoluteDeltaTimes (
+      trackWithAbsoluteDeltaTimes (sequence.tracks [0])))
+})
+
+test ('withoutAbsoluteDeltaTimes (track) should not do anything if no absoluteDeltaTimes present', (t) => {
+  t.deepEqual (
+    trackWithoutAbsoluteDeltaTimes (sequence.tracks [0]),
+    sequence.tracks [0])
+})
+
+test ('withoutAbsoluteDeltaTimes (track) should be idempotent', (t) => {
+  t.deepEqual (
+    trackWithoutAbsoluteDeltaTimes (
+      trackWithAbsoluteDeltaTimes (sequence.tracks [0])),
+    trackWithoutAbsoluteDeltaTimes (
+      trackWithoutAbsoluteDeltaTimes (
+        trackWithAbsoluteDeltaTimes (sequence.tracks [0]))))
+})
+
+test ('withoutAbsoluteDeltaTimes (sequence)', (t) => {
   t.deepEqual (
     sequence,
     withoutAbsoluteDeltaTimes (withAbsoluteDeltaTimes (sequence)))
+})
+
+test ('withoutAbsoluteDeltaTimes (sequence) should do nothing if no absoluteDeltaTimes are present', (t) => {
+  t.deepEqual (
+    withoutAbsoluteDeltaTimes (sequence),
+    sequence)
+})
+
+test ('withoutAbsoluteDeltaTimes (sequence) should be idempotent', (t) => {
+  t.deepEqual (
+    withoutAbsoluteDeltaTimes (sequence),
+    withoutAbsoluteDeltaTimes (
+      withoutAbsoluteDeltaTimes (sequence)))
 })
 
 // ------------------------ Sequence creation ----------------------------

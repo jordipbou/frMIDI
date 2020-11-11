@@ -304,34 +304,3 @@ test ('MIDI Clock should accept TimeDivision frMIDI meta messages to change its 
     ).toBe (expected, values)
   })
 })
-
-//test ('metronome', (t) => {
-//  let scheduler = setup_scheduler (t)
-//
-//  scheduler.run (({ cold, expectObservable }) => {
-//    const source = cold (
-//      'abcd',
-//      {
-//        a: mc (0),
-//        b: mc (500),
-//        c: mc (1000),
-//        d: mc (1500)
-//      })
-//
-//    const expected = 'abc(d|)'
-//    const values = {
-//      a: on (48, 96, 9, 0),
-//      b: on (38, 96, 9, 500),
-//      c: on (51, 96, 9, 1000),
-//      d: on (38, 96, 9, 1500)
-//    }
-//
-//    expectObservable (
-//      source.pipe (
-//        metronome (2, 2, 2),
-//        rxo_filter (isNoteOn),
-//        rxo_take (4)
-//      )
-//    ).toBe (expected, values)
-//  })
-//})

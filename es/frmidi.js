@@ -397,6 +397,49 @@ function _curry3(fn) {
 }
 
 /**
+ * Applies a function to the value at the given index of an array, returning a
+ * new copy of the array with the element at the given index replaced with the
+ * result of the function application.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.14.0
+ * @category List
+ * @sig Number -> (a -> a) -> [a] -> [a]
+ * @param {Number} idx The index.
+ * @param {Function} fn The function to apply.
+ * @param {Array|Arguments} list An array-like object whose value
+ *        at the supplied index will be replaced.
+ * @return {Array} A copy of the supplied array-like object with
+ *         the element at index `idx` replaced with the value
+ *         returned by applying `fn` to the existing element.
+ * @see R.update
+ * @example
+ *
+ *      R.adjust(1, R.toUpper, ['a', 'b', 'c', 'd']);      //=> ['a', 'B', 'c', 'd']
+ *      R.adjust(-1, R.toUpper, ['a', 'b', 'c', 'd']);     //=> ['a', 'b', 'c', 'D']
+ * @symb R.adjust(-1, f, [a, b]) = [a, f(b)]
+ * @symb R.adjust(0, f, [a, b]) = [f(a), b]
+ */
+
+var adjust =
+/*#__PURE__*/
+_curry3(function adjust(idx, fn, list) {
+  if (idx >= list.length || idx < -list.length) {
+    return list;
+  }
+
+  var start = idx < 0 ? list.length : 0;
+
+  var _idx = start + idx;
+
+  var _list = _concat(list);
+
+  _list[_idx] = fn(list[_idx]);
+  return _list;
+});
+
+/**
  * Tests whether or not an object is an array.
  *
  * @private
@@ -2698,6 +2741,98 @@ _curry1(function cond(pairs) {
     }
   });
 });
+
+/**
+ * Returns a new object that does not contain a `prop` property.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.10.0
+ * @category Object
+ * @sig String -> {k: v} -> {k: v}
+ * @param {String} prop The name of the property to dissociate
+ * @param {Object} obj The object to clone
+ * @return {Object} A new object equivalent to the original but without the specified property
+ * @see R.assoc, R.omit
+ * @example
+ *
+ *      R.dissoc('b', {a: 1, b: 2, c: 3}); //=> {a: 1, c: 3}
+ */
+
+var dissoc =
+/*#__PURE__*/
+_curry2(function dissoc(prop, obj) {
+  var result = {};
+
+  for (var p in obj) {
+    result[p] = obj[p];
+  }
+
+  delete result[prop];
+  return result;
+});
+
+var XDrop =
+/*#__PURE__*/
+function () {
+  function XDrop(n, xf) {
+    this.xf = xf;
+    this.n = n;
+  }
+
+  XDrop.prototype['@@transducer/init'] = _xfBase.init;
+  XDrop.prototype['@@transducer/result'] = _xfBase.result;
+
+  XDrop.prototype['@@transducer/step'] = function (result, input) {
+    if (this.n > 0) {
+      this.n -= 1;
+      return result;
+    }
+
+    return this.xf['@@transducer/step'](result, input);
+  };
+
+  return XDrop;
+}();
+
+var _xdrop =
+/*#__PURE__*/
+_curry2(function _xdrop(n, xf) {
+  return new XDrop(n, xf);
+});
+
+/**
+ * Returns all but the first `n` elements of the given list, string, or
+ * transducer/transformer (or object with a `drop` method).
+ *
+ * Dispatches to the `drop` method of the second argument, if present.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig Number -> [a] -> [a]
+ * @sig Number -> String -> String
+ * @param {Number} n
+ * @param {*} list
+ * @return {*} A copy of list without the first `n` elements
+ * @see R.take, R.transduce, R.dropLast, R.dropWhile
+ * @example
+ *
+ *      R.drop(1, ['foo', 'bar', 'baz']); //=> ['bar', 'baz']
+ *      R.drop(2, ['foo', 'bar', 'baz']); //=> ['baz']
+ *      R.drop(3, ['foo', 'bar', 'baz']); //=> []
+ *      R.drop(4, ['foo', 'bar', 'baz']); //=> []
+ *      R.drop(3, 'ramda');               //=> 'da'
+ */
+
+var drop =
+/*#__PURE__*/
+_curry2(
+/*#__PURE__*/
+_dispatchable(['drop'], _xdrop, function drop(n, xs) {
+  return slice(Math.max(0, n), Infinity, xs);
+}));
 
 /**
  * Returns the last element of the given list or string.
@@ -5895,18 +6030,17 @@ const lcm = (...args) => reduce(lcm_two_numbers)(1)(args);
 // This messages will flow freely around frMIDI operators, but will no
 // pass thru a MIDI output.
 
-const meta = (metaType, data, timeStamp = 0, deltaTime = 0) => ({
+const meta = (metaType, data, timeStamp = 0) => ({
   type: 'metaevent',
   timeStamp: timeStamp,
-  deltaTime: deltaTime,
   metaType: metaType,
   data: is(Array)(data) ? [...data] : [data]
 });
 const END_OF_TRACK = 47;
 const TEMPO_CHANGE = 81;
-const endOfTrack = (timeStamp = 0, deltaTime = 0) => meta(47, [], timeStamp, deltaTime);
-const tempoChange = (qnpm, timeStamp = 0, deltaTime = 0) => meta(81, [qnpm], timeStamp, deltaTime);
-const bpmChange = (bpm, timeStamp = 0, deltaTime = 0) => meta(81, BPM2QNPM(bpm), timeStamp, deltaTime);
+const endOfTrack = (timeStamp = 0) => meta(47, [], timeStamp);
+const tempoChange = (qnpm, timeStamp = 0) => meta(81, [qnpm], timeStamp);
+const bpmChange = (bpm, timeStamp = 0) => meta(81, BPM2QNPM(bpm), timeStamp);
 
 const seemsMetaEvent = msg => allPass([is(Object), propEq('type', 'metaevent'), has('metaType'), has('data')])(msg);
 const metaTypeEq = curry((type, msg) => seemsMetaEvent(msg) ? propEq('metaType')(type)(msg) : false);
@@ -5923,20 +6057,19 @@ const BAR_EVENT = 3;
 const BEAT_EVENT = 4;
 const SUBDIVISION_EVENT = 5;
 const REST_EVENT = 6;
-const frMeta = (type, data, timeStamp = 0, deltaTime = 0) => ({
+const frMeta = (type, data, timeStamp = 0) => ({
   type: 'frmetaevent',
   timeStamp: timeStamp,
-  deltaTime: deltaTime,
   metaType: type,
   data: is(Array)(data) ? [...data] : [data]
 });
-const timingEvent = (now = frNow(), look_ahead_window = 150, ts = 0, dt = 0) => frMeta(TIMING_EVENT, [now, look_ahead_window], ts, dt);
-const timeDivisionEvent = (timeDivision, ts = 0, dt = 0) => frMeta(TIME_DIVISION_EVENT, timeDivision, ts, dt);
-const sequenceEvent = (sequence, ts = 0, dt = 0) => frMeta(SEQUENCE_EVENT, sequence, ts, dt);
-const barEvent = (ts = 0, dt = 0) => frMeta(BAR_EVENT, [], ts, dt);
-const beatEvent = (ts = 0, dt = 0) => frMeta(BEAT_EVENT, [], ts, dt);
-const subdivisionEvent = (ts = 0, dt = 0) => frMeta(SUBDIVISION_EVENT, [], ts, dt);
-const restEvent = (ts = 0, dt = 0) => frMeta(REST_EVENT, [], ts, dt);
+const timingEvent = (now = frNow(), look_ahead_window = 150, ts = 0) => frMeta(TIMING_EVENT, [now, look_ahead_window], ts);
+const timeDivisionEvent = (timeDivision, ts = 0) => frMeta(TIME_DIVISION_EVENT, timeDivision, ts);
+const sequenceEvent = (sequence, ts = 0) => frMeta(SEQUENCE_EVENT, sequence, ts);
+const barEvent = (ts = 0) => frMeta(BAR_EVENT, [], ts);
+const beatEvent = (ts = 0) => frMeta(BEAT_EVENT, [], ts);
+const subdivisionEvent = (ts = 0) => frMeta(SUBDIVISION_EVENT, [], ts);
+const restEvent = (ts = 0) => frMeta(REST_EVENT, [], ts);
 
 const seemsfrMetaEvent = msg => allPass([is(Object), propEq('type', 'frmetaevent'), has('metaType'), has('data')])(msg);
 const frMetaTypeEq = curry((type, msg) => seemsfrMetaEvent(msg) ? propEq('metaType')(type)(msg) : false);
@@ -5950,47 +6083,46 @@ const isRestEvent = msg => frMetaTypeEq(REST_EVENT)(msg);
 
 // Converts a byte array to a MIDIMessageEvent compatible object.
 
-const msg = (data, timeStamp = 0, deltaTime = 0) => ({
+const msg = (data, timeStamp = 0) => ({
   type: 'midimessage',
   timeStamp: timeStamp,
-  deltaTime: deltaTime,
   data: [...data]
 });
 const from$1 = msg => is(Array, msg) ? assoc('data')(flatten(map(prop$1('data'), msg)))(clone(head(msg))) : clone(msg); // =================== MIDI Messages definition ====================
 // -------------- Channel Voice messages generation ----------------
 
-const off = (n = 64, v = 96, ch = 0, ts = 0, dt = 0) => msg([128 + ch, n, v], ts, dt);
-const on = (n = 64, v = 96, ch = 0, ts = 0, dt = 0) => msg([144 + ch, n, v], ts, dt);
-const pp = (n = 64, p = 96, ch = 0, ts = 0, dt = 0) => msg([160 + ch, n, p], ts, dt);
-const cc = (c = 1, v = 127, ch = 0, ts = 0, dt = 0) => msg([176 + ch, c, v], ts, dt);
-const pc = (p = 0, ch = 0, ts = 0, dt = 0) => msg([192 + ch, p], ts, dt);
-const cp = (p = 96, ch = 0, ts = 0, dt = 0) => msg([208 + ch, p], ts, dt);
-const pb = (v = 8192, ch = 0, ts = 0, dt = 0) => msg([224 + ch, v & 0x7F, v >> 7], ts, dt);
-const rpn = (n = 0, v = 8192, ch = 0, ts = 0, dt = 0) => from$1([cc(101, n >> 7, ch, ts, dt), cc(100, n % 128, ch, ts, dt), cc(6, v >> 7, ch, ts, dt), cc(38, v % 128, ch, ts, dt), cc(101, 127, ch, ts, dt), cc(100, 127, ch, ts, dt)]);
-const nrpn = (n = 0, v = 8192, ch = 0, ts = 0, dt = 0) => from$1([cc(99, n >> 7, ch, ts, dt), cc(98, n % 128, ch, ts, dt), cc(6, v >> 7, ch, ts, dt), cc(38, v % 128, ch, ts, dt), cc(101, 127, ch, ts, dt), cc(100, 127, ch, ts, dt)]); // -------------- System common messages generation ----------------
+const off = (n = 64, v = 96, ch = 0, ts = 0) => msg([128 + ch, n, v], ts);
+const on = (n = 64, v = 96, ch = 0, ts = 0) => msg([144 + ch, n, v], ts);
+const pp = (n = 64, p = 96, ch = 0, ts = 0) => msg([160 + ch, n, p], ts);
+const cc = (c = 1, v = 127, ch = 0, ts = 0) => msg([176 + ch, c, v], ts);
+const pc = (p = 0, ch = 0, ts = 0) => msg([192 + ch, p], ts);
+const cp = (p = 96, ch = 0, ts = 0) => msg([208 + ch, p], ts);
+const pb = (v = 8192, ch = 0, ts = 0) => msg([224 + ch, v & 0x7F, v >> 7], ts);
+const rpn = (n = 0, v = 8192, ch = 0, ts = 0) => from$1([cc(101, n >> 7, ch, ts), cc(100, n % 128, ch, ts), cc(6, v >> 7, ch, ts), cc(38, v % 128, ch, ts), cc(101, 127, ch, ts), cc(100, 127, ch, ts)]);
+const nrpn = (n = 0, v = 8192, ch = 0, ts = 0) => from$1([cc(99, n >> 7, ch, ts), cc(98, n % 128, ch, ts), cc(6, v >> 7, ch, ts), cc(38, v % 128, ch, ts), cc(101, 127, ch, ts), cc(100, 127, ch, ts)]); // -------------- System common messages generation ----------------
 
-const syx = (b, ts = 0, dt = 0) => msg([240, ...b, 247], ts, dt);
-const tc = (t, v, ts = 0, dt = 0) => msg([241, (t << 4) + v], ts, dt);
-const spp = (b, ts = 0, dt = 0) => msg([242, b % 128, b >> 7], ts, dt);
-const ss = (s, ts = 0, dt = 0) => msg([243, s], ts, dt);
-const tun = (ts = 0, dt = 0) => msg([246], ts, dt); // ------------- System real time messages generation --------------
+const syx = (b, ts = 0) => msg([240, ...b, 247], ts);
+const tc = (t, v, ts = 0) => msg([241, (t << 4) + v], ts);
+const spp = (b, ts = 0) => msg([242, b % 128, b >> 7], ts);
+const ss = (s, ts = 0) => msg([243, s], ts);
+const tun = (ts = 0) => msg([246], ts); // ------------- System real time messages generation --------------
 
-const mc = (ts = 0, dt = 0) => msg([248], ts, dt);
-const start = (ts = 0, dt = 0) => msg([250], ts, dt);
-const cont = (ts = 0, dt = 0) => msg([251], ts, dt);
-const stop = (ts = 0, dt = 0) => msg([252], ts, dt);
-const as = (ts = 0, dt = 0) => msg([254], ts, dt);
-const rst = (ts = 0, dt = 0) => msg([255], ts, dt);
-const panic = (ts = 0, dt = 0) => {
+const mc = (ts = 0) => msg([248], ts);
+const start = (ts = 0) => msg([250], ts);
+const cont = (ts = 0) => msg([251], ts);
+const stop = (ts = 0) => msg([252], ts);
+const as = (ts = 0) => msg([254], ts);
+const rst = (ts = 0) => msg([255], ts);
+const panic = (ts = 0) => {
   const panic_msgs = [];
 
   for (let ch = 0; ch < 16; ch++) {
-    panic_msgs.push(cc(64, 0, ch, ts, dt));
-    panic_msgs.push(cc(120, 0, ch, ts, dt));
-    panic_msgs.push(cc(123, 0, ch, ts, dt));
+    panic_msgs.push(cc(64, 0, ch, ts));
+    panic_msgs.push(cc(120, 0, ch, ts));
+    panic_msgs.push(cc(123, 0, ch, ts));
 
     for (let n = 0; n < 128; n++) {
-      panic_msgs.push(off(n, 0, ch, ts, dt));
+      panic_msgs.push(off(n, 0, ch, ts));
     }
   }
 
@@ -6224,13 +6356,26 @@ const processNoteOff = state => msg => without([genericNoteOff(msg)])(state);
 const processMessage = state => msg => cond([[isNoteOn, processNoteOn(state)], [isNoteOff$1, processNoteOff(state)], [T, always(state)]])(msg);
 
 const seemsSequence = sequence => allPass([is(Object), has('formatType'), has('timeDivision'), has('tracks'), propIs(Array)('tracks'), propSatisfies(all(is(Array)))('tracks')])(sequence);
-const seemsLoop = sequence => both(seemsSequence)(propEq('loop', true))(sequence); // ---------------------- Absolute delta times ---------------------------
+const seemsLoop = sequence => both(seemsSequence)(propEq('loop', true))(sequence); // ----------------------- Operations on tracks --------------------------
 
-const withAbsoluteDeltaTime = curry((acc_tick, msg) => [acc_tick + msg.deltaTime, assoc('absoluteDeltaTime')(acc_tick + msg.deltaTime)(msg)]);
-const withAbsoluteDeltaTimes = sequence => mapTracks(pipe(mapAccum(withAbsoluteDeltaTime)(0), last))(sequence); // TODO: Make every function that manipulates events (or tracks) aware
-// of both absoluteDeltaTimes and deltaTimes. Both will be in use
-// constantly.
-// -------------- MIDI Sequence creation from tracks ---------------------
+const mapTracks = curry((fn, sequence) => evolve({
+  tracks: map(fn)
+})(sequence));
+const mapEvents = curry((fn, sequence) => mapTracks(map(fn))(sequence));
+const getTrack = curry((n, sequence) => sequence.tracks[n]); // -------------- Working with delta and absolute delta times ------------
+
+const eventWithAbsoluteDeltaTime = curry((acc_tick, msg) => [acc_tick + msg.deltaTime, assoc('absoluteDeltaTime')(acc_tick + msg.deltaTime)(msg)]);
+const trackWithAbsoluteDeltaTimes = track => last(mapAccum(eventWithAbsoluteDeltaTime)(0)(track));
+const trackWithoutAbsoluteDeltaTimes = track => map(dissoc('absoluteDeltaTime'))(track);
+const withAbsoluteDeltaTimes = sequence => mapTracks(trackWithAbsoluteDeltaTimes)(sequence);
+const withoutAbsoluteDeltaTimes = sequence => mapTracks(trackWithoutAbsoluteDeltaTimes)(sequence);
+const trackDeltaTimesFromAbsolutes = track => pipe(mapAccum((acc, evt) => [evt.absoluteDeltaTime, set$1(deltaTime)(evt.absoluteDeltaTime - acc)(evt)])(0), last)(track);
+const deltaTimesFromAbsolutes = sequence => mapTracks(trackDeltaTimesFromAbsolutes)(sequence); // ------------------------ Time division --------------------------------
+
+const setTimeDivision = curry((td, sequence) => evolve({
+  timeDivision: always(td),
+  tracks: map(map(evt => set$1(deltaTime)(view(deltaTime)(evt) * td / sequence.timeDivision)(evt)))
+})(sequence)); // -------------- MIDI Sequence creation from tracks ---------------------
 
 const createSequence = curry((tracks, timeDivision) => ({
   formatType: 1,
@@ -6238,67 +6383,43 @@ const createSequence = curry((tracks, timeDivision) => ({
   tracks: is(Array)(tracks[0]) ? tracks : [tracks]
 }));
 const createLoop = sequence => assoc('loop')(true)(sequence); // ---------------------- Operations on one track ------------------------
-// Functions that add or remove events from track/s have to be implemented
-// because deltaTimes and absoluteTimes will be modified.
+
+const adjustTrack = curry((track_idx, fn, sequence) => evolve({
+  tracks: adjust(track_idx)(fn)
+})(sequence)); // Functions that add or remove events from track/s have to be implemented
+// because deltaTimes will be modified.
 
 const filterEvents = curry((p, track) => head(reduce(([filtered, prev_delta], evt) => p(evt) ? [[...filtered, over(deltaTime)(add(prev_delta))(evt)], 0] : [filtered, evt.deltaTime + prev_delta])([[], 0])(track)));
-const rejectEvents = curry((p, track) => filterEvents(complement(p))(track)); // ----------------------- Operations on tracks --------------------------
+const rejectEvents = curry((p, track) => filterEvents(complement(p))(track)); // Drops events from tracks but recalculates deltaTimes to maintain
+// synchronization with rest of tracks
 
-const mapTracks = curry((fn, sequence) => evolve({
-  tracks: map(fn)
-})(sequence));
-const mergeTracks = sequence => evolve({
+const dropEvents = curry((n, track) => trackWithoutAbsoluteDeltaTimes(trackDeltaTimesFromAbsolutes(drop(n)(trackWithAbsoluteDeltaTimes(track))))); // --------------------- Sort events on each track -----------------------
+
+const sortEvents = sequence => mapTracks(sortBy(prop$1('absoluteDeltaTime')))(sequence); // --------------------------- Merge tracks -----------------------------
+
+const mergeTracks = sequence => withoutAbsoluteDeltaTimes(deltaTimesFromAbsolutes(sortEvents(evolve({
   tracks: tracks => [flatten(tracks)]
-})(sequence);
-const sortEvents = sequence => evolve({
-  tracks: tracks => [sortBy(prop$1('absoluteDeltaTime'))(tracks[0])]
-})(sequence);
-const setTimeDivision = td => sequence => evolve({
-  timeDivision: always(td),
-  tracks: map(map(evt => set$1(deltaTime)(view(deltaTime)(evt) * td / sequence.timeDivision)(evt)))
-})(sequence); //export const filterTracks =	curry((tracks, sequence) => 
-//  evolve ({
-//    tracks: () => tracks.length,
-//    track: pipe (
-//      addIndex (filter) ((v, k) => tracks.includes (k)),
-//      map (v => objOf ('event', map (from, v.event)))
-//    )
-//  }) (sequence))
-// export const flattenTimestamps = 
-// TODO
-//export let addTrack/s = (midiFile, tracks) => 
-// TODO
-//export let changeTimeDivision = (midiFile, newTimeDivision) =>
-// TODO
-// export let commonTimeDivision = (midiFile1, midiFile2, ...) => 
-// -------------------------------- Looper -------------------------------
-//export const toLoop = () =>
-//  rx_pipe (
-//    rx_map ((msg) =>
-//      isSequenceEvent (msg) ?
-//        sequenceEvent (createLoop (view (sequence) (msg)))
-//        : msg))
-// looper = pipe (recorder, toLoop, player)
-// Let's start without overdubs just record a loop and continue playing
+})(withAbsoluteDeltaTimes(sequence)))));
 
-const prepareSequence = sequence => pipe(withAbsoluteDeltaTimes, mergeTracks, sortEvents)(sequence); // NOTE: Analyze another implementation option:
+// NOTE: Analyze another implementation option:
 // [ first_event if absTime === currentAbsTime, ...recurse more events ]
 
 const sequencePlayer = sequence => {
-  const preparedSequence = prepareSequence(sequence);
+  const preparedSequence = withAbsoluteDeltaTimes(mergeTracks(sequence));
   const maxTick = prop$1('absoluteDeltaTime')(last(preparedSequence.tracks[0]));
 
-  let rec = (currentAbsoluteDeltaTime, playable) => {
-    playable = playable || preparedSequence;
+  let rec = (currentAbsoluteDeltaTime, track) => {
+    track = track || preparedSequence.tracks[0];
     return msg => {
-      let filtered = dropWhile(e => e.absoluteDeltaTime < currentAbsoluteDeltaTime)(playable.tracks[0]);
+      let filtered = dropWhile(e => e.absoluteDeltaTime < currentAbsoluteDeltaTime)(track);
       let events = splitWhen(e => e.absoluteDeltaTime > currentAbsoluteDeltaTime)(filtered);
+      let msg_ts = view(timeStamp)(msg);
 
       if (sequence.loop && currentAbsoluteDeltaTime === maxTick) {
-        let [_, seq, events2] = rec(0, preparedSequence)(msg);
-        return [1, seq, prepend(msg)(concat(map(set$1(timeStamp)(view(timeStamp)(msg)))(events[0]))(tail(events2)))];
+        let [_, seq, events2] = rec(0)(msg);
+        return [1, seq, prepend(msg)(concat(map(pipe(set$1(timeStamp)(msg_ts), dissoc('absoluteDeltaTime'), dissoc('deltaTime')))(events[0]))(tail(events2)))];
       } else {
-        return [currentAbsoluteDeltaTime + 1, createSequence(events[1])(playable.timeDivision), prepend(msg)(map(set$1(timeStamp)(view(timeStamp)(msg)))(events[0]))];
+        return [currentAbsoluteDeltaTime + 1, events[1], prepend(msg)(map(pipe(set$1(timeStamp)(msg_ts), dissoc('absoluteDeltaTime'), dissoc('deltaTime')))(events[0]))];
       }
     };
   };
@@ -6339,14 +6460,11 @@ msg => [seq, delta, false, td, [msg]]], [T, msg => cond([[T, () => {
 // ----------------------- Harmonic Pattern ------------------------------
 // ----------------------- Rhythmic pattern ------------------------------
 
-const getPatternTimeDivision = p => cond([[complement(is(Array)), always(1)], [none(is(Array)), pipe(filter(complement(isEndOfTrack)), length)], [T, p => {
-  let seq = filter(complement(isEndOfTrack))(p);
-  return multiply(length(seq))(reduce(lcm)(1)(map(getPatternTimeDivision)(seq)));
-}]])(p);
-const getPatternEvents = (td, p, first = true) => cond([[is(Array), pipe(addIndex(map)((a, i) => getPatternEvents(td / length(p), a, i === 0)), flatten)], [isNoteOn, msg => [msg, off(view(note)(msg), 96, view(channel)(msg), 0, td)]], [T, set$1(deltaTime)(first ? 0 : td)]])(p);
+const getPatternTimeDivision = p => cond([[complement(is(Array)), always(1)], [none(is(Array)), length], [T, p => multiply(length(p))(reduce(lcm)(1)(map(getPatternTimeDivision)(p)))]])(p);
+const getPatternEvents = (td, p, idx = 0, ptd = 1) => cond([[is(Array), pipe(addIndex(map)((a, i) => getPatternEvents(td / length(p), a, i, td * idx)), flatten)], [isNoteOn, msg => [set$1(absoluteDeltaTime)(ptd + td * idx)(msg), set$1(absoluteDeltaTime)(ptd + td * (idx + 1))(off(view(note)(msg), 96, view(channel)(msg), 0))]], [T, set$1(absoluteDeltaTime)(ptd + td * idx)]])(p);
 const pattern = p => {
   let timeDivision = getPatternTimeDivision(p);
-  return [getPatternEvents(timeDivision, p), timeDivision];
+  return [trackWithoutAbsoluteDeltaTimes(trackDeltaTimesFromAbsolutes(getPatternEvents(timeDivision, p))), timeDivision];
 };
 
 const meterSequence = (meterDef, timeDivision) => setTimeDivision(timeDivision)(createLoop(createSequence(...pattern(addIndex(map)((v, i) => v === 1 && i === 0 ? barEvent() : v === 1 ? beatEvent() : v === 2 ? subdivisionEvent() : v === 0 ? restEvent() : v)([...meterDef, endOfTrack()])))));
@@ -7151,11 +7269,11 @@ const loadMIDIFile = () => {
   let type = document.createAttribute('type');
   type.value = 'file';
   input_file_element.setAttributeNode(type);
-  let promise = new Promise((solve, reject) => _MidiParser.parse(input_file_element, midifile => solve(withAbsoluteDeltaTimes(convertFromMidiParser(midifile)))));
+  let promise = new Promise((solve, reject) => _MidiParser.parse(input_file_element, midifile => solve(convertFromMidiParser(midifile))));
   input_file_element.click();
   return promise;
 };
 
-const version = '1.0.52';
+const version = '1.0.53';
 
-export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, channel, channelByKeyRange, clock$1 as clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, m2, m3, m6, m7, mc, meta, meter, metronome, mpeNote, mpeZone, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsMessageAsArray, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$2 as timer, timing, timingEvent, tun, value, valueEq, velocity, velocityEq, version, w };
+export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, channel, channelByKeyRange, clock$1 as clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsMessageAsArray, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$2 as timer, timing, timingEvent, tun, value, valueEq, velocity, velocityEq, version, w };
