@@ -1,12 +1,12 @@
 import { 
-  createLoop, createSequence, mapTrackEvents, setTimeDivision 
+  createLoop, createSequence, mapTrackEvents, mapTracks, setTimeDivision 
 } from './sequences.js'
 import { concatPatterns, pattern } from './patterns.js'
 import { player } from './player.js'
 import { on } from '../messages/messages.js'
 import { endOfTrack } from '../messages/meta.js'
 import { 
-  barEvent, beatEvent, restEvent, subdivisionEvent 
+  barEvent, beatEvent, emptyEvent, restEvent, subdivisionEvent 
 } from '../messages/frmeta.js'
 import {
   isBarEvent, isBeatEvent, isRestEvent, isSubdivisionEvent
@@ -29,33 +29,27 @@ export const meterMapping = [
   [ lensP (data0) (equals) (3), subdivisionEvent () ]
 ]
 
-export const meterPattern = (meterDef) => 
-  adjust
-    (0)
-    (mapTrackEvents (meterMapping))
-    (reduce
-      (concatPatterns)
-      (pattern ([]))
-      (map 
-        (pattern)
-        (meterDef)))
+export const meter = 
+  (timeDivision, mapping = meterMapping) =>
+    (...meterDef) =>
+      player 
+        (setTimeDivision 
+          (timeDivision) 
+          (mapTracks
+            (mapTrackEvents (mapping))
+            (createLoop 
+              (createSequence 
+                (...pattern (...meterDef))))))
 
-export const meter = (meterDef, timeDivision = 24) =>
-  player 
-    (setTimeDivision 
-      (timeDivision) 
-      (createLoop 
-        (createSequence 
-          (...meterPattern (meterDef)))))
+export const metronomeMap = [
+  [ lensP (data0) (equals) (0), emptyEvent () ],
+  [ lensP (data0) (equals) (1), on (48, 96, 9) ],
+  [ lensP (data0) (equals) (2), on (51, 96, 9) ],
+  [ lensP (data0) (equals) (3), on (38, 96, 9) ]
+]
 
-export const metronome = (meterDef, timeDivision = 24) =>
-  rx_pipe (
-    meter (meterDef, timeDivision),
-    rxo_mergeMap (
-        cond ([
-          [isBarEvent, always (rx_of (on (48, 96, 9)))],
-          [isBeatEvent, always (rx_of (on (51, 96, 9)))],
-          [isSubdivisionEvent, always (rx_of (on (38, 96, 9)))],
-          [isRestEvent, always (rx_NEVER)],
-          [T, (msg) => rx_of (msg)]
-        ])))
+export const metronome = 
+  (timeDivision, mapping = metronomeMap) =>
+    (...meterDef) =>
+      meter (timeDivision, mapping) (...meterDef)
+

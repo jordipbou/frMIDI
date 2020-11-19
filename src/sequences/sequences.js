@@ -2,7 +2,9 @@ import {
   isContinue, isMIDIClock, isStart, isStop 
 } from '../predicates/predicates.js'
 import { isEndOfTrack, isTempoChange } from '../predicates/meta.js'
-import { isSequenceEvent, seemsfrMessage } from '../predicates/frmeta.js'
+import { 
+  isEmptyEvent, isSequenceEvent, seemsfrMessage 
+} from '../predicates/frmeta.js'
 import { from } from '../messages'
 import { sequenceEvent } from '../messages/frmeta.js'
 import { 
@@ -168,7 +170,7 @@ export const dropEvents = curry ((n, track) =>
     addDeltaTime (
       drop (n) (addTime (track)))))
 
-// TODO: Map events to other event types based on a predicate.
+// Map events to other event types based on a predicate.
 // Also allows start/end event to change one to two different types,
 // end event will be set on next event deltatime.
 // Mappings are defined as:
@@ -232,7 +234,7 @@ export const mapTrackEvents = curry ((mappings, track) => {
     }
   }
 
-  return mappedTrack
+  return rejectEvents (isEmptyEvent) (mappedTrack)
 })
 
 // --------------------- Sort events on each track -----------------------

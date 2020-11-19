@@ -24,7 +24,15 @@ export const getPatternTimeDivision = (p) =>
   cond ([
     [complement (is (Array)), always (1)],
     [none (is (Array)), length],
-    [T, (p) => multiply (length (p)) (reduce (lcm) (1) (map (getPatternTimeDivision) (p)))]
+    [T, (p) => 
+          multiply 
+            (length (p)) 
+            (reduce 
+              (lcm) 
+              (1) 
+              (map 
+                (getPatternTimeDivision) 
+                (p)))]
   ]) (p)
 
 export const getPatternEvents = (td, p, idx = 0, ptd = 1) =>
@@ -38,19 +46,6 @@ export const getPatternEvents = (td, p, idx = 0, ptd = 1) =>
     [T, always (set (time) (ptd + td * idx) (patternItemEvent (p)))]
   ]) (p)
 
-export const pattern = (p) => {
-  let timeDivision = getPatternTimeDivision (p)
-
-  return [
-    withoutTime 
-      (addDeltaTime 
-        (append 
-          (set (time) (timeDivision) (endOfTrack ()))
-          (getPatternEvents (timeDivision, p)))), 
-    timeDivision || 1
-  ]
-}
-
 export const concatPatterns = curry (([p1, td1], [p2, td2]) => {
   let m1 = setTrackTimeDivision (lcm (td1, td2)) (td1) (p1)
 
@@ -63,3 +58,24 @@ export const concatPatterns = curry (([p1, td1], [p2, td2]) => {
         (setTrackTimeDivision (lcm (td1, td2)) (td2) (p2))),
     lcm (td1, td2)
   ]})
+
+export const emptyPattern = 
+  [ [ set (deltaTime) (0) (endOfTrack ()) ], 1 ]
+
+export const pattern = (...patterns) =>
+  reduce
+    (concatPatterns)
+    (emptyPattern)
+    (map 
+      ((p) => {
+        let timeDivision = getPatternTimeDivision (p)
+
+        return [
+          withoutTime
+            (addDeltaTime
+              (append
+                (set (time) (timeDivision) (endOfTrack ()))
+                (getPatternEvents (timeDivision, p)))),
+          timeDivision || 1
+        ]})
+      (patterns))

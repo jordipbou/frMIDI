@@ -60,6 +60,23 @@ test ('getPatternEvents 3', (t) => {
     ])
 })
 
+test ('concatPatterns', (t) => {
+  t.deepEqual (
+    concatPatterns (pattern ([1, 2, 3]), pattern ([5, [6, 7]])),
+    [
+      [
+        set (deltaTime) (0) (patternItemEvent (1)),
+        set (deltaTime) (4) (patternItemEvent (2)),
+        set (deltaTime) (4) (patternItemEvent (3)),
+        set (deltaTime) (4) (patternItemEvent (5)),
+        set (deltaTime) (6) (patternItemEvent (6)),
+        set (deltaTime) (3) (patternItemEvent (7)),
+        set (deltaTime) (3) (endOfTrack ())
+      ],
+      12
+    ])
+})
+
 test ('pattern 1', (t) => {
   t.deepEqual (
     pattern ([0]),
@@ -101,25 +118,30 @@ test ('pattern 3', (t) => {
     ])
 })
 
-test ('empty pattern', (t) => {
+test ('empty pattern 1', (t) => {
   t.deepEqual (
     pattern ([]),
-    [[set (deltaTime) (0) (endOfTrack ())], 1])
+    [ [ set (deltaTime) (0) (endOfTrack ()) ], 1 ])
 })
 
-test ('concatPatterns', (t) => {
+test ('empty pattern 2', (t) => {
   t.deepEqual (
-    concatPatterns (pattern ([1, 2, 3]), pattern ([5, [6, 7]])),
+    pattern (),
+    [ [ set (deltaTime) (0) (endOfTrack ()) ], 1 ])
+})
+
+test ('pattern with multiple bars', (t) => {
+  t.deepEqual (
+    pattern ([1, 2], [1, 2, 3]),
     [
       [
         set (deltaTime) (0) (patternItemEvent (1)),
-        set (deltaTime) (4) (patternItemEvent (2)),
-        set (deltaTime) (4) (patternItemEvent (3)),
-        set (deltaTime) (4) (patternItemEvent (5)),
-        set (deltaTime) (6) (patternItemEvent (6)),
-        set (deltaTime) (3) (patternItemEvent (7)),
-        set (deltaTime) (3) (endOfTrack ())
+        set (deltaTime) (3) (patternItemEvent (2)),
+        set (deltaTime) (3) (patternItemEvent (1)),
+        set (deltaTime) (2) (patternItemEvent (2)),
+        set (deltaTime) (2) (patternItemEvent (3)),
+        set (deltaTime) (2) (endOfTrack ())
       ],
-      12
+     6 
     ])
 })

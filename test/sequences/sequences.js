@@ -6,7 +6,7 @@ import {
   cc, on, off, mc, pp, start, stop, cont 
 } from '../../src/messages/messages.js'
 import { endOfTrack } from '../../src/messages/meta.js'
-import { sequenceEvent } from '../../src/messages/frmeta.js'
+import { emptyEvent, sequenceEvent } from '../../src/messages/frmeta.js'
 import { 
   time, deltaTime, note, timeStamp
 } from '../../src/lenses/lenses.js'
@@ -476,7 +476,7 @@ test ('mapTrackEvents start/end event objects', (t) => {
 })
 
 test ('mapTrackEvents start/end event functions', (t) => {
-  let m = [
+  const m = [
     [ isNoteOff, [ 
       (e) => cc (view (note) (e)),
       (e) => pp (view (note) (e))
@@ -497,6 +497,21 @@ test ('mapTrackEvents start/end event functions', (t) => {
         set (deltaTime) (2) (pp (71)),
         set (deltaTime) (0) (endOfTrack ())
     ])
+})
+
+test ('mapTrackEvents skipping events', (t) => {
+  const m = [
+    [ isNoteOff, emptyEvent () ]
+  ]
+
+  t.deepEqual (
+    mapTrackEvents (m) (sequence.tracks [0]),
+    [
+      set (deltaTime) (0) (on (64)),
+      set (deltaTime) (1) (on (67)),
+      set (deltaTime) (3) (on (71)),
+      set (deltaTime) (5) (endOfTrack ())
+    ])    
 })
 
 test ('addDeltaTime', (t) => {

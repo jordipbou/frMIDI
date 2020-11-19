@@ -3,7 +3,7 @@ import { seemsMetaEvent } from './meta.js'
 import { 
   SEQUENCE_EVENT, TIMING_EVENT, TIME_DIVISION_EVENT,
   BAR_EVENT, BEAT_EVENT, SUBDIVISION_EVENT, REST_EVENT,
-  PATTERN_ITEM_EVENT, PATTERN_EVENT
+  PATTERN_ITEM_EVENT, PATTERN_EVENT, EMPTY_EVENT
 } from '../messages/frmeta.js'
 import { allPass, anyPass, curry, is, has, propEq } from 'ramda'
 
@@ -56,3 +56,6 @@ export const isPatternItemEvent = (msg) =>
 
 export const isPatternEvent = (msg) =>
   frMetaTypeEq (PATTERN_EVENT) (msg)
+
+export const isEmptyEvent = (msg) =>
+  frMetaTypeEq (EMPTY_EVENT) (msg)

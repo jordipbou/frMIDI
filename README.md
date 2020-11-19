@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.0.54 [2020/11/19] - Added functions to manipulate sequences. Modified pattern to allow multiple bars on definitions. Modified metronome to be based on new functions.
 * 1.0.53 [2020/11/10] - Removed absolute delta times from sequences. Used only for internal processing, it was more complicated to work with.
 * 1.0.52 [2020/11/04] - Added absolute delta times on loadMIDIFile conversion to always work with both deltaTimes and absoluteDeltaTimes.
 * 1.0.51 [2020/10/19] - Added metronome operator. Sends different notes on channel 10 for first beat, subdivision and rest of beats.
