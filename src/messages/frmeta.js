@@ -13,6 +13,8 @@ export const BAR_EVENT = 3
 export const BEAT_EVENT = 4
 export const SUBDIVISION_EVENT = 5
 export const REST_EVENT = 6
+export const PATTERN_ITEM_EVENT = 7
+export const PATTERN_EVENT = 8
 
 export const frMeta = (type, data, timeStamp = 0) =>
 ({
@@ -43,3 +45,9 @@ export const subdivisionEvent = (ts = 0) =>
 
 export const restEvent = (ts = 0) =>
   frMeta (REST_EVENT, [], ts)
+
+export const patternItemEvent = (i, ts = 0) =>
+  frMeta (PATTERN_ITEM_EVENT, i, ts)
+
+export const patternEvent = (p, ts = 0) =>
+  frMeta (PATTERN_EVENT, p, ts)

@@ -10,8 +10,10 @@ import {
 import {
     SEQUENCE_EVENT, TIMING_EVENT, TIME_DIVISION_EVENT,
     BAR_EVENT, BEAT_EVENT, REST_EVENT, SUBDIVISION_EVENT,
+    PATTERN_ITEM_EVENT, PATTERN_EVENT,
     frMeta, sequenceEvent, timeDivisionEvent, timingEvent,
-    barEvent, beatEvent, restEvent, subdivisionEvent
+    barEvent, beatEvent, restEvent, subdivisionEvent,
+    patternItemEvent, patternEvent
   } from '../src/messages/frmeta.js'
 import {
     controlEq, isActiveSensing,
@@ -341,5 +343,16 @@ test ('frMIDI rest event', (t) => {
       timeStamp: 0,
       metaType: REST_EVENT,
       data: [ ]
+    })
+})
+
+test ('frMIDI pattern item event', (t) => {
+  t.deepEqual (
+    patternItemEvent (1),
+    {
+      type: 'frmetaevent',
+      timeStamp: 0,
+      metaType: PATTERN_ITEM_EVENT,
+      data: [ 1 ]
     })
 })

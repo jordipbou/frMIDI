@@ -1,5 +1,5 @@
 import {
-  createSequence, mergeTracks, sortEvents, withAbsoluteDeltaTimes
+  createSequence, mergeTracks, sortEvents, addTime
 } from './sequences.js'
 import { processMessage } from './state.js'
 import {
@@ -23,27 +23,27 @@ import {
 // NOTE: Analyze another implementation option:
 // [ first_event if absTime === currentAbsTime, ...recurse more events ]
 export const sequencePlayer = (sequence) => {
-  const preparedSequence = withAbsoluteDeltaTimes (mergeTracks (sequence))
-  const maxTick = prop ('absoluteDeltaTime')
+  const preparedSequence = addTime (mergeTracks (sequence))
+  const maxTick = prop ('time')
                        (last (preparedSequence.tracks [0]))
 
-  let rec = (currentAbsoluteDeltaTime, track) => {
+  let rec = (currentTime, track) => {
     track = track || preparedSequence.tracks [0]
 
     return (msg) => {
       let filtered =
         dropWhile
-          ((e) => e.absoluteDeltaTime < currentAbsoluteDeltaTime)
+          ((e) => e.time < currentTime)
           (track)
 
       let events = 
         splitWhen 
-          ((e) => e.absoluteDeltaTime > currentAbsoluteDeltaTime)
+          ((e) => e.time > currentTime)
           (filtered)
 
       let msg_ts = view (timeStamp) (msg)
 
-      if (sequence.loop && currentAbsoluteDeltaTime === maxTick) {
+      if (sequence.loop && currentTime === maxTick) {
         let [_, seq, events2] = rec (0) (msg)
 
         return [
@@ -55,20 +55,20 @@ export const sequencePlayer = (sequence) => {
               (map
                 (pipe (
                   set (timeStamp) (msg_ts),
-                  dissoc ('absoluteDeltaTime'),
+                  dissoc ('time'),
                   dissoc ('deltaTime')))
                 (events [0])) 
               (tail (events2)))
         ]
       } else {
         return [
-          currentAbsoluteDeltaTime + 1,
+          currentTime + 1,
           events [1],
           prepend (msg)
                   (map
                     (pipe (
                       set (timeStamp) (msg_ts),
-                      dissoc ('absoluteDeltaTime'),
+                      dissoc ('time'),
                       dissoc ('deltaTime')))
                     (events [0]))
         ]

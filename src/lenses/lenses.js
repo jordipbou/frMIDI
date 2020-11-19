@@ -36,6 +36,10 @@ export const lensWhen = curry ((p, v, s) => (msg) =>
     (v, msg) => p (msg) ? s (v, msg) : msg
   ) (msg))
 
+export const data0 =
+  lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
+           (getData (0))
+           (setData (0))
 
 export const timeStamp =
   lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
@@ -47,10 +51,10 @@ export const deltaTime =
            (prop ('deltaTime'))
            (assoc ('deltaTime'))
 
-export const absoluteDeltaTime =
+export const time =
   lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
-           (prop ('absoluteDeltaTime'))
-           (assoc ('absoluteDeltaTime'))
+           (prop ('time'))
+           (assoc ('time'))
 
 export const channel =
   lensWhen (isChannelMessage) 

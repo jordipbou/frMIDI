@@ -2,7 +2,8 @@ import { seemsMessage } from './predicates.js'
 import { seemsMetaEvent } from './meta.js'
 import { 
   SEQUENCE_EVENT, TIMING_EVENT, TIME_DIVISION_EVENT,
-  BAR_EVENT, BEAT_EVENT, SUBDIVISION_EVENT, REST_EVENT
+  BAR_EVENT, BEAT_EVENT, SUBDIVISION_EVENT, REST_EVENT,
+  PATTERN_ITEM_EVENT, PATTERN_EVENT
 } from '../messages/frmeta.js'
 import { allPass, anyPass, curry, is, has, propEq } from 'ramda'
 
@@ -49,3 +50,9 @@ export const isSubdivisionEvent = (msg) =>
 
 export const isRestEvent = (msg) =>
   frMetaTypeEq (REST_EVENT) (msg)
+
+export const isPatternItemEvent = (msg) =>
+  frMetaTypeEq (PATTERN_ITEM_EVENT) (msg)
+
+export const isPatternEvent = (msg) =>
+  frMetaTypeEq (PATTERN_EVENT) (msg)

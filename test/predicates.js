@@ -2,9 +2,12 @@ const test = require ('ava')
 import * as P from '../src/predicates/predicates.js'
 import * as M from '../src/predicates/meta.js'
 import * as F from '../src/predicates/frmeta.js'
+import { msg } from '../src/messages/messages.js'
+import { meta } from '../src/messages/meta.js'
 import { 
-    msg, meta, frMeta, sequenceEvent, timeDivisionEvent, timingEvent 
-  } from '../src/messages'
+    sequenceEvent, timeDivisionEvent, timingEvent ,
+    patternItemEvent, patternEvent
+  } from '../src/messages/frmeta.js'
 import { allPas } from 'ramda'
 import { from } from 'rxjs'
 import { filter } from 'rxjs/operators'
@@ -312,4 +315,8 @@ test ('isTimeDivisionEvent', (t) => {
 
 test ('isSequenceEvent', (t) => {
   t.true (F.isSequenceEvent (sequenceEvent ({ timeDivision: 240 })))
+})
+
+test ('isPatternItemEvent', (t) => {
+  t.true (F.isPatternItemEvent (patternItemEvent (0)))
 })

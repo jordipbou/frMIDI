@@ -9,7 +9,7 @@ import {
 import { seemsMessage } from '../predicates/predicates.js'
 import { isTempoChange } from '../predicates/meta.js'
 import { msg, from } from '../messages/messages.js'
-import { withAbsoluteDeltaTimes } from '../sequences/sequences.js'
+import { addTime } from '../sequences/sequences.js'
 import { 
     MidiParser 
   } from '../../node_modules/midi-parser-js/src/midi-parser.js'

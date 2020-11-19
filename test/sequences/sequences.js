@@ -2,20 +2,21 @@ const test = require ('ava')
 import { 
   isNoteOn, isNoteOff, seemsMessage 
 } from '../../src/predicates'
-import { on, off, mc, start, stop, cont } from '../../src/messages'
+import { 
+  cc, on, off, mc, pp, start, stop, cont 
+} from '../../src/messages/messages.js'
+import { endOfTrack } from '../../src/messages/meta.js'
 import { sequenceEvent } from '../../src/messages/frmeta.js'
 import { 
-  absoluteDeltaTime, deltaTime, note, timeStamp
+  time, deltaTime, note, timeStamp
 } from '../../src/lenses/lenses.js'
 import { 
-  adjustTrack, createSequence, createLoop, deltaTimesFromAbsolutes,
+  adjustTrack, createSequence, createLoop, 
   dropEvents,
   filterEvents, insertEvent, insertAllEvents,
-  mapEvents, mapTracks, mergeTracks, 
+  mapEvents, mapTrackEvents, mapTracks, mergeTracks, 
   rejectEvents, seemsTrack, seemsSequence, sortEvents, setTimeDivision,
-  eventWithAbsoluteDeltaTime, 
-  trackWithAbsoluteDeltaTimes, trackWithoutAbsoluteDeltaTimes,
-  withAbsoluteDeltaTimes, withoutAbsoluteDeltaTimes
+  addTime, withoutTime, addDeltaTime, withoutDeltaTime
 } from '../../src/sequences/sequences.js'
 import { multiSet } from '../../src/utils.js'
 import { 
@@ -41,11 +42,13 @@ export const sequence = {
         set (deltaTime) (0) (on (67)),
         set (deltaTime) (2) (off (67)),
         set (deltaTime) (1) (on (71)),
-        set (deltaTime) (3) (off (71))
+        set (deltaTime) (3) (off (71)),
+        set (deltaTime) (2) (endOfTrack ())
     ],
     [
         set (deltaTime) (0) (on (32)),
         set (deltaTime) (8) (off (32)),
+        set (deltaTime) (1) (endOfTrack ())
     ]
   ]
 }
@@ -94,77 +97,74 @@ test ('mapEvents', (t) => {
             set (deltaTime) (1) (on (67)),
             set (deltaTime) (1) (off (67)),
             set (deltaTime) (1) (on (71)),
-            set (deltaTime) (1) (off (71))
+            set (deltaTime) (1) (off (71)),
+            set (deltaTime) (1) (endOfTrack ())
         ],
         [
             set (deltaTime) (1) (on (32)),
             set (deltaTime) (1) (off (32)),
+            set (deltaTime) (1) (endOfTrack ())
         ]
       ]
     })
 })
 
-// -------------------- Set absolute delta times -------------------------
+// ------------------------------ Set time -------------------------------
 
-test ('add absolute delta time to single message', (t) => {
+test ('add time to single message', (t) => {
   t.deepEqual (
-    eventWithAbsoluteDeltaTime 
-      (0) 
-      (set (deltaTime) (0) (on (64))),
+    addTime (set (deltaTime) (0) (on (64)), 0),
     [
       0, 
       assoc 
-        ('absoluteDeltaTime') 
+        ('time') 
         (0) 
         (set (deltaTime) (0) (on (64)))])
 
   t.deepEqual (
-    eventWithAbsoluteDeltaTime 
-      (150) 
-      (set (deltaTime) (0) (on (64))),
+    addTime (set (deltaTime) (0) (on (64)), 150),
     [
       150, 
       assoc 
-        ('absoluteDeltaTime') 
+        ('time') 
         (150) 
         (set (deltaTime) (0) (on (64)))])
 
   t.deepEqual (
-    eventWithAbsoluteDeltaTime 
-      (150) 
-      (set (deltaTime) (15) (on (64, 96))),
+    addTime (set (deltaTime) (15) (on (64, 96)), 150),
     [
       165, 
       assoc 
-        ('absoluteDeltaTime') 
+        ('time') 
         (165) 
         (set (deltaTime) (15) (on (64, 96)))])
 })
 
-test ('withAbsoluteDeltaTimes (one track)', (t) => {
-  const modified = trackWithAbsoluteDeltaTimes (sequence.tracks [0])
+test ('addTime (one track)', (t) => {
+  const modified = addTime (sequence.tracks [0])
 
   t.true (seemsTrack (modified))
   t.not (modified, sequence.tracks [0])
 
-  t.is (modified.length, 6)
-  t.is (modified [0].absoluteDeltaTime, 0)
-  t.is (modified [1].absoluteDeltaTime, 1)
-  t.is (modified [2].absoluteDeltaTime, 1)
-  t.is (modified [3].absoluteDeltaTime, 3)
-  t.is (modified [4].absoluteDeltaTime, 4)
-  t.is (modified [5].absoluteDeltaTime, 7)
+  t.is (modified.length, 7)
+  t.is (modified [0].time, 0)
+  t.is (modified [1].time, 1)
+  t.is (modified [2].time, 1)
+  t.is (modified [3].time, 3)
+  t.is (modified [4].time, 4)
+  t.is (modified [5].time, 7)
+  t.is (modified [6].time, 9)
 })
 
-test ('withAbsoluteDeltaTimes (one track) should be idempotent', (t) => {
+test ('addTime (one track) should be idempotent', (t) => {
   t.deepEqual (
-    trackWithAbsoluteDeltaTimes (sequence.tracks [0]),
-    trackWithAbsoluteDeltaTimes (
-      trackWithAbsoluteDeltaTimes (sequence.tracks [0])))
+    addTime (sequence.tracks [0]),
+    addTime (
+      addTime (sequence.tracks [0])))
 })
 
-test ('withAbsoluteDeltaTimes (on multiple tracks)', (t) => {
-  let modified = withAbsoluteDeltaTimes (sequence)
+test ('addTime (on multiple tracks)', (t) => {
+  let modified = addTime (sequence)
 
   t.true (seemsSequence (modified))
   t.not (modified.tracks, sequence.tracks)
@@ -173,66 +173,68 @@ test ('withAbsoluteDeltaTimes (on multiple tracks)', (t) => {
 
   let track = modified.tracks [0]
 
-  t.is (track.length, 6)
-  t.is (track [0].absoluteDeltaTime, 0)
-  t.is (track [1].absoluteDeltaTime, 1)
-  t.is (track [2].absoluteDeltaTime, 1)
-  t.is (track [3].absoluteDeltaTime, 3)
-  t.is (track [4].absoluteDeltaTime, 4)
-  t.is (track [5].absoluteDeltaTime, 7)
+  t.is (track.length, 7)
+  t.is (track [0].time, 0)
+  t.is (track [1].time, 1)
+  t.is (track [2].time, 1)
+  t.is (track [3].time, 3)
+  t.is (track [4].time, 4)
+  t.is (track [5].time, 7)
+  t.is (track [6].time, 9)
 
   let track1 = modified.tracks [1]
 
-  t.is (track1.length, 2)
-  t.is (track1 [0].absoluteDeltaTime, 0)
-  t.is (track1 [1].absoluteDeltaTime, 8)
+  t.is (track1.length, 3)
+  t.is (track1 [0].time, 0)
+  t.is (track1 [1].time, 8)
+  t.is (track1 [2].time, 9)
 })
 
-test ('withAbsoluteDeltaTimes (sequence) should be idempotent', (t) => {
+test ('addTime (sequence) should be idempotent', (t) => {
   t.deepEqual (
-    withAbsoluteDeltaTimes (sequence),
-    withAbsoluteDeltaTimes (withAbsoluteDeltaTimes (sequence)))
+    addTime (sequence),
+    addTime (addTime (sequence)))
 })
 
-test ('withoutAbsoluteDeltaTimes (track)', (t) => {
+test ('withoutTime (track)', (t) => {
   t.deepEqual (
     sequence.tracks [0],
-    trackWithoutAbsoluteDeltaTimes (
-      trackWithAbsoluteDeltaTimes (sequence.tracks [0])))
+    withoutTime (
+      addTime (sequence.tracks [0])))
 })
 
-test ('withoutAbsoluteDeltaTimes (track) should not do anything if no absoluteDeltaTimes present', (t) => {
+test ('withoutTime (track) should not do anything if no times present', (t) => {
   t.deepEqual (
-    trackWithoutAbsoluteDeltaTimes (sequence.tracks [0]),
+    withoutTime (sequence.tracks [0]),
     sequence.tracks [0])
 })
 
-test ('withoutAbsoluteDeltaTimes (track) should be idempotent', (t) => {
+test ('withoutTime (track) should be idempotent', (t) => {
   t.deepEqual (
-    trackWithoutAbsoluteDeltaTimes (
-      trackWithAbsoluteDeltaTimes (sequence.tracks [0])),
-    trackWithoutAbsoluteDeltaTimes (
-      trackWithoutAbsoluteDeltaTimes (
-        trackWithAbsoluteDeltaTimes (sequence.tracks [0]))))
+    withoutTime (
+      addTime (sequence.tracks [0])),
+    withoutTime (
+      withoutTime (
+        addTime (sequence.tracks [0]))))
 })
 
-test ('withoutAbsoluteDeltaTimes (sequence)', (t) => {
+test ('withoutTime (sequence)', (t) => {
   t.deepEqual (
     sequence,
-    withoutAbsoluteDeltaTimes (withAbsoluteDeltaTimes (sequence)))
+    withoutTime (addTime (sequence)))
 })
 
-test ('withoutAbsoluteDeltaTimes (sequence) should do nothing if no absoluteDeltaTimes are present', (t) => {
+test ('withoutTime (sequence) should do nothing if no times are present', (t) => {
   t.deepEqual (
-    withoutAbsoluteDeltaTimes (sequence),
+    withoutTime (sequence),
     sequence)
 })
 
-test ('withoutAbsoluteDeltaTimes (sequence) should be idempotent', (t) => {
+test ('withoutTime (sequence) should be idempotent', (t) => {
   t.deepEqual (
-    withoutAbsoluteDeltaTimes (sequence),
-    withoutAbsoluteDeltaTimes (
-      withoutAbsoluteDeltaTimes (sequence)))
+    withoutTime (sequence),
+    withoutTime (
+      withoutTime (sequence)))
 })
 
 // ------------------------ Sequence creation ----------------------------
@@ -334,6 +336,7 @@ test ('rejectEvents', (t) => {
         set (deltaTime) (0) (on (64)),
         set (deltaTime) (1) (on (67)),
         set (deltaTime) (3) (on (71)),
+        set (deltaTime) (5) (endOfTrack ())
     ])
 })
 
@@ -352,6 +355,7 @@ test ('adjustTrack', (t) => {
         [
             set (deltaTime) (0) (on (32)),
             set (deltaTime) (8) (off (32)),
+            set (deltaTime) (1) (endOfTrack ())
         ]
       ]
     })
@@ -373,18 +377,20 @@ test ('dropEvents', (t) => {
         [
             set (deltaTime) (3) (off (67)),
             set (deltaTime) (1) (on (71)),
-            set (deltaTime) (3) (off (71))
+            set (deltaTime) (3) (off (71)),
+            set (deltaTime) (2) (endOfTrack ())
         ],
         [
             set (deltaTime) (0) (on (32)),
             set (deltaTime) (8) (off (32)),
+            set (deltaTime) (1) (endOfTrack ())
         ]
       ]
     })
 })
 
 test ('sortEvents', (t) => {
-  let new_sequence = withAbsoluteDeltaTimes (sequence)
+  let new_sequence = addTime (sequence)
   let a = new_sequence.tracks [0] [0]
   let b = new_sequence.tracks [0] [3]
   new_sequence.tracks [0] [0] = b
@@ -398,40 +404,121 @@ test ('sortEvents', (t) => {
 
   let track = modified.tracks [0]
 
-  t.is (track [0].absoluteDeltaTime, 0)
-  t.is (track [1].absoluteDeltaTime, 1)
-  t.is (track [2].absoluteDeltaTime, 1)
-  t.is (track [3].absoluteDeltaTime, 3)
-  t.is (track [4].absoluteDeltaTime, 4)
-  t.is (track [5].absoluteDeltaTime, 7)
+  t.is (track [0].time, 0)
+  t.is (track [1].time, 1)
+  t.is (track [2].time, 1)
+  t.is (track [3].time, 3)
+  t.is (track [4].time, 4)
+  t.is (track [5].time, 7)
 })
 
 test ('sortEvents must be idempotent', (t) => {
   t.deepEqual (
-    sortEvents (withAbsoluteDeltaTimes (sequence)),
-    sortEvents (sortEvents (withAbsoluteDeltaTimes (sequence))))
+    sortEvents (addTime (sequence)),
+    sortEvents (sortEvents (addTime (sequence))))
 })
 
-test ('deltaTimesFromAbsolutes', (t) => {
+test ('mapTrackEvents to object', (t) => {
+  let m = [
+    [ isNoteOff, cc (32) ]
+  ]
+
+  t.deepEqual (
+    mapTrackEvents (m) (sequence.tracks [0]),
+    [
+        set (deltaTime) (0) (on (64)),
+        set (deltaTime) (1) (cc (32)),
+        set (deltaTime) (0) (on (67)),
+        set (deltaTime) (2) (cc (32)),
+        set (deltaTime) (1) (on (71)),
+        set (deltaTime) (3) (cc (32)),
+        set (deltaTime) (2) (endOfTrack ())
+    ])
+})
+
+test ('mapTrackEvents to function', (t) => {
+  let m = [
+    [ isNoteOff, (e) => cc (view (note) (e)) ]
+  ]
+
+  t.deepEqual (
+    mapTrackEvents (m) (sequence.tracks [0]),
+    [
+        set (deltaTime) (0) (on (64)),
+        set (deltaTime) (1) (cc (64)),
+        set (deltaTime) (0) (on (67)),
+        set (deltaTime) (2) (cc (67)),
+        set (deltaTime) (1) (on (71)),
+        set (deltaTime) (3) (cc (71)),
+        set (deltaTime) (2) (endOfTrack ())
+    ])
+})
+
+test ('mapTrackEvents start/end event objects', (t) => {
+  let m = [
+    [ isNoteOff, [ cc (32), cc (45) ] ]
+  ]
+
+  t.deepEqual (
+    mapTrackEvents (m) (sequence.tracks [0]),
+    [
+        set (deltaTime) (0) (on (64)),
+        set (deltaTime) (1) (cc (32)),
+        set (deltaTime) (0) (on (67)),
+        set (deltaTime) (2) (cc (45)),
+        set (deltaTime) (0) (cc (32)),
+        set (deltaTime) (1) (cc (45)),
+        set (deltaTime) (0) (on (71)),
+        set (deltaTime) (3) (cc (32)),
+        set (deltaTime) (2) (cc (45)),
+        set (deltaTime) (0) (endOfTrack ())
+    ])
+})
+
+test ('mapTrackEvents start/end event functions', (t) => {
+  let m = [
+    [ isNoteOff, [ 
+      (e) => cc (view (note) (e)),
+      (e) => pp (view (note) (e))
+    ] ]
+  ]
+
+  t.deepEqual (
+    mapTrackEvents (m) (sequence.tracks [0]),
+    [
+        set (deltaTime) (0) (on (64)),
+        set (deltaTime) (1) (cc (64)),
+        set (deltaTime) (0) (on (67)),
+        set (deltaTime) (2) (pp (64)),
+        set (deltaTime) (0) (cc (67)),
+        set (deltaTime) (1) (pp (67)),
+        set (deltaTime) (0) (on (71)),
+        set (deltaTime) (3) (cc (71)),
+        set (deltaTime) (2) (pp (71)),
+        set (deltaTime) (0) (endOfTrack ())
+    ])
+})
+
+test ('addDeltaTime', (t) => {
   const seq = {
     formatType: 1,
     timeDivision: 1,
     tracks: [
       [
-          set (absoluteDeltaTime) (0) (on (64)),
-          set (absoluteDeltaTime) (0) (on (32)),
-          set (absoluteDeltaTime) (1) (off (64)),
-          set (absoluteDeltaTime) (1) (on (67)),
-          set (absoluteDeltaTime) (3) (off (67)),
-          set (absoluteDeltaTime) (4) (on (71)),
-          set (absoluteDeltaTime) (7) (off (71)),
-          set (absoluteDeltaTime) (8) (off (32))
+          set (time) (0) (on (64)),
+          set (time) (0) (on (32)),
+          set (time) (1) (off (64)),
+          set (time) (1) (on (67)),
+          set (time) (3) (off (67)),
+          set (time) (4) (on (71)),
+          set (time) (7) (off (71)),
+          set (time) (8) (off (32))
       ]
     ]
   }
 
   t.deepEqual (
-    withoutAbsoluteDeltaTimes (deltaTimesFromAbsolutes (seq)),
+    withoutTime (addDeltaTime (seq)),
     {
       formatType: 1,
       timeDivision: 1,
@@ -488,7 +575,8 @@ test ('mergeTracks should adapt deltaTimes', (t) => {
             set (deltaTime) (2) (off (67)),
             set (deltaTime) (1) (on (71)),
             set (deltaTime) (3) (off (71)),
-            set (deltaTime) (1) (off (32))
+            set (deltaTime) (1) (off (32)),
+            set (deltaTime) (1) (endOfTrack ())
         ]
       ]
     })
@@ -508,6 +596,24 @@ test ('mergeTracks should not modify the loop flag', (t) => {
 
 test ('setTimeDivision', (t) => {
   let modified = setTimeDivision (4) (sequence)
+  let track0 = modified.tracks [0]
+  let track1 = modified.tracks [1]
+
+  t.is (modified.timeDivision, 4)
+
+  t.is (track0 [0].deltaTime, 0)
+  t.is (track0 [1].deltaTime, 4)
+  t.is (track0 [2].deltaTime, 0)
+  t.is (track0 [3].deltaTime, 8)
+  t.is (track0 [4].deltaTime, 4)
+  t.is (track0 [5].deltaTime, 12)
+
+  t.is (track1 [0].deltaTime, 0)
+  t.is (track1 [1].deltaTime, 32)
+})
+
+test ('setTimeDivision must be idempotent', (t) => {
+  let modified = setTimeDivision (4) (setTimeDivision (4) (sequence))
   let track0 = modified.tracks [0]
   let track1 = modified.tracks [1]
 

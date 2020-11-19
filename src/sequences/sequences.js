@@ -1,12 +1,12 @@
 import { 
-  isContinue, isMIDIClock, isStart,
-  isSequenceEvent, isStop, isTempoChange
+  isContinue, isMIDIClock, isStart, isStop 
 } from '../predicates/predicates.js'
-import { seemsfrMessage } from '../predicates/frmeta.js'
+import { isEndOfTrack, isTempoChange } from '../predicates/meta.js'
+import { isSequenceEvent, seemsfrMessage } from '../predicates/frmeta.js'
 import { from } from '../messages'
 import { sequenceEvent } from '../messages/frmeta.js'
 import { 
-  absoluteDeltaTime, deltaTime, timeStamp, sequence as sequenceLens 
+  time, deltaTime, timeStamp, sequence as sequenceLens 
 } from '../lenses/lenses.js'
 import { timer, clock } from '../clock'
 import { processMessage } from './state.js'
@@ -24,9 +24,10 @@ import {
 import {
   __, add, addIndex, adjust, always, all, allPass, and, append, assoc, 
   both, 
-  clone, concat, complement, cond, curry, dissoc, drop, dropWhile,
-  either, evolve, F, filter, flatten, forEach, 
-  has, head, is, isEmpty, isNil, last,
+  clone, concat, complement, cond, curry, 
+  dissoc, drop, dropWhile, dropRepeatsWith,
+  either, evolve, F, filter, flatten, flip, forEach, 
+  has, head, identity, is, isEmpty, isNil, last,
   map, mapAccum, mergeLeft, not, objOf, over,
   pipe, prepend, prop, propIs, propEq, propSatisfies,
   reduce, reduceWhile, scan, set, slice, sort, sortBy, splitWhen,
@@ -60,7 +61,7 @@ export const seemsLoop = (sequence) =>
        (propEq ('loop', true))
        (sequence)
 
-// ----------------------- Operations on tracks --------------------------
+// --------------------- Operations on sequences -------------------------
 
 export const mapTracks = curry((fn, sequence) =>
   evolve ({
@@ -78,63 +79,50 @@ export const getTrack = curry((n, sequence) =>
 
 // -------------- Working with delta and absolute delta times ------------
 
-export const eventWithAbsoluteDeltaTime = curry ((acc_tick, msg) =>
-  [
-    acc_tick + msg.deltaTime,
-    assoc ('absoluteDeltaTime') (acc_tick + msg.deltaTime) (msg)
-  ]
-)
+export const addTime = (v, t) =>
+  cond ([
+    [seemsSequence, mapTracks (addTime)],
+    [seemsTrack, (v) => last (mapAccum (flip (addTime)) (0) (v))],
+    [seemsfrMessage, 
+      always ([ t + v.deltaTime, assoc ('time') (t + v.deltaTime) (v) ])]
+  ]) (v)
 
-export const trackWithAbsoluteDeltaTimes = (track) =>
-  last (mapAccum (eventWithAbsoluteDeltaTime) (0) (track))
+export const addDeltaTime = (v) =>
+  cond ([
+    [seemsSequence, mapTracks (addDeltaTime)],
+    [seemsTrack, 
+      pipe (
+        mapAccum 
+          ((a, e) => [e.time, set (deltaTime) (e.time - a) (e)]) (0),
+        last)]
+  ]) (v)
 
-export const trackWithoutAbsoluteDeltaTimes = (track) =>
-  map (dissoc ('absoluteDeltaTime')) (track)
+export const withoutTime = (v) =>
+  cond ([
+    [seemsSequence, mapTracks (withoutTime)],
+    [seemsTrack, map (dissoc ('time'))],
+    [seemsfrMessage, dissoc ('time')]
+  ]) (v)
 
-export const trackWithoutDeltaTimes = (track) =>
-  map (dissoc ('deltaTime')) (track)
-
-export const withAbsoluteDeltaTimes = (sequence) =>
-  mapTracks 
-    (trackWithAbsoluteDeltaTimes)
-    (sequence)
-
-export const withoutAbsoluteDeltaTimes = (sequence) =>
-  mapTracks
-    (trackWithoutAbsoluteDeltaTimes)
-    (sequence)
-
-export const withoutDeltaTimes = (sequence) =>
-  mapTracks
-    (trackWithoutDeltaTimes)
-    (sequence)
-
-export const trackDeltaTimesFromAbsolutes = (track) =>
-  pipe (
-    mapAccum
-      ((acc, evt) => [
-        evt.absoluteDeltaTime,
-        set (deltaTime) (evt.absoluteDeltaTime - acc) (evt)
-      ]) (0),
-    last) (track)
-
-export const deltaTimesFromAbsolutes = (sequence) =>
-  mapTracks
-    (trackDeltaTimesFromAbsolutes)
-    (sequence)
+export const withoutDeltaTime = (v) =>
+  cond ([
+    [seemsSequence, mapTracks (withoutDeltaTime)],
+    [seemsTrack, map (dissoc ('deltaTime'))],
+    [seemsfrMessage, dissoc ('deltaTime')]
+  ]) (v)
 
 // ------------------------ Time division --------------------------------
+
+export const setTrackTimeDivision = curry ((td, ttd, track) =>
+  map 
+    ((evt) => set (deltaTime) ((view (deltaTime) (evt)) * td / ttd) (evt))
+    (track))
 
 export const setTimeDivision = curry ((td, sequence) =>
   evolve ({
     timeDivision: always (td),
     tracks: 
-      map 
-        (map 
-          ((evt) => 
-            set (deltaTime) 
-                ((view (deltaTime) (evt)) * td / sequence.timeDivision) 
-                (evt)))
+      map (setTrackTimeDivision (td) (sequence.timeDivision))
   }) (sequence))
 
 // -------------- MIDI Sequence creation from tracks ---------------------
@@ -176,23 +164,92 @@ export const rejectEvents = curry ((p, track) =>
 // synchronization with rest of tracks
 
 export const dropEvents = curry ((n, track) =>
-  trackWithoutAbsoluteDeltaTimes (
-    trackDeltaTimesFromAbsolutes (
-      drop (n) (trackWithAbsoluteDeltaTimes (track)))))
+  withoutTime (
+    addDeltaTime (
+      drop (n) (addTime (track)))))
+
+// TODO: Map events to other event types based on a predicate.
+// Also allows start/end event to change one to two different types,
+// end event will be set on next event deltatime.
+// Mappings are defined as:
+// [ <mapping>, <mapping>, ... ]
+// Where each mapping is:
+// [ <predicate>, <singular_mapping> | [ <start_mapping>, <end_mapping> ] ]
+// Where predicate is a function that accepts a message as parameter.
+// Each mapping can be either a defined message or a function that
+// receives original message to transform it.
+export const applyEventMapping = (n) => (o) => (t) => {
+  if (is (Function) (n)) {
+    return append (set (deltaTime) (view (deltaTime) (o)) (n (o))) (t)
+  } else {
+    return append (set (deltaTime) (view (deltaTime) (o)) (n)) (t)
+  }
+}
+
+export const mapTrackEvents = curry ((mappings, track) => {
+  mappings = append ([ T, identity ]) (mappings)
+  let mappedTrack = []
+  let toAdd = []
+
+  for (let i = 0; i < track.length; i++) {
+    let old_event = track [i]
+
+    if (view (deltaTime) (old_event) > 0 && toAdd.length !== 0) {
+      mappedTrack = applyEventMapping (toAdd [0]) (old_event) (mappedTrack)
+      old_event = set (deltaTime) (0) (old_event)
+      for (let m = 1; m < toAdd.length; m++) {
+        mappedTrack = applyEventMapping (toAdd [m]) (old_event) (mappedTrack)
+      }
+      toAdd = []
+    }
+
+    for (let j = 0; j < mappings.length; j++) {
+      let predicate = mappings [j] [0]
+
+      if (predicate (old_event)) {
+        if (is (Array) (mappings [j] [1])) {
+          mappedTrack = 
+            applyEventMapping 
+              (mappings [j] [1] [0]) 
+              (old_event) 
+              (mappedTrack)
+
+          if (is (Function) (mappings [j] [1] [1])) {
+            toAdd = append (mappings [j] [1] [1] (old_event)) (toAdd)
+          } else {
+            toAdd = append (mappings [j] [1] [1]) (toAdd)
+          }
+        } else {
+          mappedTrack = 
+            applyEventMapping 
+              (mappings [j] [1]) 
+              (old_event) 
+              (mappedTrack)
+        }
+
+        break;
+      }
+    }
+  }
+
+  return mappedTrack
+})
 
 // --------------------- Sort events on each track -----------------------
 
 export const sortEvents = (sequence) =>
   mapTracks
-    (sortBy (prop ('absoluteDeltaTime')))
+    (sortBy (prop ('time')))
     (sequence)
 
  // --------------------------- Merge tracks -----------------------------
 
 export const mergeTracks = (sequence) =>
-  withoutAbsoluteDeltaTimes (
-    deltaTimesFromAbsolutes ( 
-      sortEvents (
-        evolve ({ 
-          tracks: (tracks) => [flatten (tracks)]
-        }) (withAbsoluteDeltaTimes (sequence)))))
+  mapTracks 
+    (dropRepeatsWith ((a, b) => isEndOfTrack (a) && isEndOfTrack (b)))
+    (withoutTime 
+      (addDeltaTime 
+        (sortEvents 
+          (evolve ({ 
+            tracks: (tracks) => [flatten (tracks)]
+          }) (addTime (sequence))))))
