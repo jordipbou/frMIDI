@@ -4154,6 +4154,41 @@
   });
 
   /**
+   * Tests the final argument by passing it to the given predicate function. If
+   * the predicate is satisfied, the function will return the result of calling
+   * the `whenTrueFn` function with the same argument. If the predicate is not
+   * satisfied, the argument is returned as is.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.18.0
+   * @category Logic
+   * @sig (a -> Boolean) -> (a -> a) -> a -> a
+   * @param {Function} pred       A predicate function
+   * @param {Function} whenTrueFn A function to invoke when the `condition`
+   *                              evaluates to a truthy value.
+   * @param {*}        x          An object to test with the `pred` function and
+   *                              pass to `whenTrueFn` if necessary.
+   * @return {*} Either `x` or the result of applying `x` to `whenTrueFn`.
+   * @see R.ifElse, R.unless, R.cond
+   * @example
+   *
+   *      // truncate :: String -> String
+   *      const truncate = R.when(
+   *        R.propSatisfies(R.gt(R.__, 10), 'length'),
+   *        R.pipe(R.take(10), R.append('…'), R.join(''))
+   *      );
+   *      truncate('12345');         //=> '12345'
+   *      truncate('0123456789ABC'); //=> '0123456789…'
+   */
+
+  var when =
+  /*#__PURE__*/
+  _curry3(function when(pred, whenTrueFn, x) {
+    return pred(x) ? whenTrueFn(x) : x;
+  });
+
+  /**
    * Returns a new list without values in the first argument.
    * [`R.equals`](#equals) is used to determine equality.
    *
@@ -5954,7 +5989,7 @@
   var NEVER = /*@__PURE__*/ new Observable(noop);
 
   /** PURE_IMPORTS_START _Observable,_scheduler_async,_util_isNumeric,_util_isScheduler PURE_IMPORTS_END */
-  function timer$1(dueTime, periodOrScheduler, scheduler) {
+  function timer(dueTime, periodOrScheduler, scheduler) {
       if (dueTime === void 0) {
           dueTime = 0;
       }
@@ -6129,6 +6164,77 @@
       };
       return SwitchMapSubscriber;
   }(SimpleOuterSubscriber));
+
+  /** PURE_IMPORTS_START tslib,_Subscriber,_util_noop,_util_isFunction PURE_IMPORTS_END */
+  function tap(nextOrObserver, error, complete) {
+      return function tapOperatorFunction(source) {
+          return source.lift(new DoOperator(nextOrObserver, error, complete));
+      };
+  }
+  var DoOperator = /*@__PURE__*/ (function () {
+      function DoOperator(nextOrObserver, error, complete) {
+          this.nextOrObserver = nextOrObserver;
+          this.error = error;
+          this.complete = complete;
+      }
+      DoOperator.prototype.call = function (subscriber, source) {
+          return source.subscribe(new TapSubscriber(subscriber, this.nextOrObserver, this.error, this.complete));
+      };
+      return DoOperator;
+  }());
+  var TapSubscriber = /*@__PURE__*/ (function (_super) {
+      __extends(TapSubscriber, _super);
+      function TapSubscriber(destination, observerOrNext, error, complete) {
+          var _this = _super.call(this, destination) || this;
+          _this._tapNext = noop;
+          _this._tapError = noop;
+          _this._tapComplete = noop;
+          _this._tapError = error || noop;
+          _this._tapComplete = complete || noop;
+          if (isFunction(observerOrNext)) {
+              _this._context = _this;
+              _this._tapNext = observerOrNext;
+          }
+          else if (observerOrNext) {
+              _this._context = observerOrNext;
+              _this._tapNext = observerOrNext.next || noop;
+              _this._tapError = observerOrNext.error || noop;
+              _this._tapComplete = observerOrNext.complete || noop;
+          }
+          return _this;
+      }
+      TapSubscriber.prototype._next = function (value) {
+          try {
+              this._tapNext.call(this._context, value);
+          }
+          catch (err) {
+              this.destination.error(err);
+              return;
+          }
+          this.destination.next(value);
+      };
+      TapSubscriber.prototype._error = function (err) {
+          try {
+              this._tapError.call(this._context, err);
+          }
+          catch (err) {
+              this.destination.error(err);
+              return;
+          }
+          this.destination.error(err);
+      };
+      TapSubscriber.prototype._complete = function () {
+          try {
+              this._tapComplete.call(this._context);
+          }
+          catch (err) {
+              this.destination.error(err);
+              return;
+          }
+          return this.destination.complete();
+      };
+      return TapSubscriber;
+  }(Subscriber));
 
   // performance.now or node-now function.
   // Using schedulers from timer timings allows easier testing
@@ -6359,7 +6465,7 @@
   // The operators just forwards incoming MIDI messages and adds
   // timing meta events as needed.
 
-  const timer$2 = (resolution = 25, look_ahead = 150, scheduler = asapScheduler) => timer$1(0, resolution, scheduler).pipe(map$1(v => timingEvent(scheduler.now(), look_ahead))); // -------------------- MIDI Clock message generation -------------------
+  const timer$1 = (resolution = 25, look_ahead = 150, scheduler = asapScheduler) => timer(0, resolution, scheduler).pipe(map$1(v => timingEvent(scheduler.now(), look_ahead))); // -------------------- MIDI Clock message generation -------------------
   // Creates an array of MIDI Clock events with correct future timestamps
   // having into account current time (now) and look ahead 
   // window (look_ahead) for indicated bpm and time_division (pulses
@@ -6409,9 +6515,13 @@
   // example.
   // Rest of MIDI messages are just forwarded.
 
-  const clock$1 = (bpm = 120, timeDivision$1 = 24) => pipe$1(scan(([_past_events, ltt
+  const clock = (bpm = 120, timeDivision$1 = 24) => pipe$1(scan(([_past_events, ltt
   /* last tick time */
-  , bpm, td, _last_msg], msg) => cond([[isTimingEvent, msg => [...futureClock(td, bpm, ltt, msg), td, null]], [isTempoChange, msg => [[], ltt, QNPM2BPM(view(tempo)(msg)), td, msg]], [isTimeDivisionEvent, msg => [[], ltt, bpm, view(timeDivision)(msg), msg]], [T, msg => [[], ltt, bpm, td, msg]]])(msg), [[], null, bpm, timeDivision$1, null]), switchMap(([events, _ltt, _bpm, _td, msg]) => msg === null ? isEmpty(events) ? NEVER : from(events) : of(msg))); // ------------------------ Metronome operator ---------------------------
+  , bpm, td, _last_msg], msg) => cond([[isTimingEvent, msg => [...futureClock(td, bpm, ltt, msg), td, null]], // Only clock should respond to tempoChange messages inside
+  // frMIDI, and it makes no sense to put one clock after another,
+  // so tempoChange messages are not forwarded to avoid a feedback
+  // with player operator.
+  [isTempoChange, msg => [[], ltt, QNPM2BPM(view(tempo)(msg)), td, null]], [isTimeDivisionEvent, msg => [[], ltt, bpm, view(timeDivision)(msg), msg]], [T, msg => [[], ltt, bpm, td, msg]]])(msg), [[], null, bpm, timeDivision$1, null]), switchMap(([events, _ltt, _bpm, _td, msg]) => msg === null ? isEmpty(events) ? NEVER : from(events) : of(msg))); // ------------------------ Metronome operator ---------------------------
   //const metronomeNote = (note) => (msg) => [
   //  msg,
   //  set (timeStamp) (view (timeStamp) (msg)) (off (38, 96, 9)),
@@ -6648,12 +6758,8 @@
     }
   }], [isStart, msg => [seqPlayer, 0, null, [msg], true, []]], [isContinue, msg => [seqPlayer, tick, playable, [msg], true, []]], [isStop, msg => [seqPlayer, tick, playable, [msg, ...state], false, []]], [isSequenceEvent, msg => [sequencePlayer(view(sequence)(msg)), tick, null, [msg, ...state], playing, []]], [T, msg => [seqPlayer, tick, playable, [msg], playing, state]]])(msg), [sequencePlayer(sequence$1), 0, null, null, !paused, []]), mergeMap(([_p, _dt, _s, events]) => either(isNil)(isEmpty)(events) ? NEVER : from(events)));
   const play = midifile => {
-    let tempo_listener = new rx_Subject();
-    return rx_merge(timer(), tempo_listener).pipe(clock(30, midifile.timeDivision), player(midifile), rxo_tap(msg => {
-      if (isTempoChange(msg)) {
-        tempo_listener.next(msg);
-      }
-    }));
+    let tempo_listener = new Subject();
+    return merge(timer$1(), tempo_listener).pipe(clock(80, midifile.timeDivision), player(midifile), tap(when(isTempoChange)(bind(tempo_listener.next, tempo_listener))));
   };
 
   const recordToTrack = delta => sequence => msg => evolve({
@@ -6677,6 +6783,7 @@
     let timeDivision = getPatternTimeDivision(p);
     return [withoutTime(addDeltaTime(append(set$1(time)(timeDivision)(endOfTrack()))(getPatternEvents(timeDivision, p)))), timeDivision || 1];
   })(patterns));
+  const setEndDelta = curry((dt, [p, td]) => [adjust(-1)(set$1(deltaTime)(dt))(p), td]);
 
   const meterMapping = [[lensP(data0)(equals)(0), restEvent()], [lensP(data0)(equals)(1), barEvent()], [lensP(data0)(equals)(2), beatEvent()], [lensP(data0)(equals)(3), subdivisionEvent()]];
   const meter = (timeDivision, mapping = meterMapping) => (...meterDef) => player(setTimeDivision(timeDivision)(mapTracks(mapTrackEvents(mapping))(createLoop(createSequence(...pattern(...meterDef))))));
@@ -7486,7 +7593,7 @@
     return promise;
   };
 
-  const version = '1.0.54';
+  const version = '1.0.55';
 
   exports.A = A;
   exports.A0 = A0;
@@ -7647,7 +7754,7 @@
   exports.cc = cc;
   exports.channel = channel;
   exports.channelByKeyRange = channelByKeyRange;
-  exports.clock = clock$1;
+  exports.clock = clock;
   exports.cont = cont;
   exports.control = control;
   exports.controlEq = controlEq;
@@ -7777,7 +7884,7 @@
   exports.tempoChange = tempoChange;
   exports.timeDivisionEvent = timeDivisionEvent;
   exports.timeStamp = timeStamp;
-  exports.timer = timer$2;
+  exports.timer = timer$1;
   exports.timing = timing;
   exports.timingEvent = timingEvent;
   exports.tun = tun;

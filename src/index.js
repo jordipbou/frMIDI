@@ -7,4 +7,4 @@ export * from './mpe'
 export * from './music_defs.js'
 export * from './io'
 
-export const version = '1.0.54'
+export const version = '1.0.55'
