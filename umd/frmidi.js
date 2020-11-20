@@ -2093,6 +2093,34 @@
   /*#__PURE__*/
   nth(0);
 
+  function _identity(x) {
+    return x;
+  }
+
+  /**
+   * A function that does nothing but return the parameter supplied to it. Good
+   * as a default or placeholder function.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.1.0
+   * @category Function
+   * @sig a -> a
+   * @param {*} x The value to return.
+   * @return {*} The input value, `x`.
+   * @example
+   *
+   *      R.identity(1); //=> 1
+   *
+   *      const obj = {};
+   *      R.identity(obj) === obj; //=> true
+   * @symb R.identity(a) = a
+   */
+
+  var identity =
+  /*#__PURE__*/
+  _curry1(_identity);
+
   function _arrayFromIterator(iter) {
     var list = [];
     var next;
@@ -2840,6 +2868,41 @@
     return slice(Math.max(0, n), Infinity, xs);
   }));
 
+  var XDropRepeatsWith =
+  /*#__PURE__*/
+  function () {
+    function XDropRepeatsWith(pred, xf) {
+      this.xf = xf;
+      this.pred = pred;
+      this.lastValue = undefined;
+      this.seenFirstValue = false;
+    }
+
+    XDropRepeatsWith.prototype['@@transducer/init'] = _xfBase.init;
+    XDropRepeatsWith.prototype['@@transducer/result'] = _xfBase.result;
+
+    XDropRepeatsWith.prototype['@@transducer/step'] = function (result, input) {
+      var sameAsLast = false;
+
+      if (!this.seenFirstValue) {
+        this.seenFirstValue = true;
+      } else if (this.pred(this.lastValue, input)) {
+        sameAsLast = true;
+      }
+
+      this.lastValue = input;
+      return sameAsLast ? result : this.xf['@@transducer/step'](result, input);
+    };
+
+    return XDropRepeatsWith;
+  }();
+
+  var _xdropRepeatsWith =
+  /*#__PURE__*/
+  _curry2(function _xdropRepeatsWith(pred, xf) {
+    return new XDropRepeatsWith(pred, xf);
+  });
+
   /**
    * Returns the last element of the given list or string.
    *
@@ -2864,6 +2927,52 @@
   var last =
   /*#__PURE__*/
   nth(-1);
+
+  /**
+   * Returns a new list without any consecutively repeating elements. Equality is
+   * determined by applying the supplied predicate to each pair of consecutive elements. The
+   * first element in a series of equal elements will be preserved.
+   *
+   * Acts as a transducer if a transformer is given in list position.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.14.0
+   * @category List
+   * @sig ((a, a) -> Boolean) -> [a] -> [a]
+   * @param {Function} pred A predicate used to test whether two items are equal.
+   * @param {Array} list The array to consider.
+   * @return {Array} `list` without repeating elements.
+   * @see R.transduce
+   * @example
+   *
+   *      const l = [1, -1, 1, 3, 4, -4, -4, -5, 5, 3, 3];
+   *      R.dropRepeatsWith(R.eqBy(Math.abs), l); //=> [1, 3, 4, -5, 3]
+   */
+
+  var dropRepeatsWith =
+  /*#__PURE__*/
+  _curry2(
+  /*#__PURE__*/
+  _dispatchable([], _xdropRepeatsWith, function dropRepeatsWith(pred, list) {
+    var result = [];
+    var idx = 1;
+    var len = list.length;
+
+    if (len !== 0) {
+      result[0] = list[0];
+
+      while (idx < len) {
+        if (!pred(last(result), list[idx])) {
+          result[result.length] = list[idx];
+        }
+
+        idx += 1;
+      }
+    }
+
+    return result;
+  }));
 
   var XDropWhile =
   /*#__PURE__*/
@@ -3389,6 +3498,35 @@
   var includes =
   /*#__PURE__*/
   _curry2(_includes);
+
+  /**
+   * Returns all but the last element of the given list or string.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.9.0
+   * @category List
+   * @sig [a] -> [a]
+   * @sig String -> String
+   * @param {*} list
+   * @return {*}
+   * @see R.last, R.head, R.tail
+   * @example
+   *
+   *      R.init([1, 2, 3]);  //=> [1, 2]
+   *      R.init([1, 2]);     //=> [1]
+   *      R.init([1]);        //=> []
+   *      R.init([]);         //=> []
+   *
+   *      R.init('abc');  //=> 'ab'
+   *      R.init('ab');   //=> 'a'
+   *      R.init('a');    //=> ''
+   *      R.init('');     //=> ''
+   */
+
+  var init =
+  /*#__PURE__*/
+  slice(0, -1);
 
   /**
    * See if an object (`val`) is an instance of the supplied constructor. This
@@ -4657,7 +4795,7 @@
   var observable = /*@__PURE__*/ (function () { return typeof Symbol === 'function' && Symbol.observable || '@@observable'; })();
 
   /** PURE_IMPORTS_START  PURE_IMPORTS_END */
-  function identity(x) {
+  function identity$1(x) {
       return x;
   }
 
@@ -4671,7 +4809,7 @@
   }
   function pipeFromArray(fns) {
       if (fns.length === 0) {
-          return identity;
+          return identity$1;
       }
       if (fns.length === 1) {
           return fns[0];
@@ -5722,7 +5860,7 @@
       if (concurrent === void 0) {
           concurrent = Number.POSITIVE_INFINITY;
       }
-      return mergeMap(identity, concurrent);
+      return mergeMap(identity$1, concurrent);
   }
 
   /** PURE_IMPORTS_START _Observable,_util_isArray,_util_isFunction,_operators_map PURE_IMPORTS_END */
@@ -6013,7 +6151,8 @@
   asapScheduler.now = frNow;
   const QNPM2BPM = qnpm => 60 * 1000000 / qnpm;
   const BPM2QNPM = bpm => 60 * 1000000 / bpm;
-  const multiSet = curry((lenses, values) => pipe(...map(([l, v]) => set$1(l)(v))(zip(lenses)(values)))); // Until mathjs works well with rollup, we only need this functions
+  const multiSet = curry((lenses, values) => pipe(...map(([l, v]) => set$1(l)(v))(zip(lenses)(values))));
+  const setFrom = curry((lens, s, d) => set$1(lens)(view(lens)(s))(d)); // Until mathjs works well with rollup, we only need this functions
 
   const gcd_two_numbers = (x, y) => {
     x = Math.abs(x);
@@ -6063,6 +6202,8 @@
   const BEAT_EVENT = 4;
   const SUBDIVISION_EVENT = 5;
   const REST_EVENT = 6;
+  const PATTERN_ITEM_EVENT = 7;
+  const EMPTY_EVENT = 9;
   const frMeta = (type, data, timeStamp = 0) => ({
     type: 'frmetaevent',
     timeStamp: timeStamp,
@@ -6076,16 +6217,18 @@
   const beatEvent = (ts = 0) => frMeta(BEAT_EVENT, [], ts);
   const subdivisionEvent = (ts = 0) => frMeta(SUBDIVISION_EVENT, [], ts);
   const restEvent = (ts = 0) => frMeta(REST_EVENT, [], ts);
+  const patternItemEvent = (i, ts = 0) => frMeta(PATTERN_ITEM_EVENT, i, ts);
+  const emptyEvent = (ts = 0) => frMeta(EMPTY_EVENT, [], ts);
 
-  const seemsfrMetaEvent = msg => allPass([is(Object), propEq('type', 'frmetaevent'), has('metaType'), has('data')])(msg);
+  const seemsfrMetaEvent = msg => allPass([is(Object), propEq('type', 'frmetaevent'), has('metaType'), has('data')])(msg); // ---------------------- frMIDI Message predicates ----------------------
+
+  const seemsfrMessage = msg => anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent])(msg); // ------------------- frMIDI Meta Events definitions --------------------
+
   const frMetaTypeEq = curry((type, msg) => seemsfrMetaEvent(msg) ? propEq('metaType')(type)(msg) : false);
   const isTimingEvent = msg => frMetaTypeEq(TIMING_EVENT)(msg);
   const isTimeDivisionEvent = msg => frMetaTypeEq(TIME_DIVISION_EVENT)(msg);
   const isSequenceEvent = msg => frMetaTypeEq(SEQUENCE_EVENT)(msg);
-  const isBarEvent = msg => frMetaTypeEq(BAR_EVENT)(msg);
-  const isBeatEvent = msg => frMetaTypeEq(BEAT_EVENT)(msg);
-  const isSubdivisionEvent = msg => frMetaTypeEq(SUBDIVISION_EVENT)(msg);
-  const isRestEvent = msg => frMetaTypeEq(REST_EVENT)(msg);
+  const isEmptyEvent = msg => frMetaTypeEq(EMPTY_EVENT)(msg);
 
   // Converts a byte array to a MIDIMessageEvent compatible object.
 
@@ -6143,9 +6286,10 @@
   // received MIDI message passes the predicate.
 
   const lensWhen = curry((p, v, s) => msg => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg)(msg));
+  const data0 = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(getData(0))(setData(0));
   const timeStamp = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('timeStamp'))(assoc('timeStamp'));
   const deltaTime = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('deltaTime'))(assoc('deltaTime'));
-  const absoluteDeltaTime = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('absoluteDeltaTime'))(assoc('absoluteDeltaTime'));
+  const time = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('time'))(assoc('time'));
   const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)((v, m) => setData(0)((getData(0, m) & 0xF0) + v)(m));
   const note = lensWhen(hasNote)(getData(1))(setData(1));
   const velocity = lensWhen(hasVelocity)(getData(2))(setData(2));
@@ -6361,8 +6505,15 @@
 
   const processMessage = state => msg => cond([[isNoteOn, processNoteOn(state)], [isNoteOff$1, processNoteOff(state)], [T, always(state)]])(msg);
 
-  const seemsSequence = sequence => allPass([is(Object), has('formatType'), has('timeDivision'), has('tracks'), propIs(Array)('tracks'), propSatisfies(all(is(Array)))('tracks')])(sequence);
-  const seemsLoop = sequence => both(seemsSequence)(propEq('loop', true))(sequence); // ----------------------- Operations on tracks --------------------------
+  // - It's logical that loop is a property of a sequence, or should
+  //   it be a property of the player ? I don't really like it being
+  //   a property of the sequence.
+  // - 
+  // --------------------------- Predicates --------------------------------
+
+  const seemsTrack = track => both(is(Array))(all(seemsfrMessage))(track);
+  const seemsSequence = sequence => allPass([is(Object), has('formatType'), has('timeDivision'), has('tracks'), propIs(Array)('tracks'), propSatisfies(all(seemsTrack))('tracks')])(sequence);
+  const seemsLoop = sequence => both(seemsSequence)(propEq('loop', true))(sequence); // --------------------- Operations on sequences -------------------------
 
   const mapTracks = curry((fn, sequence) => evolve({
     tracks: map(fn)
@@ -6370,17 +6521,14 @@
   const mapEvents = curry((fn, sequence) => mapTracks(map(fn))(sequence));
   const getTrack = curry((n, sequence) => sequence.tracks[n]); // -------------- Working with delta and absolute delta times ------------
 
-  const eventWithAbsoluteDeltaTime = curry((acc_tick, msg) => [acc_tick + msg.deltaTime, assoc('absoluteDeltaTime')(acc_tick + msg.deltaTime)(msg)]);
-  const trackWithAbsoluteDeltaTimes = track => last(mapAccum(eventWithAbsoluteDeltaTime)(0)(track));
-  const trackWithoutAbsoluteDeltaTimes = track => map(dissoc('absoluteDeltaTime'))(track);
-  const withAbsoluteDeltaTimes = sequence => mapTracks(trackWithAbsoluteDeltaTimes)(sequence);
-  const withoutAbsoluteDeltaTimes = sequence => mapTracks(trackWithoutAbsoluteDeltaTimes)(sequence);
-  const trackDeltaTimesFromAbsolutes = track => pipe(mapAccum((acc, evt) => [evt.absoluteDeltaTime, set$1(deltaTime)(evt.absoluteDeltaTime - acc)(evt)])(0), last)(track);
-  const deltaTimesFromAbsolutes = sequence => mapTracks(trackDeltaTimesFromAbsolutes)(sequence); // ------------------------ Time division --------------------------------
+  const addTime = (v, t) => cond([[seemsSequence, mapTracks(addTime)], [seemsTrack, v => last(mapAccum(flip(addTime))(0)(v))], [seemsfrMessage, always([t + v.deltaTime, assoc('time')(t + v.deltaTime)(v)])]])(v);
+  const addDeltaTime = v => cond([[seemsSequence, mapTracks(addDeltaTime)], [seemsTrack, pipe(mapAccum((a, e) => [e.time, set$1(deltaTime)(e.time - a)(e)])(0), last)]])(v);
+  const withoutTime = v => cond([[seemsSequence, mapTracks(withoutTime)], [seemsTrack, map(dissoc('time'))], [seemsfrMessage, dissoc('time')]])(v);
 
+  const setTrackTimeDivision = curry((td, ttd, track) => map(evt => set$1(deltaTime)(view(deltaTime)(evt) * td / ttd)(evt))(track));
   const setTimeDivision = curry((td, sequence) => evolve({
     timeDivision: always(td),
-    tracks: map(map(evt => set$1(deltaTime)(view(deltaTime)(evt) * td / sequence.timeDivision)(evt)))
+    tracks: map(setTrackTimeDivision(td)(sequence.timeDivision))
   })(sequence)); // -------------- MIDI Sequence creation from tracks ---------------------
 
   const createSequence = curry((tracks, timeDivision) => ({
@@ -6399,33 +6547,92 @@
   const rejectEvents = curry((p, track) => filterEvents(complement(p))(track)); // Drops events from tracks but recalculates deltaTimes to maintain
   // synchronization with rest of tracks
 
-  const dropEvents = curry((n, track) => trackWithoutAbsoluteDeltaTimes(trackDeltaTimesFromAbsolutes(drop(n)(trackWithAbsoluteDeltaTimes(track))))); // --------------------- Sort events on each track -----------------------
+  const dropEvents = curry((n, track) => withoutTime(addDeltaTime(drop(n)(addTime(track))))); // Map events to other event types based on a predicate.
+  // Also allows start/end event to change one to two different types,
+  // end event will be set on next event deltatime.
+  // Mappings are defined as:
+  // [ <mapping>, <mapping>, ... ]
+  // Where each mapping is:
+  // [ <predicate>, <singular_mapping> | [ <start_mapping>, <end_mapping> ] ]
+  // Where predicate is a function that accepts a message as parameter.
+  // Each mapping can be either a defined message or a function that
+  // receives original message to transform it.
 
-  const sortEvents = sequence => mapTracks(sortBy(prop$1('absoluteDeltaTime')))(sequence); // --------------------------- Merge tracks -----------------------------
+  const applyEventMapping = n => o => t => {
+    if (is(Function)(n)) {
+      return append(set$1(deltaTime)(view(deltaTime)(o))(n(o)))(t);
+    } else {
+      return append(set$1(deltaTime)(view(deltaTime)(o))(n))(t);
+    }
+  };
+  const mapTrackEvents = curry((mappings, track) => {
+    mappings = append([T, identity])(mappings);
+    let mappedTrack = [];
+    let toAdd = [];
 
-  const mergeTracks = sequence => withoutAbsoluteDeltaTimes(deltaTimesFromAbsolutes(sortEvents(evolve({
+    for (let i = 0; i < track.length; i++) {
+      let old_event = track[i];
+
+      if (view(deltaTime)(old_event) > 0 && toAdd.length !== 0) {
+        mappedTrack = applyEventMapping(toAdd[0])(old_event)(mappedTrack);
+        old_event = set$1(deltaTime)(0)(old_event);
+
+        for (let m = 1; m < toAdd.length; m++) {
+          mappedTrack = applyEventMapping(toAdd[m])(old_event)(mappedTrack);
+        }
+
+        toAdd = [];
+      }
+
+      for (let j = 0; j < mappings.length; j++) {
+        let predicate = mappings[j][0];
+
+        if (predicate(old_event)) {
+          if (is(Array)(mappings[j][1])) {
+            mappedTrack = applyEventMapping(mappings[j][1][0])(old_event)(mappedTrack);
+
+            if (is(Function)(mappings[j][1][1])) {
+              toAdd = append(mappings[j][1][1](old_event))(toAdd);
+            } else {
+              toAdd = append(mappings[j][1][1])(toAdd);
+            }
+          } else {
+            mappedTrack = applyEventMapping(mappings[j][1])(old_event)(mappedTrack);
+          }
+
+          break;
+        }
+      }
+    }
+
+    return rejectEvents(isEmptyEvent)(mappedTrack);
+  }); // --------------------- Sort events on each track -----------------------
+
+  const sortEvents = sequence => mapTracks(sortBy(prop$1('time')))(sequence); // --------------------------- Merge tracks -----------------------------
+
+  const mergeTracks = sequence => mapTracks(dropRepeatsWith((a, b) => isEndOfTrack(a) && isEndOfTrack(b)))(withoutTime(addDeltaTime(sortEvents(evolve({
     tracks: tracks => [flatten(tracks)]
-  })(withAbsoluteDeltaTimes(sequence)))));
+  })(addTime(sequence))))));
 
   // NOTE: Analyze another implementation option:
   // [ first_event if absTime === currentAbsTime, ...recurse more events ]
 
   const sequencePlayer = sequence => {
-    const preparedSequence = withAbsoluteDeltaTimes(mergeTracks(sequence));
-    const maxTick = prop$1('absoluteDeltaTime')(last(preparedSequence.tracks[0]));
+    const preparedSequence = addTime(mergeTracks(sequence));
+    const maxTick = prop$1('time')(last(preparedSequence.tracks[0]));
 
-    let rec = (currentAbsoluteDeltaTime, track) => {
+    let rec = (currentTime, track) => {
       track = track || preparedSequence.tracks[0];
       return msg => {
-        let filtered = dropWhile(e => e.absoluteDeltaTime < currentAbsoluteDeltaTime)(track);
-        let events = splitWhen(e => e.absoluteDeltaTime > currentAbsoluteDeltaTime)(filtered);
+        let filtered = dropWhile(e => e.time < currentTime)(track);
+        let events = splitWhen(e => e.time > currentTime)(filtered);
         let msg_ts = view(timeStamp)(msg);
 
-        if (sequence.loop && currentAbsoluteDeltaTime === maxTick) {
+        if (sequence.loop && currentTime === maxTick) {
           let [_, seq, events2] = rec(0)(msg);
-          return [1, seq, prepend(msg)(concat(map(pipe(set$1(timeStamp)(msg_ts), dissoc('absoluteDeltaTime'), dissoc('deltaTime')))(events[0]))(tail(events2)))];
+          return [1, seq, prepend(msg)(concat(map(pipe(set$1(timeStamp)(msg_ts), dissoc('time'), dissoc('deltaTime')))(events[0]))(tail(events2)))];
         } else {
-          return [currentAbsoluteDeltaTime + 1, events[1], prepend(msg)(map(pipe(set$1(timeStamp)(msg_ts), dissoc('absoluteDeltaTime'), dissoc('deltaTime')))(events[0]))];
+          return [currentTime + 1, events[1], prepend(msg)(map(pipe(set$1(timeStamp)(msg_ts), dissoc('time'), dissoc('deltaTime')))(events[0]))];
         }
       };
     };
@@ -6459,23 +6666,22 @@
     return [nextSeq, delta, true, td, [msg, sequenceEvent(nextSeq)]];
   }], [F, () => [seq, delta, false, td, [msg]]]])(recording)]])(msg), [createSequence([], timeDivision), 0, 0, !paused, timeDivision, null]), mergeMap(([_s, _d, _r, _td, events]) => either(isNil)(isEmpty)(events) ? NEVER : from(events)));
 
-  // The idea here is expand the patterns to have always a 
-  // harmonic pattern and a rhythmic pattern. Both of them
-  // are independent and can be combined to form a unique
-  // pattern.
-  // ----------------------- Harmonic Pattern ------------------------------
-  // ----------------------- Rhythmic pattern ------------------------------
-
   const getPatternTimeDivision = p => cond([[complement(is(Array)), always(1)], [none(is(Array)), length], [T, p => multiply(length(p))(reduce(lcm)(1)(map(getPatternTimeDivision)(p)))]])(p);
-  const getPatternEvents = (td, p, idx = 0, ptd = 1) => cond([[is(Array), pipe(addIndex(map)((a, i) => getPatternEvents(td / length(p), a, i, td * idx)), flatten)], [isNoteOn, msg => [set$1(absoluteDeltaTime)(ptd + td * idx)(msg), set$1(absoluteDeltaTime)(ptd + td * (idx + 1))(off(view(note)(msg), 96, view(channel)(msg), 0))]], [T, set$1(absoluteDeltaTime)(ptd + td * idx)]])(p);
-  const pattern = p => {
+  const getPatternEvents = (td, p, idx = 0, ptd = 1) => cond([[is(Array), pipe(addIndex(map)((a, i) => getPatternEvents(td / length(p), a, i, td * idx)), flatten)], [T, always(set$1(time)(ptd + td * idx)(patternItemEvent(p)))]])(p);
+  const concatPatterns = curry(([p1, td1], [p2, td2]) => {
+    let m1 = setTrackTimeDivision(lcm(td1, td2))(td1)(p1);
+    return [concat(init(m1))(adjust(0)(setFrom(deltaTime)(last(m1)))(setTrackTimeDivision(lcm(td1, td2))(td2)(p2))), lcm(td1, td2)];
+  });
+  const emptyPattern = [[set$1(deltaTime)(0)(endOfTrack())], 1];
+  const pattern = (...patterns) => reduce(concatPatterns)(emptyPattern)(map(p => {
     let timeDivision = getPatternTimeDivision(p);
-    return [trackWithoutAbsoluteDeltaTimes(trackDeltaTimesFromAbsolutes(getPatternEvents(timeDivision, p))), timeDivision];
-  };
+    return [withoutTime(addDeltaTime(append(set$1(time)(timeDivision)(endOfTrack()))(getPatternEvents(timeDivision, p)))), timeDivision || 1];
+  })(patterns));
 
-  const meterSequence = (meterDef, timeDivision) => setTimeDivision(timeDivision)(createLoop(createSequence(...pattern(addIndex(map)((v, i) => v === 1 && i === 0 ? barEvent() : v === 1 ? beatEvent() : v === 2 ? subdivisionEvent() : v === 0 ? restEvent() : v)([...meterDef, endOfTrack()])))));
-  const meter = (meterDef, timeDivision = 24) => player(meterSequence(meterDef, timeDivision));
-  const metronome = (meterDef, timeDivision = 24) => pipe$1(meter(meterDef, timeDivision), mergeMap(cond([[isBarEvent, always(of(on(48, 96, 9)))], [isBeatEvent, always(of(on(51, 96, 9)))], [isSubdivisionEvent, always(of(on(38, 96, 9)))], [isRestEvent, always(NEVER)], [T, msg => of(msg)]])));
+  const meterMapping = [[lensP(data0)(equals)(0), restEvent()], [lensP(data0)(equals)(1), barEvent()], [lensP(data0)(equals)(2), beatEvent()], [lensP(data0)(equals)(3), subdivisionEvent()]];
+  const meter = (timeDivision, mapping = meterMapping) => (...meterDef) => player(setTimeDivision(timeDivision)(mapTracks(mapTrackEvents(mapping))(createLoop(createSequence(...pattern(...meterDef))))));
+  const metronomeMap = [[lensP(data0)(equals)(0), emptyEvent()], [lensP(data0)(equals)(1), on(48, 96, 9)], [lensP(data0)(equals)(2), on(51, 96, 9)], [lensP(data0)(equals)(3), on(38, 96, 9)]];
+  const metronome = (timeDivision, mapping = metronomeMap) => (...meterDef) => meter(timeDivision, mapping)(...meterDef);
 
   const mpeNote = msg => ({
     note: view(note)(msg),
@@ -7280,7 +7486,7 @@
     return promise;
   };
 
-  const version = '1.0.53';
+  const version = '1.0.54';
 
   exports.A = A;
   exports.A0 = A0;

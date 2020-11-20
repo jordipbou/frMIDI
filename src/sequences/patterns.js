@@ -79,3 +79,6 @@ export const pattern = (...patterns) =>
           timeDivision || 1
         ]})
       (patterns))
+
+export const setEndDelta = curry ((dt, [p, td]) =>
+  [adjust (-1) (set (deltaTime) (dt)) (p), td])

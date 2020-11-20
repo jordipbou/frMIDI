@@ -257,12 +257,11 @@ test ('MIDI Clock should accept tempo change messages and modify the rate of MID
         g: timingEvent (2500, 150),
         h: timingEvent (3000, 150)
       })
-    const expected = 'a 999ms b 999ms cd 498ms e 499ms f'
+    const expected = 'a 999ms b 999ms c 499ms e 499ms f'
     const values = {
       a: mc (0),
       b: mc (1000),
       c: mc (2000),
-      d: bpmChange (120),
       e: mc (2500),
       f: mc (3000)
     }

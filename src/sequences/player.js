@@ -8,14 +8,18 @@ import {
 import { isTempoChange } from '../predicates/meta.js'
 import { isSequenceEvent } from '../predicates/frmeta.js'
 import { timeStamp, sequence as sequenceLens } from '../lenses/lenses.js'
+import { clock, timer } from '../clock/clock.js'
 import {
-  concat, cond, dissoc, dropWhile, either, isNil, isEmpty,
+  bind, concat, cond, dissoc, dropWhile, either, isNil, isEmpty,
   last, map, pipe, prepend, prop, reduce,
-  set, splitWhen, T, tail, view
+  set, splitWhen, T, tail, view, when
 } from 'ramda'
-import { from as rx_from, NEVER as rx_NEVER, pipe as rx_pipe } from 'rxjs'
 import { 
-  mergeMap as rxo_mergeMap, scan as rxo_scan 
+  from as rx_from, merge as rx_merge, NEVER as rx_NEVER, 
+  pipe as rx_pipe, Subject as rx_Subject
+} from 'rxjs'
+import { 
+  mergeMap as rxo_mergeMap, scan as rxo_scan, tap as rxo_tap
 } from 'rxjs/operators'
 
 // ------------------------ Playing MIDI Sequences -----------------------
@@ -147,13 +151,11 @@ export const play = (midifile) => {
     timer (),
     tempo_listener
   ).pipe (
-    clock (30, midifile.timeDivision),
+    clock (80, midifile.timeDivision),
     player (midifile),
-    rxo_tap ((msg) => {
-      if (isTempoChange (msg)) {
-        tempo_listener.next (msg)
-      }
-    })
+    rxo_tap (
+      when (isTempoChange) 
+           (bind (tempo_listener.next, tempo_listener)))
   )
 }
 

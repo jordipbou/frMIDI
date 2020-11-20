@@ -1,15 +1,17 @@
 const test = require ('ava')
 import { 
-    concatPatterns, getPatternTimeDivision, getPatternEvents, pattern
-  } from '../../src/sequences/patterns.js'
+  concatPatterns, getPatternTimeDivision, getPatternEvents, 
+  pattern, setEndDelta
+} from '../../src/sequences/patterns.js'
 import { mc, off, on } from '../../src/messages/messages.js'
 import { endOfTrack } from '../../src/messages/meta.js'
 import {
-    barEvent, beatEvent, restEvent, subdivisionEvent,
-    patternItemEvent
-  } from '../../src/messages/frmeta.js'
-import { time, deltaTime } from '../../src/lenses/lenses.js'
-import { set } from 'ramda'
+  barEvent, beatEvent, restEvent, subdivisionEvent,
+  patternItemEvent
+} from '../../src/messages/frmeta.js'
+import { data0, lensP, time, deltaTime } from '../../src/lenses/lenses.js'
+import { mapTrackEvents } from '../../src/sequences/sequences.js'
+import { equals, set } from 'ramda'
 
 test ('getPatternTimeDivision 1', (t) => {
   t.is (3, getPatternTimeDivision ([0, 1, 2])) 
@@ -143,5 +145,32 @@ test ('pattern with multiple bars', (t) => {
         set (deltaTime) (2) (endOfTrack ())
       ],
      6 
+    ])
+})
+
+test ('pattern with mapping', (t) => {
+  const map = [
+    [ lensP (data0) (equals) (0), [ on (64), off (64) ] ]
+  ]
+
+  t.deepEqual (
+    mapTrackEvents (map) (pattern ([ 0 ]) [0]),
+    [
+      set (deltaTime) (0) (on (64)),
+      set (deltaTime) (1) (off (64)),
+      set (deltaTime) (0) (endOfTrack ())
+    ])
+})
+
+test ('setEndDelta', (t) => {
+  t.deepEqual (
+    setEndDelta (0) (pattern ([1, 2])),
+    [
+      [
+        set (deltaTime) (0) (patternItemEvent (1)),
+        set (deltaTime) (1) (patternItemEvent (2)),
+        set (deltaTime) (0) (endOfTrack ())
+      ],
+      2
     ])
 })

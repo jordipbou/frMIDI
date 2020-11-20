@@ -111,8 +111,12 @@ export const clock = (bpm = 120, timeDivision = 24) =>
           [isTimingEvent, 
             (msg) => [...futureClock (td, bpm, ltt, msg), td, null]],
 
+          // Only clock should respond to tempoChange messages inside
+          // frMIDI, and it makes no sense to put one clock after another,
+          // so tempoChange messages are not forwarded to avoid a feedback
+          // with player operator.
           [isTempoChange, 
-            (msg) => [[], ltt, QNPM2BPM (view (tempo) (msg)), td, msg]],
+            (msg) => [[], ltt, QNPM2BPM (view (tempo) (msg)), td, null]],
 
           [isTimeDivisionEvent,
             (msg) => [[], ltt, bpm, view (lTimeDivision) (msg), msg]],
