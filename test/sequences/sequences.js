@@ -12,15 +12,15 @@ import {
 } from '../../src/lenses/lenses.js'
 import { 
   adjustTrack, createSequence, createLoop, 
-  dropEvents,
-  filterEvents, insertEvent, insertAllEvents,
+  delayEventsIf, delayHeadEvents, dropEvents,
+  filterEvents, getTrack, groupByTime, insertEvent, insertAllEvents,
   mapEvents, mapTrackEvents, mapTracks, mergeTracks, 
   rejectEvents, seemsTrack, seemsSequence, sortEvents, setTimeDivision,
   addTime, withoutTime, addDeltaTime, withoutDeltaTime
 } from '../../src/sequences/sequences.js'
 import { multiSet } from '../../src/utils.js'
 import { 
-  assoc, dissoc, drop, head, identical, is, 
+  all, assoc, dissoc, drop, head, identical, is, 
   last, map, prepend, set, take, view 
 } from 'ramda'
 import { TestScheduler } from 'rxjs/testing'
@@ -107,6 +107,13 @@ test ('mapEvents', (t) => {
         ]
       ]
     })
+})
+
+test ('getTrack', (t) => {
+  t.deepEqual (
+    getTrack (0) (sequence),
+    sequence.tracks [0]
+  )
 })
 
 // ------------------------------ Set time -------------------------------
@@ -235,6 +242,78 @@ test ('withoutTime (sequence) should be idempotent', (t) => {
     withoutTime (sequence),
     withoutTime (
       withoutTime (sequence)))
+})
+
+test ('groupByTime', (t) => {
+  t.deepEqual (
+    groupByTime (getTrack (0) (sequence)),
+    [
+      [
+        set (time) (0) (on (64)),
+      ],
+      [
+        set (time) (1) (off (64)),
+        set (time) (1) (on (67)),
+      ],
+      [
+        set (time) (3) (off (67)),
+      ],
+      [
+        set (time) (4) (on (71)),
+      ],
+      [
+        set (time) (7) (off (71)),
+      ],
+      [
+        set (time) (9) (endOfTrack ())
+      ]
+    ])
+})
+
+test ('delayHeadEvents', (t) => {
+  t.deepEqual (
+    delayHeadEvents (groupByTime (getTrack (0) (sequence))),
+    [
+      [
+        set (time) (1) (on (64)),
+        set (time) (1) (off (64)),
+        set (time) (1) (on (67)),
+      ],
+      [
+        set (time) (3) (off (67)),
+      ],
+      [
+        set (time) (4) (on (71)),
+      ],
+      [
+        set (time) (7) (off (71)),
+      ],
+      [
+        set (time) (9) (endOfTrack ())
+      ]
+    ])
+})
+
+test ('delayEventsIf', (t) => {
+  t.deepEqual (
+    delayEventsIf (all (isNoteOff)) (getTrack (0) (sequence)),
+    [
+      [
+        set (time) (0) (on (64)),
+      ],
+      [
+        set (time) (1) (off (64)),
+        set (time) (1) (on (67)),
+      ],
+      [
+        set (time) (4) (off (67)),
+        set (time) (4) (on (71)),
+      ],
+      [
+        set (time) (9) (off (71)),
+        set (time) (9) (endOfTrack ())
+      ]
+    ])
 })
 
 // ------------------------ Sequence creation ----------------------------

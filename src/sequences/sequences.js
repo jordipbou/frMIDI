@@ -29,7 +29,8 @@ import {
   clone, concat, complement, cond, curry, 
   dissoc, drop, dropWhile, dropRepeatsWith,
   either, evolve, F, filter, flatten, flip, forEach, 
-  has, head, identity, is, isEmpty, isNil, last,
+  groupWith,
+  has, head, identity, ifElse, is, isEmpty, isNil, last,
   map, mapAccum, mergeLeft, not, objOf, over,
   pipe, prepend, prop, propIs, propEq, propSatisfies,
   reduce, reduceWhile, scan, set, slice, sort, sortBy, splitWhen,
@@ -112,6 +113,41 @@ export const withoutDeltaTime = (v) =>
     [seemsTrack, map (dissoc ('deltaTime'))],
     [seemsfrMessage, dissoc ('deltaTime')]
   ]) (v)
+
+export const groupByTime = (track) =>
+  map
+    (map ((v) => dissoc ('deltaTime') (v)))
+    (groupWith 
+      ((a, b) => a.time === b.time) 
+      (addTime (track)))
+
+// TODO: export const ungroupByTime = (track) =>
+
+export const delayHeadEvents = (grouped_track) => {
+  if (isEmpty (grouped_track)) return grouped_track
+  if (isEmpty (tail (grouped_track))) return grouped_track
+  if (isEmpty (head (tail (grouped_track)))) return grouped_track
+
+  let t = view (time) (head (head (tail (grouped_track))))
+
+  return [ 
+    map 
+      (set (time) (t))
+      (concat (head (grouped_track)) (head (tail (grouped_track)))),
+    ...tail (tail (grouped_track))
+  ]
+}
+
+export const delayEventsIf = curry ((p, track) =>
+  head 
+    (reduce
+      (([acc, rest], current) => 
+        cond ([
+          [p, always ([ acc, delayHeadEvents (rest) ])],
+          [T, always ([append (head (rest)) (acc), tail (rest)])]
+        ]) (head (rest)))
+      ([[], groupByTime (track)])
+      (groupByTime (track))))
 
 // ------------------------ Time division --------------------------------
 
