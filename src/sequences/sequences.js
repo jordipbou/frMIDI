@@ -121,7 +121,8 @@ export const groupByTime = (track) =>
       ((a, b) => a.time === b.time) 
       (addTime (track)))
 
-// TODO: export const ungroupByTime = (track) =>
+export const ungroupByTime = (grouped_track) =>
+  withoutTime (addDeltaTime (flatten (grouped_track)))
 
 export const delayHeadEvents = (grouped_track) => {
   if (isEmpty (grouped_track)) return grouped_track
@@ -138,16 +139,21 @@ export const delayHeadEvents = (grouped_track) => {
   ]
 }
 
-export const delayEventsIf = curry ((p, track) =>
-  head 
-    (reduce
-      (([acc, rest], current) => 
-        cond ([
-          [p, always ([ acc, delayHeadEvents (rest) ])],
-          [T, always ([append (head (rest)) (acc), tail (rest)])]
-        ]) (head (rest)))
-      ([[], groupByTime (track)])
-      (groupByTime (track))))
+export const delayEventsIf = curry ((p, v) =>
+  cond ([
+    [seemsSequence, mapTracks (delayEventsIf (p))],
+    [seemsTrack, (track) =>
+      ungroupByTime
+        (head 
+          (reduce
+            (([acc, rest], current) => 
+              cond ([
+                [p, always ([ acc, delayHeadEvents (rest) ])],
+                [T, always ([append (head (rest)) (acc), tail (rest)])]
+              ]) (head (rest)))
+            ([[], groupByTime (track)])
+            (groupByTime (track))))]
+  ]) (v))
 
 // ------------------------ Time division --------------------------------
 

@@ -11,12 +11,12 @@ import {
   time, deltaTime, note, timeStamp
 } from '../../src/lenses/lenses.js'
 import { 
-  adjustTrack, createSequence, createLoop, 
+  addDeltaTime, adjustTrack, addTime, createSequence, createLoop, 
   delayEventsIf, delayHeadEvents, dropEvents,
   filterEvents, getTrack, groupByTime, insertEvent, insertAllEvents,
   mapEvents, mapTrackEvents, mapTracks, mergeTracks, 
   rejectEvents, seemsTrack, seemsSequence, sortEvents, setTimeDivision,
-  addTime, withoutTime, addDeltaTime, withoutDeltaTime
+  ungroupByTime, withoutTime, withoutDeltaTime
 } from '../../src/sequences/sequences.js'
 import { multiSet } from '../../src/utils.js'
 import { 
@@ -270,6 +270,39 @@ test ('groupByTime', (t) => {
     ])
 })
 
+test ('ungroupByTime 1', (t) => {
+  t.deepEqual (
+    ungroupByTime (
+    [
+      [
+        set (time) (0) (on (64)),
+      ],
+      [
+        set (time) (1) (off (64)),
+        set (time) (1) (on (67)),
+      ],
+      [
+        set (time) (3) (off (67)),
+      ],
+      [
+        set (time) (4) (on (71)),
+      ],
+      [
+        set (time) (7) (off (71)),
+      ],
+      [
+        set (time) (9) (endOfTrack ())
+      ]
+    ]),
+    getTrack (0) (sequence))
+})
+
+test ('ungroupByTime 2', (t) => {
+  t.deepEqual (
+    ungroupByTime (groupByTime (getTrack (0) (sequence))),
+    getTrack (0) (sequence))
+})
+
 test ('delayHeadEvents', (t) => {
   t.deepEqual (
     delayHeadEvents (groupByTime (getTrack (0) (sequence))),
@@ -294,26 +327,43 @@ test ('delayHeadEvents', (t) => {
     ])
 })
 
-test ('delayEventsIf', (t) => {
+test ('delayEventsIf for track', (t) => {
   t.deepEqual (
     delayEventsIf (all (isNoteOff)) (getTrack (0) (sequence)),
     [
-      [
-        set (time) (0) (on (64)),
-      ],
-      [
-        set (time) (1) (off (64)),
-        set (time) (1) (on (67)),
-      ],
-      [
-        set (time) (4) (off (67)),
-        set (time) (4) (on (71)),
-      ],
-      [
-        set (time) (9) (off (71)),
-        set (time) (9) (endOfTrack ())
-      ]
+      set (deltaTime) (0) (on (64)),
+      set (deltaTime) (1) (off (64)),
+      set (deltaTime) (0) (on (67)),
+      set (deltaTime) (3) (off (67)),
+      set (deltaTime) (0) (on (71)),
+      set (deltaTime) (5) (off (71)),
+      set (deltaTime) (0) (endOfTrack ())
     ])
+})
+
+test ('delayEventsIf for sequence', (t) => {
+  t.deepEqual (
+    delayEventsIf (all (isNoteOff)) (sequence),
+    {
+      formatType: 1,
+      timeDivision: 1,
+      tracks: [
+        [
+            set (deltaTime) (0) (on (64)),
+            set (deltaTime) (1) (off (64)),
+            set (deltaTime) (0) (on (67)),
+            set (deltaTime) (3) (off (67)),
+            set (deltaTime) (0) (on (71)),
+            set (deltaTime) (5) (off (71)),
+            set (deltaTime) (0) (endOfTrack ())
+        ],
+        [
+            set (deltaTime) (0) (on (32)),
+            set (deltaTime) (9) (off (32)),
+            set (deltaTime) (0) (endOfTrack ())
+        ]
+      ]
+    })
 })
 
 // ------------------------ Sequence creation ----------------------------
