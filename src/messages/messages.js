@@ -21,6 +21,12 @@ export const from = (msg) =>
 
 // =================== MIDI Messages definition ====================
 
+// ------------------------ Utilities ------------------------------
+
+export const msb = (v) => v >> 7
+export const lsb = (v) => v & 0x7F
+export const value14bit = (msb, lsb) => (msb << 7) + lsb
+
 // -------------- Channel Voice messages generation ----------------
 
 export const off = (n = 64, v = 96, ch = 0, ts = 0) =>
@@ -35,6 +41,12 @@ export const pp = (n = 64, p = 96, ch = 0, ts = 0) =>
 export const cc = (c = 1, v = 127, ch = 0, ts = 0) =>
   msg ([176 + ch, c, v], ts)
 
+export const cc14bit = (c = 1, v = 8192, ch = 0, ts = 0) =>
+  from ([
+    cc (c, msb (v), ch, ts),
+    cc (c + 32, lsb (v), ch, ts)
+  ])
+
 export const pc = (p = 0, ch = 0, ts = 0) =>
   msg ([192 + ch, p], ts)
 
@@ -42,7 +54,7 @@ export const cp = (p = 96, ch = 0, ts = 0) =>
   msg ([208 + ch, p], ts)
 
 export const pb = (v = 8192, ch = 0, ts = 0) =>
-  msg ([224 + ch, v & 0x7F, v >> 7], ts)
+  msg ([224 + ch, lsb (v), msb (v)], ts)
 
 export const rpn = (n = 0, v = 8192, ch = 0, ts = 0) =>
   from ([

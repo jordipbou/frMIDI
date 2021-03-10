@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.0.56 [2021/03/10] - Added 14bit CC and msb, lsb and value14bit functions.
 * 1.0.55 [2020/11/20] - Playing sequences now works correctly again. Changed clock to not forward tempo change messages, it generated problems with play as its sended to a previous subject to make the clock receive it and then was forwarded to play again who sended it to clock.
 * 1.0.54 [2020/11/19] - Added functions to manipulate sequences. Modified pattern to allow multiple bars on definitions. Modified metronome to be based on new functions.
 * 1.0.53 [2020/11/10] - Removed absolute delta times from sequences. Used only for internal processing, it was more complicated to work with.

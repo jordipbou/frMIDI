@@ -3325,6 +3325,58 @@ _curry1(function fromPairs(pairs) {
 });
 
 /**
+ * Takes a list and returns a list of lists where each sublist's elements are
+ * all satisfied pairwise comparison according to the provided function.
+ * Only adjacent elements are passed to the comparison function.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.21.0
+ * @category List
+ * @sig ((a, a) → Boolean) → [a] → [[a]]
+ * @param {Function} fn Function for determining whether two given (adjacent)
+ *        elements should be in the same group
+ * @param {Array} list The array to group. Also accepts a string, which will be
+ *        treated as a list of characters.
+ * @return {List} A list that contains sublists of elements,
+ *         whose concatenations are equal to the original list.
+ * @example
+ *
+ * R.groupWith(R.equals, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+ * //=> [[0], [1, 1], [2], [3], [5], [8], [13], [21]]
+ *
+ * R.groupWith((a, b) => a + 1 === b, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+ * //=> [[0, 1], [1, 2, 3], [5], [8], [13], [21]]
+ *
+ * R.groupWith((a, b) => a % 2 === b % 2, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+ * //=> [[0], [1, 1], [2], [3, 5], [8], [13, 21]]
+ *
+ * R.groupWith(R.eqBy(isVowel), 'aestiou')
+ * //=> ['ae', 'st', 'iou']
+ */
+
+var groupWith =
+/*#__PURE__*/
+_curry2(function (fn, list) {
+  var res = [];
+  var idx = 0;
+  var len = list.length;
+
+  while (idx < len) {
+    var nextidx = idx + 1;
+
+    while (nextidx < len && fn(list[nextidx - 1], list[nextidx])) {
+      nextidx += 1;
+    }
+
+    res.push(list.slice(idx, nextidx));
+    idx = nextidx;
+  }
+
+  return res;
+});
+
+/**
  * Returns whether or not a path exists in an object. Only the object's
  * own properties are checked.
  *
@@ -6338,15 +6390,20 @@ const msg = (data, timeStamp = 0) => ({
   data: [...data]
 });
 const from$1 = msg => is(Array, msg) ? assoc('data')(flatten(map(prop$1('data'), msg)))(clone(head(msg))) : clone(msg); // =================== MIDI Messages definition ====================
-// -------------- Channel Voice messages generation ----------------
+// ------------------------ Utilities ------------------------------
+
+const msb = v => v >> 7;
+const lsb = v => v & 0x7F;
+const value14bit = (msb, lsb) => (msb << 7) + lsb; // -------------- Channel Voice messages generation ----------------
 
 const off = (n = 64, v = 96, ch = 0, ts = 0) => msg([128 + ch, n, v], ts);
 const on = (n = 64, v = 96, ch = 0, ts = 0) => msg([144 + ch, n, v], ts);
 const pp = (n = 64, p = 96, ch = 0, ts = 0) => msg([160 + ch, n, p], ts);
 const cc = (c = 1, v = 127, ch = 0, ts = 0) => msg([176 + ch, c, v], ts);
+const cc14bit = (c = 1, v = 8192, ch = 0, ts = 0) => from$1([cc(c, msb(v), ch, ts), cc(c + 32, lsb(v), ch, ts)]);
 const pc = (p = 0, ch = 0, ts = 0) => msg([192 + ch, p], ts);
 const cp = (p = 96, ch = 0, ts = 0) => msg([208 + ch, p], ts);
-const pb = (v = 8192, ch = 0, ts = 0) => msg([224 + ch, v & 0x7F, v >> 7], ts);
+const pb = (v = 8192, ch = 0, ts = 0) => msg([224 + ch, lsb(v), msb(v)], ts);
 const rpn = (n = 0, v = 8192, ch = 0, ts = 0) => from$1([cc(101, n >> 7, ch, ts), cc(100, n % 128, ch, ts), cc(6, v >> 7, ch, ts), cc(38, v % 128, ch, ts), cc(101, 127, ch, ts), cc(100, 127, ch, ts)]);
 const nrpn = (n = 0, v = 8192, ch = 0, ts = 0) => from$1([cc(99, n >> 7, ch, ts), cc(98, n % 128, ch, ts), cc(6, v >> 7, ch, ts), cc(38, v % 128, ch, ts), cc(101, 127, ch, ts), cc(100, 127, ch, ts)]); // -------------- System common messages generation ----------------
 
@@ -6628,6 +6685,16 @@ const getTrack = curry((n, sequence) => sequence.tracks[n]); // -------------- W
 const addTime = (v, t) => cond([[seemsSequence, mapTracks(addTime)], [seemsTrack, v => last(mapAccum(flip(addTime))(0)(v))], [seemsfrMessage, always([t + v.deltaTime, assoc('time')(t + v.deltaTime)(v)])]])(v);
 const addDeltaTime = v => cond([[seemsSequence, mapTracks(addDeltaTime)], [seemsTrack, pipe(mapAccum((a, e) => [e.time, set$1(deltaTime)(e.time - a)(e)])(0), last)]])(v);
 const withoutTime = v => cond([[seemsSequence, mapTracks(withoutTime)], [seemsTrack, map(dissoc('time'))], [seemsfrMessage, dissoc('time')]])(v);
+const groupByTime = track => map(map(v => dissoc('deltaTime')(v)))(groupWith((a, b) => a.time === b.time)(addTime(track))); // TODO: export const ungroupByTime = (track) =>
+
+const delayHeadEvents = grouped_track => {
+  if (isEmpty(grouped_track)) return grouped_track;
+  if (isEmpty(tail(grouped_track))) return grouped_track;
+  if (isEmpty(head(tail(grouped_track)))) return grouped_track;
+  let t = view(time)(head(head(tail(grouped_track))));
+  return [map(set$1(time)(t))(concat(head(grouped_track))(head(tail(grouped_track)))), ...tail(tail(grouped_track))];
+};
+const delayEventsIf = curry((p, track) => head(reduce(([acc, rest], current) => cond([[p, always([acc, delayHeadEvents(rest)])], [T, always([append(head(rest))(acc), tail(rest)])]])(head(rest)))([[], groupByTime(track)])(groupByTime(track)))); // ------------------------ Time division --------------------------------
 
 const setTrackTimeDivision = curry((td, ttd, track) => map(evt => set$1(deltaTime)(view(deltaTime)(evt) * td / ttd)(evt))(track));
 const setTimeDivision = curry((td, sequence) => evolve({
@@ -7587,6 +7654,6 @@ const loadMIDIFile = () => {
   return promise;
 };
 
-const version = '1.0.55';
+const version = '1.0.56';
 
-export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, channel, channelByKeyRange, clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsMessageAsArray, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, value, valueEq, velocity, velocityEq, version, w };
+export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, channel, channelByKeyRange, clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsMessageAsArray, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, value, value14bit, valueEq, velocity, velocityEq, version, w };

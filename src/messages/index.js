@@ -3,11 +3,16 @@ export {
     msg,
     from,
     // ================================= Standard MIDI Messages definition 
+    // --------------------------------------------------------- Utilities
+    msb,
+    lsb,
+    value14bit,
     // --------------------------------- Channel Voice messages generation
     off,
     on,
     pp,
     cc,
+    cc14bit,
     pc,
     cp,
     pb,

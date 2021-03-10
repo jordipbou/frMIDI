@@ -3331,6 +3331,58 @@
   });
 
   /**
+   * Takes a list and returns a list of lists where each sublist's elements are
+   * all satisfied pairwise comparison according to the provided function.
+   * Only adjacent elements are passed to the comparison function.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.21.0
+   * @category List
+   * @sig ((a, a) → Boolean) → [a] → [[a]]
+   * @param {Function} fn Function for determining whether two given (adjacent)
+   *        elements should be in the same group
+   * @param {Array} list The array to group. Also accepts a string, which will be
+   *        treated as a list of characters.
+   * @return {List} A list that contains sublists of elements,
+   *         whose concatenations are equal to the original list.
+   * @example
+   *
+   * R.groupWith(R.equals, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+   * //=> [[0], [1, 1], [2], [3], [5], [8], [13], [21]]
+   *
+   * R.groupWith((a, b) => a + 1 === b, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+   * //=> [[0, 1], [1, 2, 3], [5], [8], [13], [21]]
+   *
+   * R.groupWith((a, b) => a % 2 === b % 2, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+   * //=> [[0], [1, 1], [2], [3, 5], [8], [13, 21]]
+   *
+   * R.groupWith(R.eqBy(isVowel), 'aestiou')
+   * //=> ['ae', 'st', 'iou']
+   */
+
+  var groupWith =
+  /*#__PURE__*/
+  _curry2(function (fn, list) {
+    var res = [];
+    var idx = 0;
+    var len = list.length;
+
+    while (idx < len) {
+      var nextidx = idx + 1;
+
+      while (nextidx < len && fn(list[nextidx - 1], list[nextidx])) {
+        nextidx += 1;
+      }
+
+      res.push(list.slice(idx, nextidx));
+      idx = nextidx;
+    }
+
+    return res;
+  });
+
+  /**
    * Returns whether or not a path exists in an object. Only the object's
    * own properties are checked.
    *
@@ -6344,15 +6396,20 @@
     data: [...data]
   });
   const from$1 = msg => is(Array, msg) ? assoc('data')(flatten(map(prop$1('data'), msg)))(clone(head(msg))) : clone(msg); // =================== MIDI Messages definition ====================
-  // -------------- Channel Voice messages generation ----------------
+  // ------------------------ Utilities ------------------------------
+
+  const msb = v => v >> 7;
+  const lsb = v => v & 0x7F;
+  const value14bit = (msb, lsb) => (msb << 7) + lsb; // -------------- Channel Voice messages generation ----------------
 
   const off = (n = 64, v = 96, ch = 0, ts = 0) => msg([128 + ch, n, v], ts);
   const on = (n = 64, v = 96, ch = 0, ts = 0) => msg([144 + ch, n, v], ts);
   const pp = (n = 64, p = 96, ch = 0, ts = 0) => msg([160 + ch, n, p], ts);
   const cc = (c = 1, v = 127, ch = 0, ts = 0) => msg([176 + ch, c, v], ts);
+  const cc14bit = (c = 1, v = 8192, ch = 0, ts = 0) => from$1([cc(c, msb(v), ch, ts), cc(c + 32, lsb(v), ch, ts)]);
   const pc = (p = 0, ch = 0, ts = 0) => msg([192 + ch, p], ts);
   const cp = (p = 96, ch = 0, ts = 0) => msg([208 + ch, p], ts);
-  const pb = (v = 8192, ch = 0, ts = 0) => msg([224 + ch, v & 0x7F, v >> 7], ts);
+  const pb = (v = 8192, ch = 0, ts = 0) => msg([224 + ch, lsb(v), msb(v)], ts);
   const rpn = (n = 0, v = 8192, ch = 0, ts = 0) => from$1([cc(101, n >> 7, ch, ts), cc(100, n % 128, ch, ts), cc(6, v >> 7, ch, ts), cc(38, v % 128, ch, ts), cc(101, 127, ch, ts), cc(100, 127, ch, ts)]);
   const nrpn = (n = 0, v = 8192, ch = 0, ts = 0) => from$1([cc(99, n >> 7, ch, ts), cc(98, n % 128, ch, ts), cc(6, v >> 7, ch, ts), cc(38, v % 128, ch, ts), cc(101, 127, ch, ts), cc(100, 127, ch, ts)]); // -------------- System common messages generation ----------------
 
@@ -6634,6 +6691,16 @@
   const addTime = (v, t) => cond([[seemsSequence, mapTracks(addTime)], [seemsTrack, v => last(mapAccum(flip(addTime))(0)(v))], [seemsfrMessage, always([t + v.deltaTime, assoc('time')(t + v.deltaTime)(v)])]])(v);
   const addDeltaTime = v => cond([[seemsSequence, mapTracks(addDeltaTime)], [seemsTrack, pipe(mapAccum((a, e) => [e.time, set$1(deltaTime)(e.time - a)(e)])(0), last)]])(v);
   const withoutTime = v => cond([[seemsSequence, mapTracks(withoutTime)], [seemsTrack, map(dissoc('time'))], [seemsfrMessage, dissoc('time')]])(v);
+  const groupByTime = track => map(map(v => dissoc('deltaTime')(v)))(groupWith((a, b) => a.time === b.time)(addTime(track))); // TODO: export const ungroupByTime = (track) =>
+
+  const delayHeadEvents = grouped_track => {
+    if (isEmpty(grouped_track)) return grouped_track;
+    if (isEmpty(tail(grouped_track))) return grouped_track;
+    if (isEmpty(head(tail(grouped_track)))) return grouped_track;
+    let t = view(time)(head(head(tail(grouped_track))));
+    return [map(set$1(time)(t))(concat(head(grouped_track))(head(tail(grouped_track)))), ...tail(tail(grouped_track))];
+  };
+  const delayEventsIf = curry((p, track) => head(reduce(([acc, rest], current) => cond([[p, always([acc, delayHeadEvents(rest)])], [T, always([append(head(rest))(acc), tail(rest)])]])(head(rest)))([[], groupByTime(track)])(groupByTime(track)))); // ------------------------ Time division --------------------------------
 
   const setTrackTimeDivision = curry((td, ttd, track) => map(evt => set$1(deltaTime)(view(deltaTime)(evt) * td / ttd)(evt))(track));
   const setTimeDivision = curry((td, sequence) => evolve({
@@ -7593,7 +7660,7 @@
     return promise;
   };
 
-  const version = '1.0.55';
+  const version = '1.0.56';
 
   exports.A = A;
   exports.A0 = A0;
@@ -7752,6 +7819,7 @@
   exports.byteEq = byteEq;
   exports.byteEqBy = byteEqBy;
   exports.cc = cc;
+  exports.cc14bit = cc14bit;
   exports.channel = channel;
   exports.channelByKeyRange = channelByKeyRange;
   exports.clock = clock;
@@ -7826,6 +7894,7 @@
   exports.loadMIDIFile = loadMIDIFile;
   exports.logPorts = logPorts;
   exports.lookAhead = lookAhead;
+  exports.lsb = lsb;
   exports.m2 = m2;
   exports.m3 = m3;
   exports.m6 = m6;
@@ -7837,6 +7906,7 @@
   exports.metronome = metronome;
   exports.mpeNote = mpeNote;
   exports.mpeZone = mpeZone;
+  exports.msb = msb;
   exports.msg = msg;
   exports.note = note;
   exports.noteEq = noteEq;
@@ -7889,6 +7959,7 @@
   exports.timingEvent = timingEvent;
   exports.tun = tun;
   exports.value = value;
+  exports.value14bit = value14bit;
   exports.valueEq = valueEq;
   exports.velocity = velocity;
   exports.velocityEq = velocityEq;

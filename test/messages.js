@@ -1,8 +1,8 @@
 const test = require ('ava')
 import {
-    as, cc, cont, cp, from, mc, msg, nrpn, off, on, 
+    as, cc, cc14bit, cont, cp, from, lsb, mc, msb, msg, nrpn, off, on, 
     pb, pc, pp, rpn, rst, spp, ss, start, stop, 
-    tc, tun, syx
+    tc, tun, syx, value14bit
   } from '../src/messages/messages.js'
 import { 
     meta, endOfTrack, tempoChange, bpmChange 
@@ -60,6 +60,23 @@ test ('MIDI Message cloning', (t) => {
 
 // =================== MIDI Messages definition ====================
 
+// ------------------------ Utilities ------------------------------
+
+test ('msb and lsb from value', (t) => {
+  t.is (msb (8192), 64)
+  t.is (lsb (8192), 0)
+  t.is (msb (0), 0)
+  t.is (lsb (0), 0)
+  t.is (msb (16383), 127)
+  t.is (lsb (16383), 127)
+})
+
+test ('14 bit value from msb and lsb', (t) => {
+  t.is (value14bit (64, 0), 8192)
+  t.is (value14bit (0, 0), 0)
+  t.is (value14bit (127, 127), 16383)
+})
+
 // -------------- Channel Voice messages generation ----------------
 
 test ('Note Off message creation', (t) => {
@@ -106,6 +123,16 @@ test ('Control Change message creation', (t) => {
 
   t.true (allPass (preds (1, 127, 0)) (cc ()))
   t.true (allPass (preds (32, 127, 0)) (cc (32)))
+})
+
+test ('14 bit Control Change message creation', (t) => {
+  t.deepEqual (
+    cc14bit (0, 8192).data,
+    [ 176, 0, 64, 176, 32, 0])
+
+  t.deepEqual (
+    cc14bit (1, 16383).data,
+    [ 176, 1, 127, 176, 33, 127 ])
 })
 
 test ('Program Change message creation', (t) => {
