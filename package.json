@@ -10,7 +10,8 @@
   },
   "scripts": {
     "prepublish": "rollup -c",
-    "test": "ava --watch"
+    "test": "ava --watch",
+    "test-single": "ava"
   },
   "repository": {
     "type": "git",
