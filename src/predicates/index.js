@@ -1,6 +1,5 @@
 export {
     // ----------------------- Generic functions to validate MIDI messages
-    seemsMessageAsArray,
     seemsMessage,
     // ----------- Utilities for comparing MIDI messages byte array values
     dataEq,

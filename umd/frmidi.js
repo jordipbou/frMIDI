@@ -4305,8 +4305,7 @@
   // message's subtype like note on, note off, etc) or if an array is an
   // array of MIDI messages.
 
-  const seemsMessageAsArray = msg => allPass([either(is(Array))(is(Uint8Array)), complement(isEmpty), all(is(Number))])(msg);
-  const seemsMessage = msg => allPass([is(Object), propEq('type', 'midimessage'), propSatisfies(seemsMessageAsArray, 'data')])(msg); // -------- Utilities for comparing MIDI messages byte array values ------
+  const seemsMessage = msg => msg !== null && msg !== undefined && typeof msg === 'object' && msg.type === 'midimessage' && Array.isArray(msg.data) && msg.data.length > 0; // ------- Utilities for comparing MIDI messages byte array values -------
 
   const dataEq = curry((data, msg) => seemsMessage(msg) ? equals(data)(msg.data) : false);
   const byteEq = curry((n, data, msg) => seemsMessage(msg) ? pathEq([n])(data)(msg.data) : false);
@@ -6691,8 +6690,8 @@
   const addTime = (v, t) => cond([[seemsSequence, mapTracks(addTime)], [seemsTrack, v => last(mapAccum(flip(addTime))(0)(v))], [seemsfrMessage, always([t + v.deltaTime, assoc('time')(t + v.deltaTime)(v)])]])(v);
   const addDeltaTime = v => cond([[seemsSequence, mapTracks(addDeltaTime)], [seemsTrack, pipe(mapAccum((a, e) => [e.time, set$1(deltaTime)(e.time - a)(e)])(0), last)]])(v);
   const withoutTime = v => cond([[seemsSequence, mapTracks(withoutTime)], [seemsTrack, map(dissoc('time'))], [seemsfrMessage, dissoc('time')]])(v);
-  const groupByTime = track => map(map(v => dissoc('deltaTime')(v)))(groupWith((a, b) => a.time === b.time)(addTime(track))); // TODO: export const ungroupByTime = (track) =>
-
+  const groupByTime = track => map(map(v => dissoc('deltaTime')(v)))(groupWith((a, b) => a.time === b.time)(addTime(track)));
+  const ungroupByTime = grouped_track => withoutTime(addDeltaTime(flatten(grouped_track)));
   const delayHeadEvents = grouped_track => {
     if (isEmpty(grouped_track)) return grouped_track;
     if (isEmpty(tail(grouped_track))) return grouped_track;
@@ -6700,7 +6699,7 @@
     let t = view(time)(head(head(tail(grouped_track))));
     return [map(set$1(time)(t))(concat(head(grouped_track))(head(tail(grouped_track)))), ...tail(tail(grouped_track))];
   };
-  const delayEventsIf = curry((p, track) => head(reduce(([acc, rest], current) => cond([[p, always([acc, delayHeadEvents(rest)])], [T, always([append(head(rest))(acc), tail(rest)])]])(head(rest)))([[], groupByTime(track)])(groupByTime(track)))); // ------------------------ Time division --------------------------------
+  const delayEventsIf = curry((p, v) => cond([[seemsSequence, mapTracks(delayEventsIf(p))], [seemsTrack, track => ungroupByTime(head(reduce(([acc, rest], current) => cond([[p, always([acc, delayHeadEvents(rest)])], [T, always([append(head(rest))(acc), tail(rest)])]])(head(rest)))([[], groupByTime(track)])(groupByTime(track))))]])(v)); // ------------------------ Time division --------------------------------
 
   const setTrackTimeDivision = curry((td, ttd, track) => map(evt => set$1(deltaTime)(view(deltaTime)(evt) * td / ttd)(evt))(track));
   const setTimeDivision = curry((td, sequence) => evolve({
@@ -7660,7 +7659,7 @@
     return promise;
   };
 
-  const version = '1.0.56';
+  const version = '1.0.57';
 
   exports.A = A;
   exports.A0 = A0;
@@ -7939,7 +7938,6 @@
   exports.seemsActiveNote = seemsActiveNote;
   exports.seemsLoop = seemsLoop;
   exports.seemsMessage = seemsMessage;
-  exports.seemsMessageAsArray = seemsMessageAsArray;
   exports.seemsSequence = seemsSequence;
   exports.sequence = sequence;
   exports.sequenceEvent = sequenceEvent;

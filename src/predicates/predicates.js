@@ -10,17 +10,15 @@ import {
 // message's subtype like note on, note off, etc) or if an array is an
 // array of MIDI messages.
 
-export const seemsMessageAsArray = (msg) => 
-  allPass ([either (is (Array)) (is (Uint8Array)),
-            complement (isEmpty),
-            all (is (Number))]) (msg)
+export const seemsMessage = (msg) => 
+  msg !== null
+  && msg !== undefined
+  && typeof msg === 'object'
+  && msg.type === 'midimessage'
+  && Array.isArray (msg.data)
+  && msg.data.length > 0
 
-export const seemsMessage = (msg) =>
-  allPass ([is (Object),
-            propEq ('type', 'midimessage'),
-            propSatisfies (seemsMessageAsArray, 'data')]) (msg)
-
-// -------- Utilities for comparing MIDI messages byte array values ------
+// ------- Utilities for comparing MIDI messages byte array values -------
 
 export const dataEq = curry ((data, msg) =>
   seemsMessage (msg) ?
