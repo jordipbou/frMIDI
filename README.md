@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.0.58 [2021/03/27] - seemsMessage was not working correctly with MIDIMessageEvent
 * 1.0.57 [2021/03/26] - Modified code for seemsMessage to make it fast as it was bottlenecking the rest of functions.
 * 1.0.56 [2021/03/10] - Added 14bit CC and msb, lsb and value14bit functions.
 * 1.0.55 [2020/11/20] - Playing sequences now works correctly again. Changed clock to not forward tempo change messages, it generated problems with play as its sended to a previous subject to make the clock receive it and then was forwarded to play again who sended it to clock.

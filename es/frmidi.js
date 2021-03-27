@@ -4295,11 +4295,7 @@ _curry2(function zip(a, b) {
   return rv;
 });
 
-// These predicates check if an object is a MIDI Message (or a MIDI
-// message's subtype like note on, note off, etc) or if an array is an
-// array of MIDI messages.
-
-const seemsMessage = msg => msg !== null && msg !== undefined && typeof msg === 'object' && msg.type === 'midimessage' && Array.isArray(msg.data) && msg.data.length > 0; // ------- Utilities for comparing MIDI messages byte array values -------
+const seemsMessage = msg => msg !== null && msg !== undefined && typeof msg === 'object' && msg.type === 'midimessage' && msg.data !== null && msg.data !== undefined && (msg.data.constructor === Uint8Array || msg.data.constructor === Array) && msg.data.length > 0; // ------- Utilities for comparing MIDI messages byte array values -------
 
 const dataEq = curry((data, msg) => seemsMessage(msg) ? equals(data)(msg.data) : false);
 const byteEq = curry((n, data, msg) => seemsMessage(msg) ? pathEq([n])(data)(msg.data) : false);
@@ -7653,6 +7649,6 @@ const loadMIDIFile = () => {
   return promise;
 };
 
-const version = '1.0.57';
+const version = '1.0.58';
 
 export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, channel, channelByKeyRange, clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, value, value14bit, valueEq, velocity, velocityEq, version, w };

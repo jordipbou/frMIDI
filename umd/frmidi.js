@@ -4301,11 +4301,7 @@
     return rv;
   });
 
-  // These predicates check if an object is a MIDI Message (or a MIDI
-  // message's subtype like note on, note off, etc) or if an array is an
-  // array of MIDI messages.
-
-  const seemsMessage = msg => msg !== null && msg !== undefined && typeof msg === 'object' && msg.type === 'midimessage' && Array.isArray(msg.data) && msg.data.length > 0; // ------- Utilities for comparing MIDI messages byte array values -------
+  const seemsMessage = msg => msg !== null && msg !== undefined && typeof msg === 'object' && msg.type === 'midimessage' && msg.data !== null && msg.data !== undefined && (msg.data.constructor === Uint8Array || msg.data.constructor === Array) && msg.data.length > 0; // ------- Utilities for comparing MIDI messages byte array values -------
 
   const dataEq = curry((data, msg) => seemsMessage(msg) ? equals(data)(msg.data) : false);
   const byteEq = curry((n, data, msg) => seemsMessage(msg) ? pathEq([n])(data)(msg.data) : false);
@@ -7659,7 +7655,7 @@
     return promise;
   };
 
-  const version = '1.0.57';
+  const version = '1.0.58';
 
   exports.A = A;
   exports.A0 = A0;
