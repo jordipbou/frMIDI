@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.0.59 [2021/04/07] - Created MIDIDriver to allow using frMIDI with Cycles.js
 * 1.0.58 [2021/03/27] - seemsMessage was not working correctly with MIDIMessageEvent
 * 1.0.57 [2021/03/26] - Modified code for seemsMessage to make it fast as it was bottlenecking the rest of functions.
 * 1.0.56 [2021/03/10] - Added 14bit CC and msb, lsb and value14bit functions.

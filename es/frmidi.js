@@ -5834,7 +5834,14 @@ function innerSubscribe(result, innerSubscriber) {
     if (result instanceof Observable) {
         return result.subscribe(innerSubscriber);
     }
-    return subscribeTo(result)(innerSubscriber);
+    var subscription;
+    try {
+        subscription = subscribeTo(result)(innerSubscriber);
+    }
+    catch (error) {
+        innerSubscriber.error(error);
+    }
+    return subscription;
 }
 
 /** PURE_IMPORTS_START tslib,_map,_observable_from,_innerSubscribe PURE_IMPORTS_END */
@@ -7490,7 +7497,7 @@ let _MidiParser = _global.MidiParser;
 // delete the global scope reference
 delete _global.MidiParser;
 
-let midiAccess;
+let midiAccess = undefined;
 
 let _navigator;
 
@@ -7510,15 +7517,19 @@ if (isNode) {
 // Initializes WebMIDI API and saves midiAccess object for later
 // use of frMIDI library.
 // MidiAccess object is also returned in the case it's needed by
-// the user.
+// the user (as a promise)
 // 
 // A custom_navigator parameter is used to allow testing without
-// a defined window object.
+// a defined window object, or to use JZZ library on Node.
 
 
 const initialize = (sysex = false, custom_navigator = _navigator) => {
   if (!custom_navigator) {
-    throw "On node environment, custom navigator is needed.";
+    return Promise.reject("On node environment, custom navigator is needed.");
+  }
+
+  if (midiAccess !== undefined) {
+    return Promise.resolve(midiAccess);
   }
 
   return custom_navigator.requestMIDIAccess({
@@ -7526,9 +7537,6 @@ const initialize = (sysex = false, custom_navigator = _navigator) => {
   }).then(m => midiAccess = m);
 }; // Writes every input and output port name to the console for reference
 // when instatiating input and output objects.
-//
-// Parameter logfn is used to pass a different logger for testing
-// purposes.
 
 const inputsAsText = () => map(i => i[1].name + '  -in->', [...midiAccess.inputs.entries()]);
 const outputsAsText = () => map(o => '-out->  ' + o[1].name, [...midiAccess.outputs.entries()]);
@@ -7544,7 +7552,19 @@ const inputFrom = i => {
   let emitter = new Subject();
 
   if (i) {
-    let input = merge(fromEvent(i, 'midimessage'), emitter);
+    // TODO: This is not correctly working on node because jzz library
+    // is not implementing addListener / removeListener for inputs and
+    // rxjs can not create events from it.
+    let input;
+
+    if (isBrowser) {
+      input = merge(fromEvent(i, 'midimessage'), emitter);
+    } else {
+      i.onmidimessage = evt => emitter.next(evt);
+
+      input = emitter;
+    }
+
     input.name = i.name;
     input.id = i.id;
     input.manufacturer = i.manufacturer;
@@ -7647,8 +7667,45 @@ const loadMIDIFile = () => {
   let promise = new Promise((solve, reject) => _MidiParser.parse(input_file_element, midifile => solve(convertFromMidiParser(midifile))));
   input_file_element.click();
   return promise;
-};
+}; // ------------------ Cycle.js drivers ----------------------
+// MIDI Driver sources are both used to indicate state changes
+// on inputs/outputs and for receiving MIDI data from them.
+// MIDI Driver sinks are used to configure required input/
+// outputs and for sending MIDI data.
+// TODO: This should work with adapt, not directly with rxjs, but
+// it's not working (wrong version of rxjs -6- for adapt maybe?)
+// As I will be using this exclusively with rxjs, let's maintain this
+// like it is for now.
 
-const version = '1.0.58';
+const MIDIDriver = graph$ => {
+  let subscriptions = [];
+  graph$.addListener({
+    next: g => {
+      forEach(s => s.unsubscribe())(subscriptions);
+      subscriptions = map(k => {
+        if (isBrowser) {
+          return g[k].subscribe(output(k));
+        } else {
+          return g[k].pipe(map$1(v => msg(v.data))).subscribe(output(k));
+        }
+      })(keys(g));
+    }
+  });
+  return {
+    input: input
+  };
+}; // Example, redirect Port-0 input to Port-1 output.
+//const main = (sources) => {
+//  const port0 = sources.MIDI.input ('Port-0')
+//  const outgraph$ = new X.BehaviorSubject ({ 'Port-1': port0 })
+//
+//  return {
+//    MIDI: outgraph$
+//  }
+//}
+//
+//M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, channel, channelByKeyRange, clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, value, value14bit, valueEq, velocity, velocityEq, version, w };
+const version = '1.0.59';
+
+export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, MIDIDriver, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, channel, channelByKeyRange, clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, value, value14bit, valueEq, velocity, velocityEq, version, w };

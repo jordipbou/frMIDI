@@ -5840,7 +5840,14 @@
       if (result instanceof Observable) {
           return result.subscribe(innerSubscriber);
       }
-      return subscribeTo(result)(innerSubscriber);
+      var subscription;
+      try {
+          subscription = subscribeTo(result)(innerSubscriber);
+      }
+      catch (error) {
+          innerSubscriber.error(error);
+      }
+      return subscription;
   }
 
   /** PURE_IMPORTS_START tslib,_map,_observable_from,_innerSubscribe PURE_IMPORTS_END */
@@ -7496,7 +7503,7 @@
   // delete the global scope reference
   delete _global.MidiParser;
 
-  let midiAccess;
+  let midiAccess = undefined;
 
   let _navigator;
 
@@ -7516,15 +7523,19 @@
   // Initializes WebMIDI API and saves midiAccess object for later
   // use of frMIDI library.
   // MidiAccess object is also returned in the case it's needed by
-  // the user.
+  // the user (as a promise)
   // 
   // A custom_navigator parameter is used to allow testing without
-  // a defined window object.
+  // a defined window object, or to use JZZ library on Node.
 
 
   const initialize = (sysex = false, custom_navigator = _navigator) => {
     if (!custom_navigator) {
-      throw "On node environment, custom navigator is needed.";
+      return Promise.reject("On node environment, custom navigator is needed.");
+    }
+
+    if (midiAccess !== undefined) {
+      return Promise.resolve(midiAccess);
     }
 
     return custom_navigator.requestMIDIAccess({
@@ -7532,9 +7543,6 @@
     }).then(m => midiAccess = m);
   }; // Writes every input and output port name to the console for reference
   // when instatiating input and output objects.
-  //
-  // Parameter logfn is used to pass a different logger for testing
-  // purposes.
 
   const inputsAsText = () => map(i => i[1].name + '  -in->', [...midiAccess.inputs.entries()]);
   const outputsAsText = () => map(o => '-out->  ' + o[1].name, [...midiAccess.outputs.entries()]);
@@ -7550,7 +7558,19 @@
     let emitter = new Subject();
 
     if (i) {
-      let input = merge(fromEvent(i, 'midimessage'), emitter);
+      // TODO: This is not correctly working on node because jzz library
+      // is not implementing addListener / removeListener for inputs and
+      // rxjs can not create events from it.
+      let input;
+
+      if (isBrowser) {
+        input = merge(fromEvent(i, 'midimessage'), emitter);
+      } else {
+        i.onmidimessage = evt => emitter.next(evt);
+
+        input = emitter;
+      }
+
       input.name = i.name;
       input.id = i.id;
       input.manufacturer = i.manufacturer;
@@ -7653,9 +7673,46 @@
     let promise = new Promise((solve, reject) => _MidiParser.parse(input_file_element, midifile => solve(convertFromMidiParser(midifile))));
     input_file_element.click();
     return promise;
-  };
+  }; // ------------------ Cycle.js drivers ----------------------
+  // MIDI Driver sources are both used to indicate state changes
+  // on inputs/outputs and for receiving MIDI data from them.
+  // MIDI Driver sinks are used to configure required input/
+  // outputs and for sending MIDI data.
+  // TODO: This should work with adapt, not directly with rxjs, but
+  // it's not working (wrong version of rxjs -6- for adapt maybe?)
+  // As I will be using this exclusively with rxjs, let's maintain this
+  // like it is for now.
 
-  const version = '1.0.58';
+  const MIDIDriver = graph$ => {
+    let subscriptions = [];
+    graph$.addListener({
+      next: g => {
+        forEach(s => s.unsubscribe())(subscriptions);
+        subscriptions = map(k => {
+          if (isBrowser) {
+            return g[k].subscribe(output(k));
+          } else {
+            return g[k].pipe(map$1(v => msg(v.data))).subscribe(output(k));
+          }
+        })(keys(g));
+      }
+    });
+    return {
+      input: input
+    };
+  }; // Example, redirect Port-0 input to Port-1 output.
+  //const main = (sources) => {
+  //  const port0 = sources.MIDI.input ('Port-0')
+  //  const outgraph$ = new X.BehaviorSubject ({ 'Port-1': port0 })
+  //
+  //  return {
+  //    MIDI: outgraph$
+  //  }
+  //}
+  //
+  //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
+
+  const version = '1.0.59';
 
   exports.A = A;
   exports.A0 = A0;
@@ -7802,6 +7859,7 @@
   exports.M3 = M3;
   exports.M6 = M6;
   exports.M7 = M7;
+  exports.MIDIDriver = MIDIDriver;
   exports.P1 = P1;
   exports.P4 = P4;
   exports.P5 = P5;
