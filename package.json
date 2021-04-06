@@ -28,6 +28,7 @@
     "@ava/babel": "^1.0.1",
     "@babel/core": "^7.11.6",
     "@cycle/run": "^5.5.0",
+    "@cycle/rxjs-run": "^10.5.0",
     "@rollup/plugin-node-resolve": "^9.0.0",
     "ava": "^3.13.0",
     "esm": "^3.2.25",
@@ -38,7 +39,8 @@
     "rollup": "^2.28.2",
     "rollup-plugin-babel": "^4.4.0",
     "rxjs": "^6.6.3",
-    "rxjs-pausable": "^1.0.0"
+    "rxjs-pausable": "^1.0.0",
+    "xstream": "^11.14.0"
   },
   "dependencies": {
     "browser-or-node": "^1.3.0",

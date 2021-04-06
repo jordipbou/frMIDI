@@ -1,11 +1,6 @@
 import * as rx from 'rxjs'
 import * as rxo from 'rxjs/operators'
-import { 
-    bind, complement, cond, curry, evolve,
-    filter, forEach, 
-    hasIn, head, is, isEmpty, last, 
-    map, pipe, prop, propEq
-  } from 'ramda'
+import * as R from 'ramda'
 import { seemsMessage } from '../predicates/predicates.js'
 import { isTempoChange } from '../predicates/meta.js'
 import { msg, from } from '../messages/messages.js'
@@ -16,7 +11,7 @@ import {
 
 import { isBrowser, isNode } from 'browser-or-node/src/index.js'
 
-let midiAccess
+let midiAccess = undefined
 let _navigator
 let _now
 
@@ -37,14 +32,18 @@ if (isNode) {
 // Initializes WebMIDI API and saves midiAccess object for later
 // use of frMIDI library.
 // MidiAccess object is also returned in the case it's needed by
-// the user.
+// the user (as a promise)
 // 
 // A custom_navigator parameter is used to allow testing without
-// a defined window object.
+// a defined window object, or to use JZZ library on Node.
 
 export const initialize = (sysex = false, custom_navigator = _navigator) => {
     if (!custom_navigator) {
-      throw "On node environment, custom navigator is needed."
+      return Promise.reject ("On node environment, custom navigator is needed.")
+    }
+
+    if (midiAccess !== undefined) {
+      return Promise.resolve (midiAccess)
     }
 
 		return custom_navigator
@@ -54,23 +53,20 @@ export const initialize = (sysex = false, custom_navigator = _navigator) => {
 
 // Writes every input and output port name to the console for reference
 // when instatiating input and output objects.
-//
-// Parameter logfn is used to pass a different logger for testing
-// purposes.
 
 export const inputsAsText = () =>
-	map (
+	R.map (
 		i => i [1].name + '  -in->', 
 		[...midiAccess.inputs.entries ()])
 
 export const outputsAsText = () =>
-	map (
+	R.map (
 		o => '-out->  ' + o [1].name, 
 		[...midiAccess.outputs.entries ()])
 
 export const logPorts = () => {
-  forEach (console.log) (inputsAsText ())
-  forEach (console.log) (outputsAsText ())
+  R.forEach (console.log) (inputsAsText ())
+  R.forEach (console.log) (outputsAsText ())
 }
 
 // ------------------------- MIDI Input ----------------------------
@@ -82,14 +78,23 @@ export const logPorts = () => {
 export const inputFrom = (i) => {
   let emitter = new rx.Subject ()
   if (i) {
-    let input = rx.merge (
-      rx.fromEvent (i, 'midimessage'),
-      emitter )
+    // TODO: This is not correctly working on node because jzz library
+    // is not implementing addListener / removeListener for inputs and
+    // rxjs can not create events from it.
+    let input
+    if (isBrowser) {
+      input = rx.merge (
+        rx.fromEvent (i, 'midimessage'),
+        emitter )
+    } else {
+      i.onmidimessage = (evt) => emitter.next (evt)
+      input = emitter
+    }
     input.name = i.name
     input.id = i.id
     input.manufacturer = i.manufacturer
     input.version = i.version
-    input.next = bind (emitter.next, emitter)
+    input.next = R.bind (emitter.next, emitter)
 
     return input
   } else {
@@ -106,10 +111,10 @@ export const inputFrom = (i) => {
 export const input = (n = '') => 
   n === 'dummy' ?
     inputFrom ()
-    : head (
-  	    pipe (
-  	    	filter ( ([id, i]) => i.name.includes (n) ),
-  	    	map ( ([id, i]) => inputFrom (i) )
+    : R.head (
+  	    R.pipe (
+  	    	R.filter ( ([id, i]) => i.name.includes (n) ),
+  	    	R.map ( ([id, i]) => inputFrom (i) )
   	    ) ([...midiAccess.inputs.entries()]))
 
 // ------------------------- MIDI Output ---------------------------
@@ -124,11 +129,11 @@ export const input = (n = '') =>
 export const send = (sendfn) => (msg) => 
   seemsMessage (msg) ?
     sendfn (msg.data, msg.timeStamp)
-    : is (rx.Observable) (msg) ?
+    : R.is (rx.Observable) (msg) ?
       msg.subscribe (send (sendfn))
       // Sometimes is (Observable) returns false, so...
       : msg.constructor.name === 'Observable' 
-        && hasIn ('subscribe') (msg) ?
+        && R.hasIn ('subscribe') (msg) ?
           msg.subscribe (send (sendfn))
           : null
 
@@ -145,7 +150,7 @@ export const outputFrom = (o) => {
     output.id = o.id
     output.manufacturer = o.manufacturer
     output.version = o.version
-    output.subscribe = bind (receiver.subscribe, receiver)
+    output.subscribe = R.bind (receiver.subscribe, receiver)
 
     return output
   } else {
@@ -155,7 +160,7 @@ export const outputFrom = (o) => {
     output.id = 'DOut'
     output.manufacturer = 'frMIDI'
     output.version = 'dummy0.0'
-    output.subscribe = bind (receiver.subscribe, receiver)
+    output.subscribe = R.bind (receiver.subscribe, receiver)
 
     return output
   }
@@ -164,12 +169,12 @@ export const outputFrom = (o) => {
 export const output = (n = '') =>
   n === 'dummy' ?
     outputFrom ()
-    : head (
-		    pipe (
-		    	map ( ([k, v]) => v ),
-		    	filter ( ({ name }) => name.includes (n) ),
-		    	map ( v => { v.open(); return v; } ),
-		    	map ( v => outputFrom (v) )
+    : R.head (
+		    R.pipe (
+		    	R.map ( ([k, v]) => v ),
+		    	R.filter ( ({ name }) => name.includes (n) ),
+		    	R.map ( v => { v.open(); return v; } ),
+		    	R.map ( v => outputFrom (v) )
 		    ) ([ ...midiAccess.outputs.entries () ]))
 
 // ---------------------- MIDI File loading ------------------------
@@ -184,12 +189,12 @@ export const convertFromMidiParser = (midifile) => ({
   formatType: midifile.formatType, 
   timeDivision: midifile.timeDivision,
   tracks: 
-    map 
-      (map 
+    R.map 
+      (R.map 
         ((e) => {
           e.timeStamp = 0
           if (e.type > 7 && e.type < 14) {
-            if (is (Array) (e.data)) {
+            if (R.is (Array) (e.data)) {
               e.data = [
                 (e.type << 4) + e.channel,
                 ...e.data
@@ -207,7 +212,7 @@ export const convertFromMidiParser = (midifile) => ({
           }
 
           return e }))
-      (map (prop ('event')) (midifile.track))
+      (R.map (R.prop ('event')) (midifile.track))
 })
 
 export const loadMIDIFile =	() => {
@@ -228,3 +233,55 @@ export const loadMIDIFile =	() => {
 
 	return promise
 }
+
+// ------------------ Cycle.js drivers ----------------------
+
+// MIDI Driver sources are both used to indicate state changes
+// on inputs/outputs and for receiving MIDI data from them.
+// MIDI Driver sinks are used to configure required input/
+// outputs and for sending MIDI data.
+
+// TODO: This should work with adapt, not directly with rxjs, but
+// it's not working (wrong version of rxjs -6- for adapt maybe?)
+// As I will be using this exclusively with rxjs, let's maintain this
+// like it is for now.
+
+export const MIDIDriver = (graph$) => {
+  let subscriptions = []
+
+  graph$.addListener ({
+    next: (g) => {
+      R.forEach ((s) => s.unsubscribe ()) (subscriptions)
+      subscriptions = 
+        R.map 
+          ((k) => {
+            if (isBrowser) {
+              return g [k].subscribe (output (k))
+            } else {
+              return g [k].pipe (
+                rxo.map ((v) => msg (v.data))
+              ).subscribe (output (k))
+            }
+          })
+          (R.keys (g))
+    }
+  })
+
+  return {
+    input: input
+  }
+}
+
+// Example, redirect Port-0 input to Port-1 output.
+
+//const main = (sources) => {
+//  const port0 = sources.MIDI.input ('Port-0')
+//  const outgraph$ = new X.BehaviorSubject ({ 'Port-1': port0 })
+//
+//  return {
+//    MIDI: outgraph$
+//  }
+//}
+//
+//M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
+
