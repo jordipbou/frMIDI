@@ -78,18 +78,28 @@ export const logPorts = () => {
 export const inputFrom = (i) => {
   let emitter = new rx.Subject ()
   if (i) {
-    // TODO: This is not correctly working on node because jzz library
-    // is not implementing addListener / removeListener for inputs and
-    // rxjs can not create events from it.
     let input
-    if (isBrowser) {
-      input = rx.merge (
-        rx.fromEvent (i, 'midimessage'),
-        emitter )
+    if (typeof i.addEventListener === 'function' || typeof i.addListener === 'function') {
+      input = rx.merge (rx.fromEvent (i, 'midimessage'), emitter)
     } else {
-      i.onmidimessage = (evt) => emitter.next (evt)
-      input = emitter
+    i.onmidimessage = (evt) => emitter.next (evt)
+    input = emitter
     }
+    //let input
+    //// On node, with JZZ library, rxjs is not able to subscribe to
+    //// events from JZZ returned input, so onmidimessage handler is
+    //// directly used.
+    //try {
+    //  input = rx.merge (
+    //    rx.fromEvent (i, 'midimessage'),
+    //    emitter )
+    //  // Try subscribing for checking if it will throw
+    //  const sx = input.pipe (rxo.subscribeOn (null)).subscribe ()
+    //  sx.unsubscribe ()
+    //} catch (e) {
+    //  i.onmidimessage = (evt) => emitter.next (evt)
+    //  input = emitter
+    //}
     input.name = i.name
     input.id = i.id
     input.manufacturer = i.manufacturer

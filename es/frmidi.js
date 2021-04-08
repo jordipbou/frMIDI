@@ -6960,6 +6960,27 @@ const toMPE = curry((m, c, findChannel = leastNotesPerChannel) => pipe$1(scan(([
   }
 }, [mpeZone(m, c), null]), map$1(([x, msg]) => msg)));
 
+// n_outputs indicates the amount of outputs of this matrix
+// Expects a state in the form [outputs][inputs], with a true/false
+// value in each cell indicating if input should pass or not. Example:
+// state = [ [true, false], [false, true] ]
+// represents a two inputs/two outputs routing matrix, routing first
+// input to first output and second input to second output
+
+const routing_matrix = (inputs, n_outputs, state$) => {
+  const outputs = map(o => new Subject())(range(0, n_outputs));
+  let subscriptions = []; // At initialization, nothing is routed (everything is disconnected)
+  // as nothing has been received from state$. If some initial state
+  // is desired, function should be called as:
+  // routing_matrix ([inputs], 2, state$.startWith (--desired state--))
+
+  state$.subscribe(state => {
+    forEach(s => s.unsubscribe())(subscriptions);
+    subscriptions = flatten(map(([inputs, output]) => map(i => i.subscribe(output))(inputs))(zip(map(zipped_row => map(([p, input]) => input)(filter(([p, input]) => p)(zipped_row)))(map(row => zip(row)(inputs))(state)))(outputs)));
+  });
+  return outputs;
+};
+
 // --- Durations ---
 const w = 96;
 const h = 48;
@@ -7552,18 +7573,30 @@ const inputFrom = i => {
   let emitter = new Subject();
 
   if (i) {
-    // TODO: This is not correctly working on node because jzz library
-    // is not implementing addListener / removeListener for inputs and
-    // rxjs can not create events from it.
     let input;
 
-    if (isBrowser) {
+    if (typeof i.addEventListener === 'function' || typeof i.addListener === 'function') {
       input = merge(fromEvent(i, 'midimessage'), emitter);
     } else {
       i.onmidimessage = evt => emitter.next(evt);
 
       input = emitter;
-    }
+    } //let input
+    //// On node, with JZZ library, rxjs is not able to subscribe to
+    //// events from JZZ returned input, so onmidimessage handler is
+    //// directly used.
+    //try {
+    //  input = rx.merge (
+    //    rx.fromEvent (i, 'midimessage'),
+    //    emitter )
+    //  // Try subscribing for checking if it will throw
+    //  const sx = input.pipe (rxo.subscribeOn (null)).subscribe ()
+    //  sx.unsubscribe ()
+    //} catch (e) {
+    //  i.onmidimessage = (evt) => emitter.next (evt)
+    //  input = emitter
+    //}
+
 
     input.name = i.name;
     input.id = i.id;
@@ -7706,6 +7739,6 @@ const MIDIDriver = graph$ => {
 //
 //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-const version = '1.0.59';
+const version = '1.1.0';
 
-export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, MIDIDriver, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, channel, channelByKeyRange, clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, value, value14bit, valueEq, velocity, velocityEq, version, w };
+export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, MIDIDriver, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, channel, channelByKeyRange, clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, routing_matrix, rpn, rst, s, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, value, value14bit, valueEq, velocity, velocityEq, version, w };

@@ -6966,6 +6966,27 @@
     }
   }, [mpeZone(m, c), null]), map$1(([x, msg]) => msg)));
 
+  // n_outputs indicates the amount of outputs of this matrix
+  // Expects a state in the form [outputs][inputs], with a true/false
+  // value in each cell indicating if input should pass or not. Example:
+  // state = [ [true, false], [false, true] ]
+  // represents a two inputs/two outputs routing matrix, routing first
+  // input to first output and second input to second output
+
+  const routing_matrix = (inputs, n_outputs, state$) => {
+    const outputs = map(o => new Subject())(range(0, n_outputs));
+    let subscriptions = []; // At initialization, nothing is routed (everything is disconnected)
+    // as nothing has been received from state$. If some initial state
+    // is desired, function should be called as:
+    // routing_matrix ([inputs], 2, state$.startWith (--desired state--))
+
+    state$.subscribe(state => {
+      forEach(s => s.unsubscribe())(subscriptions);
+      subscriptions = flatten(map(([inputs, output]) => map(i => i.subscribe(output))(inputs))(zip(map(zipped_row => map(([p, input]) => input)(filter(([p, input]) => p)(zipped_row)))(map(row => zip(row)(inputs))(state)))(outputs)));
+    });
+    return outputs;
+  };
+
   // --- Durations ---
   const w = 96;
   const h = 48;
@@ -7558,18 +7579,30 @@
     let emitter = new Subject();
 
     if (i) {
-      // TODO: This is not correctly working on node because jzz library
-      // is not implementing addListener / removeListener for inputs and
-      // rxjs can not create events from it.
       let input;
 
-      if (isBrowser) {
+      if (typeof i.addEventListener === 'function' || typeof i.addListener === 'function') {
         input = merge(fromEvent(i, 'midimessage'), emitter);
       } else {
         i.onmidimessage = evt => emitter.next(evt);
 
         input = emitter;
-      }
+      } //let input
+      //// On node, with JZZ library, rxjs is not able to subscribe to
+      //// events from JZZ returned input, so onmidimessage handler is
+      //// directly used.
+      //try {
+      //  input = rx.merge (
+      //    rx.fromEvent (i, 'midimessage'),
+      //    emitter )
+      //  // Try subscribing for checking if it will throw
+      //  const sx = input.pipe (rxo.subscribeOn (null)).subscribe ()
+      //  sx.unsubscribe ()
+      //} catch (e) {
+      //  i.onmidimessage = (evt) => emitter.next (evt)
+      //  input = emitter
+      //}
+
 
       input.name = i.name;
       input.id = i.id;
@@ -7712,7 +7745,7 @@
   //
   //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-  const version = '1.0.59';
+  const version = '1.1.0';
 
   exports.A = A;
   exports.A0 = A0;
@@ -7986,6 +8019,7 @@
   exports.recorder = recorder;
   exports.rejectEvents = rejectEvents;
   exports.root = root;
+  exports.routing_matrix = routing_matrix;
   exports.rpn = rpn;
   exports.rst = rst;
   exports.s = s;
