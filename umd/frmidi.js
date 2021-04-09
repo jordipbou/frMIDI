@@ -6042,6 +6042,47 @@
   /** PURE_IMPORTS_START _Observable,_util_noop PURE_IMPORTS_END */
   var NEVER = /*@__PURE__*/ new Observable(noop);
 
+  /** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
+  function filter$1(predicate, thisArg) {
+      return function filterOperatorFunction(source) {
+          return source.lift(new FilterOperator(predicate, thisArg));
+      };
+  }
+  var FilterOperator = /*@__PURE__*/ (function () {
+      function FilterOperator(predicate, thisArg) {
+          this.predicate = predicate;
+          this.thisArg = thisArg;
+      }
+      FilterOperator.prototype.call = function (subscriber, source) {
+          return source.subscribe(new FilterSubscriber(subscriber, this.predicate, this.thisArg));
+      };
+      return FilterOperator;
+  }());
+  var FilterSubscriber = /*@__PURE__*/ (function (_super) {
+      __extends(FilterSubscriber, _super);
+      function FilterSubscriber(destination, predicate, thisArg) {
+          var _this = _super.call(this, destination) || this;
+          _this.predicate = predicate;
+          _this.thisArg = thisArg;
+          _this.count = 0;
+          return _this;
+      }
+      FilterSubscriber.prototype._next = function (value) {
+          var result;
+          try {
+              result = this.predicate.call(this.thisArg, value, this.count++);
+          }
+          catch (err) {
+              this.destination.error(err);
+              return;
+          }
+          if (result) {
+              this.destination.next(value);
+          }
+      };
+      return FilterSubscriber;
+  }(Subscriber));
+
   /** PURE_IMPORTS_START _Observable,_scheduler_async,_util_isNumeric,_util_isScheduler PURE_IMPORTS_END */
   function timer(dueTime, periodOrScheduler, scheduler) {
       if (dueTime === void 0) {
@@ -6987,6 +7028,43 @@
     return outputs;
   };
 
+  const seamless_subscribe = input$ => output$ => {
+    let zone = mpeZone(15, 15);
+    let subscription = input$.pipe(tap(msg => zone = processMessage$1(zone)(msg))).subscribe(output$);
+    return {
+      unsubscribe: () => {
+        subscription.unsubscribe();
+        subscription = input$.pipe(filter$1(asNoteOff), tap(msg => {
+          zone = processMessage$1(zone)(msg);
+
+          if (zone.activeNotes.length === 0) {
+            subscription.unsubscribe();
+            subscription = null;
+            zone = null;
+            output$.next(msg);
+          }
+        })).subscribe(output$);
+      }
+    };
+  }; // Works as routing_matrix but maintains connection open until all
+  // active notes on of an input receive their corresponding notes off.
+  // Only notes off will be allowed.
+
+
+  const seamless_routing_matrix = (inputs, n_outputs, state$) => {
+    const outputs = map(o => new Subject())(range(0, n_outputs));
+    let subscriptions = []; // At initialization, nothing is routed (everything is disconnected)
+    // as nothing has been received from state$. If some initial state
+    // is desired, function should be called as:
+    // routing_matrix ([inputs], 2, state$.startWith (--desired state--))
+
+    state$.subscribe(state => {
+      forEach(s => s.unsubscribe())(subscriptions);
+      subscriptions = flatten(map(([inputs, output$]) => map(input$ => seamless_subscribe(input$)(output$))(inputs))(zip(map(zipped_row => map(([p, input$]) => input$)(filter(([p, input$]) => p)(zipped_row)))(map(row => zip(row)(inputs))(state)))(outputs)));
+    });
+    return outputs;
+  };
+
   // --- Durations ---
   const w = 96;
   const h = 48;
@@ -7745,7 +7823,7 @@
   //
   //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-  const version = '1.1.0';
+  const version = '1.1.1';
 
   exports.A = A;
   exports.A0 = A0;
@@ -8023,6 +8101,7 @@
   exports.rpn = rpn;
   exports.rst = rst;
   exports.s = s;
+  exports.seamless_routing_matrix = seamless_routing_matrix;
   exports.seemsActiveNote = seemsActiveNote;
   exports.seemsLoop = seemsLoop;
   exports.seemsMessage = seemsMessage;
