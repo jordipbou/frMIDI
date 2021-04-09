@@ -1767,6 +1767,37 @@
     };
   }
 
+  /**
+   * Restricts a number to be within a range.
+   *
+   * Also works for other ordered types such as Strings and Dates.
+   *
+   * @func
+   * @memberOf R
+   * @since v0.20.0
+   * @category Relation
+   * @sig Ord a => a -> a -> a -> a
+   * @param {Number} minimum The lower limit of the clamp (inclusive)
+   * @param {Number} maximum The upper limit of the clamp (inclusive)
+   * @param {Number} value Value to be clamped
+   * @return {Number} Returns `minimum` when `val < minimum`, `maximum` when `val > maximum`, returns `val` otherwise
+   * @example
+   *
+   *      R.clamp(1, 10, -5) // => 1
+   *      R.clamp(1, 10, 15) // => 10
+   *      R.clamp(1, 10, 4)  // => 4
+   */
+
+  var clamp =
+  /*#__PURE__*/
+  _curry3(function clamp(min, max, value) {
+    if (min > max) {
+      throw new Error('min must not be greater than max in clamp(min, max, value)');
+    }
+
+    return value < min ? min : value > max ? max : value;
+  });
+
   function _cloneRegExp(pattern) {
     return new RegExp(pattern.source, (pattern.global ? 'g' : '') + (pattern.ignoreCase ? 'i' : '') + (pattern.multiline ? 'm' : '') + (pattern.sticky ? 'y' : '') + (pattern.unicode ? 'u' : ''));
   }
@@ -7065,6 +7096,123 @@
     return outputs;
   };
 
+  const AS_SETTINGS = 0;
+  const RED = 1;
+  const YELLOW = 2;
+  const GREEN = 3;
+  const CYAN = 4;
+  const BLUE = 5;
+  const MAGENTA = 6;
+  const OFF = 7;
+  const WHITE = 8;
+  const ORANGE = 9;
+  const LIME = 10;
+  const PINK = 11; // -------------------------------------  Setting color of cells
+  // It's not needed to set user firmware mode to change colors.
+
+  const setColor = curry((x, y, c) => M.from([M.cc(20, x), M.cc(21, y), M.cc(22, c)]));
+  const clear = (c = 7) => from(flatten(map(x => map(y => setColor(x, y, c))(range(0, 8)))(range(0, 17))));
+  const restore = () => clear(AS_SETTINGS); // ------------------------------------------- User firmware mode
+
+  const userFirmwareMode = enable => M.nrpn(245, enable ? 1 : 0);
+  const rowSlide = curry((row, enable) => M.cc(9, enable ? 1 : 0, row));
+  const xData = curry((row, enable) => M.cc(10, enable ? 1 : 0, row));
+  const yData = curry((row, enable) => M.cc(11, enable ? 1 : 0, row));
+  const zData = curry((row, enable) => M.cc(12, enable ? 1 : 0, row));
+  const decimationRate = (rate = 12) => M.cc(13, rate); // Each cell of state expects an object with:
+  // onNoteOn
+  // onNoteOff
+  // onPitchBend
+  // onTimbre
+  // onPressure
+  // status
+
+  const createState = () => map(x => map(y => ({
+    color: OFF
+  }))(range(0, 8)))(range(0, 17));
+  const changeState = output$ => state$ => state$.subscribe(state => addIndex(forEach)((column, x) => addIndex(forEach)((row, y) => output$.next(setColor(x, y, state[x][y])))(column))(state));
+  const listener = curry((state, input) => {
+    input.pipe(filter$1(M.isNoteOn)).subscribe(v => {
+      let x = view(M.note)(v);
+      let y = view(M.channel)(v);
+      if (state[x][y].onNoteOn !== undefined) state[x][y].onNoteOn(v, state[x][y].status);
+      if (state[x][y].onPitchBend !== undefined) state[x][y].unsubscriberPitchBend = input.pipe(filter$1(both(M.isPitchBend, M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onPitchBend(v, state[x][y].status));
+      if (state[x][y].onTimbreChange !== undefined) state[x][y].unsubscriberTimbreChange = input.pipe(filter$1(both(M.isTimbreChange, M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onTimbreChange(v, state[x][y].status));
+      if (state[x][y].onPressure !== undefined) state[x][y].unsubscriberPressure = input.pipe(filter$1(both(M.isPolyPressure)(M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onPressure(v, state[x][y].status)); // Note off and cleaning
+
+      state[x][y].unsubscriberNoteOff = input.pipe(filter$1(both(M.isNoteOff)(M.isOnChannel(view(M.channel)(v))))).subscribe(v => {
+        if (state[x][y].onNoteOff !== undefined) state[x][y].onNoteOff(v, state[x][y].status);
+
+        if (state[x][y].unsubscriberPitchBend !== undefined) {
+          state[x][y].unsubscriberPitchBend.unsubscribe();
+          state[x][y].unsubscriberPitchBend = undefined;
+        }
+
+        if (state[x][y].unsubscriberTimbreChange !== undefined) {
+          state[x][y].unsubscriberTimbreChange.unsubscribe();
+          state[x][y].unsubscriberTimbreChange = undefined;
+        }
+
+        if (state[x][y].unsubscriberPressure !== undefined) {
+          state[x][y].unsubscriberPressure.unsubscribe();
+          state[x][y].unsubscriberPressure = undefined;
+        }
+
+        if (state[x][y].unsubscriberNoteOff !== undefined) {
+          state[x][y].unsubscriberNoteOff.unsubscribe();
+          state[x][y].unsubscriberNoteOff = undefined;
+        }
+      });
+    });
+  });
+  const createLambdaToggle = curry((x, y, color_off, color_on, lambda_on, lambda_off, lout, state) => {
+    lout(setColor(x, y, color_off));
+    state[x][y] = {
+      status: {
+        toggled: false
+      },
+      onNoteOn: (v, status) => {
+        status.toggled = !status.toggled;
+
+        if (status.toggled) {
+          lambda_on();
+          lout(setColor(x, y, color_on));
+        } else {
+          lambda_off();
+          lout(setColor(x, y, color_off));
+        }
+      }
+    };
+    return state;
+  });
+  const createToggle = curry((x, y, color_off, color_on, msg_off, msg_on, lout, sout, state) => createLambdaToggle(x)(y)(color_off)(color_on)(() => sout(set$1(M.channel)(1)(msg_on)))(() => sout(set$1(M.channel)(1)(msg_off)))(lout)(state));
+  const createCC14bit = curry((x, y, color, ch, cc, lout, sout, state) => {
+    lout(setColor(x, y, color));
+    state[x][y] = {
+      status: {
+        value: 8192,
+        tempPB: 8192,
+        pressure: 0
+      },
+      onPressure: (v, status) => {
+        status.pressure = v.data[2];
+      },
+      onPitchBend: (v, status) => {
+        let mod = status.pressure < 96 ? 0.01 : 1; //(status.pressure < 112 ? 1 : 12)
+
+        let pb = M.value14bit(v.data[2], v.data[1]);
+        let diff = pb - status.tempPB;
+        status.tempPB = pb;
+        status.value = Math.round(clamp(0, 16383, status.value + diff * mod));
+        sout(M.cc14bit(cc, status.value));
+      },
+      onNoteOff: (v, status) => {
+        status.tempPB = 8192;
+      }
+    };
+    return state;
+  });
+
   // --- Durations ---
   const w = 96;
   const h = 48;
@@ -7823,7 +7971,7 @@
   //
   //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-  const version = '1.1.1';
+  const version = '1.1.2';
 
   exports.A = A;
   exports.A0 = A0;
@@ -7834,6 +7982,7 @@
   exports.A5 = A5;
   exports.A6 = A6;
   exports.A7 = A7;
+  exports.AS_SETTINGS = AS_SETTINGS;
   exports.Af = Af;
   exports.Af1 = Af1;
   exports.Af2 = Af2;
@@ -7860,6 +8009,7 @@
   exports.B5 = B5;
   exports.B6 = B6;
   exports.B7 = B7;
+  exports.BLUE = BLUE;
   exports.Bb0 = Bb0;
   exports.Bf = Bf;
   exports.Bf1 = Bf1;
@@ -7878,6 +8028,7 @@
   exports.C6 = C6;
   exports.C7 = C7;
   exports.C8 = C8;
+  exports.CYAN = CYAN;
   exports.Cs = Cs;
   exports.Cs1 = Cs1;
   exports.Cs2 = Cs2;
@@ -7950,6 +8101,7 @@
   exports.G5 = G5;
   exports.G6 = G6;
   exports.G7 = G7;
+  exports.GREEN = GREEN;
   exports.Gf = Gf;
   exports.Gf1 = Gf1;
   exports.Gf2 = Gf2;
@@ -7966,16 +8118,24 @@
   exports.Gs5 = Gs5;
   exports.Gs6 = Gs6;
   exports.Gs7 = Gs7;
+  exports.LIME = LIME;
   exports.M2 = M2;
   exports.M3 = M3;
   exports.M6 = M6;
   exports.M7 = M7;
+  exports.MAGENTA = MAGENTA;
   exports.MIDIDriver = MIDIDriver;
+  exports.OFF = OFF;
+  exports.ORANGE = ORANGE;
   exports.P1 = P1;
   exports.P4 = P4;
   exports.P5 = P5;
   exports.P8 = P8;
+  exports.PINK = PINK;
+  exports.RED = RED;
   exports.TT = TT;
+  exports.WHITE = WHITE;
+  exports.YELLOW = YELLOW;
   exports.as = as;
   exports.asNoteOff = asNoteOff;
   exports.asNoteOn = asNoteOn;
@@ -7984,8 +8144,10 @@
   exports.byteEqBy = byteEqBy;
   exports.cc = cc;
   exports.cc14bit = cc14bit;
+  exports.changeState = changeState;
   exports.channel = channel;
   exports.channelByKeyRange = channelByKeyRange;
+  exports.clear = clear;
   exports.clock = clock;
   exports.cont = cont;
   exports.control = control;
@@ -7993,8 +8155,10 @@
   exports.cp = cp;
   exports.createLoop = createLoop;
   exports.createSequence = createSequence;
+  exports.createState = createState;
   exports.dataEq = dataEq;
   exports.dataEqBy = dataEqBy;
+  exports.decimationRate = decimationRate;
   exports.deltaTime = deltaTime;
   exports.e = e;
   exports.et = et;
@@ -8096,8 +8260,10 @@
   exports.q = q;
   exports.recorder = recorder;
   exports.rejectEvents = rejectEvents;
+  exports.restore = restore;
   exports.root = root;
   exports.routing_matrix = routing_matrix;
+  exports.rowSlide = rowSlide;
   exports.rpn = rpn;
   exports.rst = rst;
   exports.s = s;
@@ -8108,6 +8274,7 @@
   exports.seemsSequence = seemsSequence;
   exports.sequence = sequence;
   exports.sequenceEvent = sequenceEvent;
+  exports.setColor = setColor;
   exports.spp = spp;
   exports.ss = ss;
   exports.st = st;
@@ -8123,6 +8290,7 @@
   exports.timing = timing;
   exports.timingEvent = timingEvent;
   exports.tun = tun;
+  exports.userFirmwareMode = userFirmwareMode;
   exports.value = value;
   exports.value14bit = value14bit;
   exports.valueEq = valueEq;
@@ -8130,6 +8298,9 @@
   exports.velocityEq = velocityEq;
   exports.version = version;
   exports.w = w;
+  exports.xData = xData;
+  exports.yData = yData;
+  exports.zData = zData;
 
   Object.defineProperty(exports, '__esModule', { value: true });
 

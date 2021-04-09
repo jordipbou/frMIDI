@@ -1761,6 +1761,37 @@ function _makeFlat(recursive) {
   };
 }
 
+/**
+ * Restricts a number to be within a range.
+ *
+ * Also works for other ordered types such as Strings and Dates.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.20.0
+ * @category Relation
+ * @sig Ord a => a -> a -> a -> a
+ * @param {Number} minimum The lower limit of the clamp (inclusive)
+ * @param {Number} maximum The upper limit of the clamp (inclusive)
+ * @param {Number} value Value to be clamped
+ * @return {Number} Returns `minimum` when `val < minimum`, `maximum` when `val > maximum`, returns `val` otherwise
+ * @example
+ *
+ *      R.clamp(1, 10, -5) // => 1
+ *      R.clamp(1, 10, 15) // => 10
+ *      R.clamp(1, 10, 4)  // => 4
+ */
+
+var clamp =
+/*#__PURE__*/
+_curry3(function clamp(min, max, value) {
+  if (min > max) {
+    throw new Error('min must not be greater than max in clamp(min, max, value)');
+  }
+
+  return value < min ? min : value > max ? max : value;
+});
+
 function _cloneRegExp(pattern) {
   return new RegExp(pattern.source, (pattern.global ? 'g' : '') + (pattern.ignoreCase ? 'i' : '') + (pattern.multiline ? 'm' : '') + (pattern.sticky ? 'y' : '') + (pattern.unicode ? 'u' : ''));
 }
@@ -7059,6 +7090,123 @@ const seamless_routing_matrix = (inputs, n_outputs, state$) => {
   return outputs;
 };
 
+const AS_SETTINGS = 0;
+const RED = 1;
+const YELLOW = 2;
+const GREEN = 3;
+const CYAN = 4;
+const BLUE = 5;
+const MAGENTA = 6;
+const OFF = 7;
+const WHITE = 8;
+const ORANGE = 9;
+const LIME = 10;
+const PINK = 11; // -------------------------------------  Setting color of cells
+// It's not needed to set user firmware mode to change colors.
+
+const setColor = curry((x, y, c) => M.from([M.cc(20, x), M.cc(21, y), M.cc(22, c)]));
+const clear = (c = 7) => from(flatten(map(x => map(y => setColor(x, y, c))(range(0, 8)))(range(0, 17))));
+const restore = () => clear(AS_SETTINGS); // ------------------------------------------- User firmware mode
+
+const userFirmwareMode = enable => M.nrpn(245, enable ? 1 : 0);
+const rowSlide = curry((row, enable) => M.cc(9, enable ? 1 : 0, row));
+const xData = curry((row, enable) => M.cc(10, enable ? 1 : 0, row));
+const yData = curry((row, enable) => M.cc(11, enable ? 1 : 0, row));
+const zData = curry((row, enable) => M.cc(12, enable ? 1 : 0, row));
+const decimationRate = (rate = 12) => M.cc(13, rate); // Each cell of state expects an object with:
+// onNoteOn
+// onNoteOff
+// onPitchBend
+// onTimbre
+// onPressure
+// status
+
+const createState = () => map(x => map(y => ({
+  color: OFF
+}))(range(0, 8)))(range(0, 17));
+const changeState = output$ => state$ => state$.subscribe(state => addIndex(forEach)((column, x) => addIndex(forEach)((row, y) => output$.next(setColor(x, y, state[x][y])))(column))(state));
+const listener = curry((state, input) => {
+  input.pipe(filter$1(M.isNoteOn)).subscribe(v => {
+    let x = view(M.note)(v);
+    let y = view(M.channel)(v);
+    if (state[x][y].onNoteOn !== undefined) state[x][y].onNoteOn(v, state[x][y].status);
+    if (state[x][y].onPitchBend !== undefined) state[x][y].unsubscriberPitchBend = input.pipe(filter$1(both(M.isPitchBend, M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onPitchBend(v, state[x][y].status));
+    if (state[x][y].onTimbreChange !== undefined) state[x][y].unsubscriberTimbreChange = input.pipe(filter$1(both(M.isTimbreChange, M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onTimbreChange(v, state[x][y].status));
+    if (state[x][y].onPressure !== undefined) state[x][y].unsubscriberPressure = input.pipe(filter$1(both(M.isPolyPressure)(M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onPressure(v, state[x][y].status)); // Note off and cleaning
+
+    state[x][y].unsubscriberNoteOff = input.pipe(filter$1(both(M.isNoteOff)(M.isOnChannel(view(M.channel)(v))))).subscribe(v => {
+      if (state[x][y].onNoteOff !== undefined) state[x][y].onNoteOff(v, state[x][y].status);
+
+      if (state[x][y].unsubscriberPitchBend !== undefined) {
+        state[x][y].unsubscriberPitchBend.unsubscribe();
+        state[x][y].unsubscriberPitchBend = undefined;
+      }
+
+      if (state[x][y].unsubscriberTimbreChange !== undefined) {
+        state[x][y].unsubscriberTimbreChange.unsubscribe();
+        state[x][y].unsubscriberTimbreChange = undefined;
+      }
+
+      if (state[x][y].unsubscriberPressure !== undefined) {
+        state[x][y].unsubscriberPressure.unsubscribe();
+        state[x][y].unsubscriberPressure = undefined;
+      }
+
+      if (state[x][y].unsubscriberNoteOff !== undefined) {
+        state[x][y].unsubscriberNoteOff.unsubscribe();
+        state[x][y].unsubscriberNoteOff = undefined;
+      }
+    });
+  });
+});
+const createLambdaToggle = curry((x, y, color_off, color_on, lambda_on, lambda_off, lout, state) => {
+  lout(setColor(x, y, color_off));
+  state[x][y] = {
+    status: {
+      toggled: false
+    },
+    onNoteOn: (v, status) => {
+      status.toggled = !status.toggled;
+
+      if (status.toggled) {
+        lambda_on();
+        lout(setColor(x, y, color_on));
+      } else {
+        lambda_off();
+        lout(setColor(x, y, color_off));
+      }
+    }
+  };
+  return state;
+});
+const createToggle = curry((x, y, color_off, color_on, msg_off, msg_on, lout, sout, state) => createLambdaToggle(x)(y)(color_off)(color_on)(() => sout(set$1(M.channel)(1)(msg_on)))(() => sout(set$1(M.channel)(1)(msg_off)))(lout)(state));
+const createCC14bit = curry((x, y, color, ch, cc, lout, sout, state) => {
+  lout(setColor(x, y, color));
+  state[x][y] = {
+    status: {
+      value: 8192,
+      tempPB: 8192,
+      pressure: 0
+    },
+    onPressure: (v, status) => {
+      status.pressure = v.data[2];
+    },
+    onPitchBend: (v, status) => {
+      let mod = status.pressure < 96 ? 0.01 : 1; //(status.pressure < 112 ? 1 : 12)
+
+      let pb = M.value14bit(v.data[2], v.data[1]);
+      let diff = pb - status.tempPB;
+      status.tempPB = pb;
+      status.value = Math.round(clamp(0, 16383, status.value + diff * mod));
+      sout(M.cc14bit(cc, status.value));
+    },
+    onNoteOff: (v, status) => {
+      status.tempPB = 8192;
+    }
+  };
+  return state;
+});
+
 // --- Durations ---
 const w = 96;
 const h = 48;
@@ -7817,6 +7965,6 @@ const MIDIDriver = graph$ => {
 //
 //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-const version = '1.1.1';
+const version = '1.1.2';
 
-export { A, A0, A1, A2, A3, A4, A5, A6, A7, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, M2, M3, M6, M7, MIDIDriver, P1, P4, P5, P8, TT, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, channel, channelByKeyRange, clock, cont, control, controlEq, cp, createLoop, createSequence, dataEq, dataEqBy, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, root, routing_matrix, rpn, rst, s, seamless_routing_matrix, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, value, value14bit, valueEq, velocity, velocityEq, version, w };
+export { A, A0, A1, A2, A3, A4, A5, A6, A7, AS_SETTINGS, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, BLUE, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, CYAN, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, GREEN, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, LIME, M2, M3, M6, M7, MAGENTA, MIDIDriver, OFF, ORANGE, P1, P4, P5, P8, PINK, RED, TT, WHITE, YELLOW, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, changeState, channel, channelByKeyRange, clear, clock, cont, control, controlEq, cp, createLoop, createSequence, createState, dataEq, dataEqBy, decimationRate, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, restore, root, routing_matrix, rowSlide, rpn, rst, s, seamless_routing_matrix, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, setColor, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, userFirmwareMode, value, value14bit, valueEq, velocity, velocityEq, version, w, xData, yData, zData };
