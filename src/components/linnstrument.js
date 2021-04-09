@@ -68,15 +68,14 @@ export const createState = () =>
     ((x) => R.map ((y) => ({ color: OFF })) (R.range (0, 8))) 
     (R.range (0, 17))
 
-export const changeState = (output$) => (state$) =>
-  state$.subscribe ((state) => 
-    R.addIndex (R.forEach)
-      ((column, x) => 
-        R.addIndex (R.forEach)
-          ((row, y) =>
-            output$.next (setColor (x, y, state [x][y])))
-          (column))
-      (state))
+export const changeState = (output) => (state) =>
+  R.addIndex (R.forEach)
+    ((column, x) => 
+      R.addIndex (R.forEach)
+        ((row, y) => 
+          output (setColor (x, y, state [x][y].color)))
+        (column))
+    (state)
 
 export const listener = R.curry ((state, input) => {
   input.pipe (

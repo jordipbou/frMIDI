@@ -7130,7 +7130,7 @@
   const createState = () => map(x => map(y => ({
     color: OFF
   }))(range(0, 8)))(range(0, 17));
-  const changeState = output$ => state$ => state$.subscribe(state => addIndex(forEach)((column, x) => addIndex(forEach)((row, y) => output$.next(setColor(x, y, state[x][y])))(column))(state));
+  const changeState = output => state => addIndex(forEach)((column, x) => addIndex(forEach)((row, y) => output(setColor(x, y, state[x][y].color)))(column))(state);
   const listener = curry((state, input) => {
     input.pipe(filter$1(M.isNoteOn)).subscribe(v => {
       let x = view(M.note)(v);
@@ -7971,7 +7971,7 @@
   //
   //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-  const version = '1.1.2';
+  const version = '1.1.3';
 
   exports.A = A;
   exports.A0 = A0;
