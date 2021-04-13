@@ -1,7 +1,13 @@
 const test = require ('ava')
 import * as R from 'ramda'
 import * as X from 'rxjs'
+import * as O from 'rxjs/operators'
 import * as M from '../src/index.js'
+import { 
+  colorsFromState, disownNote, getOwnerCell, ownNote, setColor 
+} from '../src/components/linnstrument.js'
+
+// --------------------------------Routing and Seamless routing matrix
 
 test ('Routing matrix', (t) => {
   const i1$ = new X.Subject ()
@@ -128,3 +134,245 @@ test ('Seamless routing matrix', (t) => {
   t.deepEqual ([M.off (14), M.on (37), M.off (35), M.on (38), M.off (38)], rcvd1)
   t.deepEqual ([M.on (36), M.off (36), M.off (14), M.off (35)], rcvd2)
 })
+
+// --------------------------------------------- LinnStrument
+
+test ('createState', (t) => {
+  const cell = { color: 7 }
+  const column = [cell, cell, cell, cell, cell, cell, cell, cell]
+  t.deepEqual (
+    M.createState (),
+    {
+      ownedNotes: [],
+      cells: [
+        column, column, column, column, 
+        column, column, column, column, 
+        column, column, column, column, 
+        column, column, column, column, 
+        column
+      ]
+    })
+
+  t.deepEqual (
+    M.createState (2, 3),
+    {
+      ownedNotes: [],
+      cells: [
+        [ cell, cell, cell ],
+        [ cell, cell, cell ]
+      ]
+    })
+})
+
+test ('ownNote', (t) => {
+  t.deepEqual (
+    ownNote (3) (0) (1) (0) (M.createState (2, 2)),
+    {
+      ownedNotes: [{ note: 3, channel: 0, x: 1, y: 0 }],
+      cells: [
+        [{ color: 7 }, { color: 7 }],
+        [{ color: 7 }, { color: 7 }]
+      ]
+    })
+})
+
+test ('disownNote', (t) => {
+  t.deepEqual (
+    disownNote 
+      (3) (0) 
+      (ownNote 
+        (7) (1) (0) (1)
+        (ownNote 
+          (3) (0) (1) (0)
+          (ownNote 
+            (12) (5) (0) (0)
+            (M.createState (2, 2))))),
+    {
+      ownedNotes: [
+        { note: 12, channel: 5, x: 0, y: 0 },
+        { note: 7, channel: 1, x: 0, y: 1 }
+      ],
+      cells: [
+        [{ color: 7 }, { color: 7 }],
+        [{ color: 7 }, { color: 7 }]
+      ]
+    })
+})
+
+test ('getCell', (t) => {
+  t.deepEqual (
+    M.getCell (1) (0) (M.assocCell (1) (0) ('color') (3) (M.createState (2, 2))),
+    {
+      color: 3
+    })
+})
+
+test ('getOwnerCell', (t) => {
+  t.deepEqual (
+    getOwnerCell 
+      (1) (0) 
+      (ownNote
+        (1) (0)
+        (0) (1)
+        (M.assocCell 
+          (0) (1) 
+          ('color') (3) 
+          (M.assocCell
+            (1) (0)
+            ('color') (4)
+            (M.createState (2, 2))))),
+    {
+      color: 3
+    })
+
+  t.deepEqual (
+    getOwnerCell
+      (1) (0)
+      (M.assocCell (1) (0) ('color') (4) (M.createState (2, 2))),
+    {
+      color: 4
+    })
+})
+
+test ('adjustCell', (t) => {
+  const fn = () => ({ color: 5, data: false })
+  t.deepEqual (
+    M.adjustCell (1, 1, fn, M.createState (3, 3)),
+    {
+      ownedNotes: [],
+      cells: [
+        [{ color: 7 }, { color: 7 }, { color: 7 }],
+        [{ color: 7 }, { color: 5, data: false }, { color: 7 }],
+        [{ color: 7 }, { color: 7 }, { color: 7 }]
+      ]
+    })
+})
+
+test ('assocCell', (t) => {
+  t.deepEqual (
+    M.assocCell (1, 1, 'color', 5, M.createState (3, 3)),
+    {
+      ownedNotes: [],
+      cells: [
+        [{ color: 7 }, { color: 7 }, { color: 7 }],
+        [{ color: 7 }, { color: 5 }, { color: 7 }],
+        [{ color: 7 }, { color: 7 }, { color: 7 }]
+      ]
+    })
+})
+
+test ('dissocCell', (t) => {
+  t.deepEqual (
+    M.dissocCell (1, 1, 'color', M.createState (3, 3)),
+    {
+      ownedNotes: [],
+      cells: [
+        [{ color: 7 }, { color: 7 }, { color: 7 }],
+        [{ color: 7 }, {          }, { color: 7 }],
+        [{ color: 7 }, { color: 7 }, { color: 7 }]
+      ]
+    })
+})
+
+test ('evolveCell', (t) => {
+  const transformations = { color: (c) => c + 2 }
+  t.deepEqual (
+    M.evolveCell (1, 1, transformations, M.createState (3, 3)),
+    {
+      ownedNotes: [],
+      cells: [
+        [{ color: 7 }, { color: 7 }, { color: 7 }],
+        [{ color: 7 }, { color: 9 }, { color: 7 }],
+        [{ color: 7 }, { color: 7 }, { color: 7 }]
+      ]
+    })
+})
+
+test ('colorsFromState', (t) => {
+  const st = 
+    M.assocCell (0, 0, 'color', 1)
+      (M.assocCell (0, 1, 'color', 2)
+        (M.assocCell (1, 0, 'color', 3)
+          (M.assocCell (1, 1, 'color', 4)
+            (M.createState (2, 2)))))
+
+  t.deepEqual (
+    colorsFromState (st),
+    [
+      setColor (0, 0, 1),
+      setColor (0, 1, 2),
+      setColor (1, 0, 3),
+      setColor (1, 1, 4)
+    ])
+})
+
+test ('changeState', (t) => {
+  const st = 
+    M.assocCell (0, 0, 'color', 1)
+      (M.assocCell (0, 1, 'color', 2)
+        (M.assocCell (1, 0, 'color', 3)
+          (M.assocCell (1, 1, 'color', 4)
+            (M.createState (2, 2)))))
+
+  const st2 = M.assocCell (0, 1, 'color', 5) (st)
+
+  t.deepEqual (
+    M.changeState (st2, st),
+    setColor (0, 1, 5))
+
+  t.deepEqual (
+    M.changeState (st),
+    M.from ([
+      setColor (0, 0, 1),
+      setColor (0, 1, 2),
+      setColor (1, 0, 3),
+      setColor (1, 1, 4)
+    ]))
+})
+
+// TODO:
+//test ('createListener', (t) => {
+//})
+
+//test ('createMatrix', (t) => {
+//  const cell = { color: 7 }
+//  const column = [cell, cell, cell, cell, cell, cell, cell, cell]
+//  const color_off = 5
+//  const matrix_cell = {
+//    color: color_off,
+//    data: false,
+//    onNoteOn: (msg, current_state) => {
+//      const cell = current_state [i][j]
+//      const new_state = 
+//        changeCell
+//          (i, j, current_state, {
+//            ...cell,
+//            color: cell [i][j].data ? color_off : color_on
+//          })
+//      ls_state_out$.next (new_state)
+//      matrix_state_out$.next (
+//        matrix_state_from_state (x, y, width, height, state)
+//      )
+//    }}
+//    
+//  t.deepEqual (
+//    M.createMatrix (1, 2, 2, 2, color_off, 0, null, null, M.createState ()),
+//    [
+//      column, 
+//      [matrix_cell, matrix_cell, matrix_cell, matrix_cell, matrix_cell, matrix_cell, matrix_cell, matrix_cell],
+//      [matrix_cell, matrix_cell, matrix_cell, matrix_cell, matrix_cell, matrix_cell, matrix_cell, matrix_cell],
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column, 
+//      column])
+//})

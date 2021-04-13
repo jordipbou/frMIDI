@@ -1761,37 +1761,6 @@ function _makeFlat(recursive) {
   };
 }
 
-/**
- * Restricts a number to be within a range.
- *
- * Also works for other ordered types such as Strings and Dates.
- *
- * @func
- * @memberOf R
- * @since v0.20.0
- * @category Relation
- * @sig Ord a => a -> a -> a -> a
- * @param {Number} minimum The lower limit of the clamp (inclusive)
- * @param {Number} maximum The upper limit of the clamp (inclusive)
- * @param {Number} value Value to be clamped
- * @return {Number} Returns `minimum` when `val < minimum`, `maximum` when `val > maximum`, returns `val` otherwise
- * @example
- *
- *      R.clamp(1, 10, -5) // => 1
- *      R.clamp(1, 10, 15) // => 10
- *      R.clamp(1, 10, 4)  // => 4
- */
-
-var clamp =
-/*#__PURE__*/
-_curry3(function clamp(min, max, value) {
-  if (min > max) {
-    throw new Error('min must not be greater than max in clamp(min, max, value)');
-  }
-
-  return value < min ? min : value > max ? max : value;
-});
-
 function _cloneRegExp(pattern) {
   return new RegExp(pattern.source, (pattern.global ? 'g' : '') + (pattern.ignoreCase ? 'i' : '') + (pattern.multiline ? 'm' : '') + (pattern.sticky ? 'y' : '') + (pattern.unicode ? 'u' : ''));
 }
@@ -4057,6 +4026,81 @@ _curry2(function range(from, to) {
 });
 
 /**
+ * Calls an input function `n` times, returning an array containing the results
+ * of those function calls.
+ *
+ * `fn` is passed one argument: The current value of `n`, which begins at `0`
+ * and is gradually incremented to `n - 1`.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.2.3
+ * @category List
+ * @sig (Number -> a) -> Number -> [a]
+ * @param {Function} fn The function to invoke. Passed one argument, the current value of `n`.
+ * @param {Number} n A value between `0` and `n - 1`. Increments after each function call.
+ * @return {Array} An array containing the return values of all calls to `fn`.
+ * @see R.repeat
+ * @example
+ *
+ *      R.times(R.identity, 5); //=> [0, 1, 2, 3, 4]
+ * @symb R.times(f, 0) = []
+ * @symb R.times(f, 1) = [f(0)]
+ * @symb R.times(f, 2) = [f(0), f(1)]
+ */
+
+var times =
+/*#__PURE__*/
+_curry2(function times(fn, n) {
+  var len = Number(n);
+  var idx = 0;
+  var list;
+
+  if (len < 0 || isNaN(len)) {
+    throw new RangeError('n must be a non-negative number');
+  }
+
+  list = new Array(len);
+
+  while (idx < len) {
+    list[idx] = fn(idx);
+    idx += 1;
+  }
+
+  return list;
+});
+
+/**
+ * Returns a fixed list of size `n` containing a specified identical value.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.1
+ * @category List
+ * @sig a -> n -> [a]
+ * @param {*} value The value to repeat.
+ * @param {Number} n The desired size of the output list.
+ * @return {Array} A new array containing `n` `value`s.
+ * @see R.times
+ * @example
+ *
+ *      R.repeat('hi', 5); //=> ['hi', 'hi', 'hi', 'hi', 'hi']
+ *
+ *      const obj = {};
+ *      const repeatedObjs = R.repeat(obj, 5); //=> [{}, {}, {}, {}, {}]
+ *      repeatedObjs[0] === repeatedObjs[1]; //=> true
+ * @symb R.repeat(a, 0) = []
+ * @symb R.repeat(a, 1) = [a]
+ * @symb R.repeat(a, 2) = [a, a]
+ */
+
+var repeat =
+/*#__PURE__*/
+_curry2(function repeat(value, n) {
+  return times(always(value), n);
+});
+
+/**
  * Returns the result of "setting" the portion of the given data structure
  * focused by the given lens to the given value.
  *
@@ -5603,6 +5647,49 @@ var MapSubscriber = /*@__PURE__*/ (function (_super) {
     return MapSubscriber;
 }(Subscriber));
 
+/** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
+var OuterSubscriber = /*@__PURE__*/ (function (_super) {
+    __extends(OuterSubscriber, _super);
+    function OuterSubscriber() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    OuterSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+        this.destination.next(innerValue);
+    };
+    OuterSubscriber.prototype.notifyError = function (error, innerSub) {
+        this.destination.error(error);
+    };
+    OuterSubscriber.prototype.notifyComplete = function (innerSub) {
+        this.destination.complete();
+    };
+    return OuterSubscriber;
+}(Subscriber));
+
+/** PURE_IMPORTS_START tslib,_Subscriber PURE_IMPORTS_END */
+var InnerSubscriber = /*@__PURE__*/ (function (_super) {
+    __extends(InnerSubscriber, _super);
+    function InnerSubscriber(parent, outerValue, outerIndex) {
+        var _this = _super.call(this) || this;
+        _this.parent = parent;
+        _this.outerValue = outerValue;
+        _this.outerIndex = outerIndex;
+        _this.index = 0;
+        return _this;
+    }
+    InnerSubscriber.prototype._next = function (value) {
+        this.parent.notifyNext(this.outerValue, value, this.outerIndex, this.index++, this);
+    };
+    InnerSubscriber.prototype._error = function (error) {
+        this.parent.notifyError(error, this);
+        this.unsubscribe();
+    };
+    InnerSubscriber.prototype._complete = function () {
+        this.parent.notifyComplete(this);
+        this.unsubscribe();
+    };
+    return InnerSubscriber;
+}(Subscriber));
+
 /** PURE_IMPORTS_START _hostReportError PURE_IMPORTS_END */
 var subscribeToPromise = function (promise) {
     return function (subscriber) {
@@ -5701,6 +5788,20 @@ var subscribeTo = function (result) {
         throw new TypeError(msg);
     }
 };
+
+/** PURE_IMPORTS_START _InnerSubscriber,_subscribeTo,_Observable PURE_IMPORTS_END */
+function subscribeToResult(outerSubscriber, result, outerValue, outerIndex, innerSubscriber) {
+    if (innerSubscriber === void 0) {
+        innerSubscriber = new InnerSubscriber(outerSubscriber, outerValue, outerIndex);
+    }
+    if (innerSubscriber.closed) {
+        return undefined;
+    }
+    if (result instanceof Observable) {
+        return result.subscribe(innerSubscriber);
+    }
+    return subscribeTo(result)(innerSubscriber);
+}
 
 /** PURE_IMPORTS_START _Observable,_Subscription,_symbol_observable PURE_IMPORTS_END */
 function scheduleObservable(input, scheduler) {
@@ -6355,6 +6456,86 @@ var TapSubscriber = /*@__PURE__*/ (function (_super) {
     };
     return TapSubscriber;
 }(Subscriber));
+
+/** PURE_IMPORTS_START tslib,_OuterSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
+function withLatestFrom() {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
+    }
+    return function (source) {
+        var project;
+        if (typeof args[args.length - 1] === 'function') {
+            project = args.pop();
+        }
+        var observables = args;
+        return source.lift(new WithLatestFromOperator(observables, project));
+    };
+}
+var WithLatestFromOperator = /*@__PURE__*/ (function () {
+    function WithLatestFromOperator(observables, project) {
+        this.observables = observables;
+        this.project = project;
+    }
+    WithLatestFromOperator.prototype.call = function (subscriber, source) {
+        return source.subscribe(new WithLatestFromSubscriber(subscriber, this.observables, this.project));
+    };
+    return WithLatestFromOperator;
+}());
+var WithLatestFromSubscriber = /*@__PURE__*/ (function (_super) {
+    __extends(WithLatestFromSubscriber, _super);
+    function WithLatestFromSubscriber(destination, observables, project) {
+        var _this = _super.call(this, destination) || this;
+        _this.observables = observables;
+        _this.project = project;
+        _this.toRespond = [];
+        var len = observables.length;
+        _this.values = new Array(len);
+        for (var i = 0; i < len; i++) {
+            _this.toRespond.push(i);
+        }
+        for (var i = 0; i < len; i++) {
+            var observable = observables[i];
+            _this.add(subscribeToResult(_this, observable, undefined, i));
+        }
+        return _this;
+    }
+    WithLatestFromSubscriber.prototype.notifyNext = function (_outerValue, innerValue, outerIndex) {
+        this.values[outerIndex] = innerValue;
+        var toRespond = this.toRespond;
+        if (toRespond.length > 0) {
+            var found = toRespond.indexOf(outerIndex);
+            if (found !== -1) {
+                toRespond.splice(found, 1);
+            }
+        }
+    };
+    WithLatestFromSubscriber.prototype.notifyComplete = function () {
+    };
+    WithLatestFromSubscriber.prototype._next = function (value) {
+        if (this.toRespond.length === 0) {
+            var args = [value].concat(this.values);
+            if (this.project) {
+                this._tryProject(args);
+            }
+            else {
+                this.destination.next(args);
+            }
+        }
+    };
+    WithLatestFromSubscriber.prototype._tryProject = function (args) {
+        var result;
+        try {
+            result = this.project.apply(this, args);
+        }
+        catch (err) {
+            this.destination.error(err);
+            return;
+        }
+        this.destination.next(result);
+    };
+    return WithLatestFromSubscriber;
+}(OuterSubscriber));
 
 // performance.now or node-now function.
 // Using schedulers from timer timings allows easier testing
@@ -7090,6 +7271,7 @@ const seamless_routing_matrix = (inputs, n_outputs, state$) => {
   return outputs;
 };
 
+// TODO: For some reason, withLatestFrom on noteon/noteoff/... subscribers
 const AS_SETTINGS = 0;
 const RED = 1;
 const YELLOW = 2;
@@ -7104,108 +7286,363 @@ const LIME = 10;
 const PINK = 11; // -------------------------------------  Setting color of cells
 // It's not needed to set user firmware mode to change colors.
 
-const setColor = curry((x, y, c) => M.from([M.cc(20, x), M.cc(21, y), M.cc(22, c)]));
+const setColor = curry((x, y, c) => from$1([cc(20, x), cc(21, y), cc(22, c)]));
 const clear = (c = 7) => from(flatten(map(x => map(y => setColor(x, y, c))(range(0, 8)))(range(0, 17))));
 const restore = () => clear(AS_SETTINGS); // ------------------------------------------- User firmware mode
 
-const userFirmwareMode = enable => M.nrpn(245, enable ? 1 : 0);
-const rowSlide = curry((row, enable) => M.cc(9, enable ? 1 : 0, row));
-const xData = curry((row, enable) => M.cc(10, enable ? 1 : 0, row));
-const yData = curry((row, enable) => M.cc(11, enable ? 1 : 0, row));
-const zData = curry((row, enable) => M.cc(12, enable ? 1 : 0, row));
-const decimationRate = (rate = 12) => M.cc(13, rate); // Each cell of state expects an object with:
-// onNoteOn
-// onNoteOff
-// onPitchBend
-// onTimbre
-// onPressure
-// status
+const userFirmwareMode = enable => nrpn(245, enable ? 1 : 0);
+const rowSlide = curry((row, enable) => cc(9, enable ? 1 : 0, row));
+const xData = curry((row, enable) => cc(10, enable ? 1 : 0, row));
+const yData = curry((row, enable) => cc(11, enable ? 1 : 0, row));
+const zData = curry((row, enable) => cc(12, enable ? 1 : 0, row));
+const decimationRate = (rate = 12) => cc(13, rate);
+const fullUserFirmwareMode = enable => from$1([userFirmwareMode(enable), ...map(r => xData(r)(enable))(range(0, 8)), ...map(r => rowSlide(r)(enable))(range(0, 8)), ...map(r => yData(r)(enable))(range(0, 8)), ...map(r => zData(r)(enable))(range(0, 8))]); // -------- States (screens) for LinnStrument controller creation
 
-const createState = () => map(x => map(y => ({
-  color: OFF
-}))(range(0, 8)))(range(0, 17));
-const changeState = output => state => addIndex(forEach)((column, x) => addIndex(forEach)((row, y) => output(setColor(x, y, state[x][y].color)))(column))(state);
-const listener = curry((state, input) => {
-  input.pipe(filter$1(M.isNoteOn)).subscribe(v => {
-    let x = view(M.note)(v);
-    let y = view(M.channel)(v);
-    if (state[x][y].onNoteOn !== undefined) state[x][y].onNoteOn(v, state[x][y].status);
-    if (state[x][y].onPitchBend !== undefined) state[x][y].unsubscriberPitchBend = input.pipe(filter$1(both(M.isPitchBend, M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onPitchBend(v, state[x][y].status));
-    if (state[x][y].onTimbreChange !== undefined) state[x][y].unsubscriberTimbreChange = input.pipe(filter$1(both(M.isTimbreChange, M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onTimbreChange(v, state[x][y].status));
-    if (state[x][y].onPressure !== undefined) state[x][y].unsubscriberPressure = input.pipe(filter$1(both(M.isPolyPressure)(M.isOnChannel(view(M.channel)(v))))).subscribe(v => state[x][y].onPressure(v, state[x][y].status)); // Note off and cleaning
-
-    state[x][y].unsubscriberNoteOff = input.pipe(filter$1(both(M.isNoteOff)(M.isOnChannel(view(M.channel)(v))))).subscribe(v => {
-      if (state[x][y].onNoteOff !== undefined) state[x][y].onNoteOff(v, state[x][y].status);
-
-      if (state[x][y].unsubscriberPitchBend !== undefined) {
-        state[x][y].unsubscriberPitchBend.unsubscribe();
-        state[x][y].unsubscriberPitchBend = undefined;
-      }
-
-      if (state[x][y].unsubscriberTimbreChange !== undefined) {
-        state[x][y].unsubscriberTimbreChange.unsubscribe();
-        state[x][y].unsubscriberTimbreChange = undefined;
-      }
-
-      if (state[x][y].unsubscriberPressure !== undefined) {
-        state[x][y].unsubscriberPressure.unsubscribe();
-        state[x][y].unsubscriberPressure = undefined;
-      }
-
-      if (state[x][y].unsubscriberNoteOff !== undefined) {
-        state[x][y].unsubscriberNoteOff.unsubscribe();
-        state[x][y].unsubscriberNoteOff = undefined;
-      }
-    });
-  });
+const createState = (width = 17, height = 8) => ({
+  ownedNotes: [],
+  cells: map(x => map(y => ({
+    color: OFF
+  }))(range(0, height)))(range(0, width))
 });
-const createLambdaToggle = curry((x, y, color_off, color_on, lambda_on, lambda_off, lout, state) => {
-  lout(setColor(x, y, color_off));
-  state[x][y] = {
-    status: {
-      toggled: false
-    },
-    onNoteOn: (v, status) => {
-      status.toggled = !status.toggled;
+const ownNote = curry((note, channel, x, y, state) => evolve({
+  ownedNotes: append({
+    note,
+    channel,
+    x,
+    y
+  })
+})(state));
+const disownNote = curry((note, channel, state) => evolve({
+  ownedNotes: reject(o => o.note === note && o.channel === channel)
+})(state));
+const getCell = curry((x, y, st) => st.cells[x][y]);
+const getOwnerCell = curry((x, y, st) => {
+  const ownedNote = head(filter(o => o.note === x && o.channel === y)(st.ownedNotes));
 
-      if (status.toggled) {
-        lambda_on();
-        lout(setColor(x, y, color_on));
-      } else {
-        lambda_off();
-        lout(setColor(x, y, color_off));
-      }
+  if (ownedNote !== undefined) {
+    x = ownedNote.x;
+    y = ownedNote.y;
+  }
+
+  return st.cells[x][y];
+});
+const adjustCell = curry((x, y, fn, st) => evolve({
+  cells: adjust(x)(col => adjust(y)(cell => fn(cell))(col))
+})(st));
+const assocCell = curry((x, y, property, value, st) => adjustCell(x, y, assoc(property)(value), st));
+const dissocCell = curry((x, y, property, st) => adjustCell(x, y, dissoc(property), st));
+const evolveCell = curry((x, y, transformation, st) => adjustCell(x, y, evolve(transformation), st));
+const colorsFromState = state => flatten(addIndex(map)((column, i) => addIndex(map)((cell, j) => setColor(i, j, cell.color))(column))(state.cells));
+const changeState = (state, old_state = state) => from$1(map(([a, b]) => a)(filter(([a, b]) => state === old_state || !equals(a, b))(zip(colorsFromState(state))(colorsFromState(old_state))))); // TODO: Create linnstrumentstatechanger
+// By sending itself last state, it can compare and its a lot faster!!!
+//export const LinnStrumentStateChanger = () => {
+//  const old_state$ = 
+// -------------------------------------------------- State logic
+
+const subscribeNotesOn = (state$, newstate$, lsin$) => lsin$.pipe(filter$1(isNoteOn), withLatestFrom(state$)).subscribe(([msg, state]) => {
+  const x = view(note)(msg);
+  const y = view(channel)(msg);
+  const cell = getOwnerCell(x)(y)(state);
+  state = cell.onNoteOn && cell.onNoteOn(msg, state);
+  state && newstate$.next(state);
+});
+const subscribeNotesOff = (state$, newstate$, lsin$) => lsin$.pipe(filter$1(isNoteOff$1), withLatestFrom(state$)).subscribe(([msg, state]) => {
+  const x = view(note)(msg);
+  const y = view(channel)(msg);
+  const cell = getOwnerCell(x)(y)(state);
+  state = cell.onNoteOff && cell.onNoteOff(msg, state);
+  state && newstate$.next(state);
+});
+const subscribeRowSlide = (state$, newstate$, lsin$) => lsin$.pipe(filter$1(controlEq(119)), withLatestFrom(state$)).subscribe(([msg, state]) => {
+  const x = view(note)(msg);
+  const y = view(channel)(msg);
+  const cell = getOwnerCell(x)(y)(state);
+  state = cell.onRowSlide && cell.onRowSlide(msg, state);
+  state && newstate$.next(state);
+}); //export const subscribeXData = (state$, newstate$, lsin$) =>
+//  // TODO: We need to listen to controls 0-25 for MSB and
+//  // join with controls 32-57 for its LSB !! (use M.byteEqBy)
+//  lsin$.pipe (
+//    O.filter (M.controlEq (119)),
+//    O.withLatestFrom (state$)
+//  ).subscribe (([msg, state]) => {
+//    const x = R.view (M.note) (msg)
+//    const y = R.view (M.channel) (msg)
+//
+//    const cell = getOwnerCell (x) (y) (state)
+//
+//    state = cell.onRowSlide && cell.onRowSlide (msg, state)
+//
+//    state && newstate$.next (state)
+//  })
+//export const subscribeYData = (state$, newstate$, lsin$) =>
+//  // TODO: We need to listen to controls 64-89 (use M.byteEqBy)
+//  lsin$.pipe (
+//    O.filter (M.controlEq (119)),
+//    O.withLatestFrom (state$)
+//  ).subscribe (([msg, state]) => {
+//    const x = R.view (M.note) (msg)
+//    const y = R.view (M.channel) (msg)
+//
+//    const cell = getOwnerCell (x) (y) (state)
+//
+//    state = cell.onRowSlide && cell.onRowSlide (msg, state)
+//
+//    state && newstate$.next (state)
+//  })
+
+const subscribeZData = (state$, newstate$, lsin$) => lsin$.pipe(filter$1(isPolyPressure), withLatestFrom(state$)).subscribe(([msg, state]) => {
+  const x = view(note)(msg);
+  const y = view(channel)(msg);
+  const cell = getOwnerCell(x)(y)(state);
+  state = cell.onZData && cell.onZData(msg, state);
+  state && newstate$.next(state);
+});
+const listener = (state$, lsin$) => {
+  // When a new state, either from state$ or from newstate$ arrives,
+  // it has to be the latest merged to incoming data from lsin$
+  const newstate$ = new Subject();
+  const laststate$ = merge(state$, newstate$);
+  const noteOnListener = subscribeNotesOn(laststate$, newstate$, lsin$);
+  const noteOffListener = subscribeNotesOff(laststate$, newstate$, lsin$);
+  const rowSlideListener = subscribeRowSlide(laststate$, newstate$, lsin$); //const xDataListener = subscribeXData (laststate$, newstate$, lsin$)
+  //const yDataListener = subscribeYData (laststate$, newstate$, lsin$)
+
+  const zDataListener = subscribeZData(laststate$, newstate$, lsin$);
+  return {
+    newstate: laststate$,
+    unsubscribe: () => {
+      newstateListener.unsubscribe();
+      noteOnListener.unsubscribe();
+      noteOffListener.unsubscribe();
+      rowSlideListener.unsubscribe();
+      xDataListener.unsubscribe();
+      yDataListener.unsubscribe();
+      zDataListener.unsubscribe();
     }
   };
-  return state;
-});
-const createToggle = curry((x, y, color_off, color_on, msg_off, msg_on, lout, sout, state) => createLambdaToggle(x)(y)(color_off)(color_on)(() => sout(set$1(M.channel)(1)(msg_on)))(() => sout(set$1(M.channel)(1)(msg_off)))(lout)(state));
-const createCC14bit = curry((x, y, color, ch, cc, lout, sout, state) => {
-  lout(setColor(x, y, color));
-  state[x][y] = {
-    status: {
-      value: 8192,
-      tempPB: 8192,
-      pressure: 0
-    },
-    onPressure: (v, status) => {
-      status.pressure = v.data[2];
-    },
-    onPitchBend: (v, status) => {
-      let mod = status.pressure < 96 ? 0.01 : 1; //(status.pressure < 112 ? 1 : 12)
+};
+const createListener = curry((state$, lsin$, lsout$) => {
+  lsout$(userFirmwareMode(true));
+  return listener(state$, lsin$);
+}); // --------------------------------------------- State creation helpers
 
-      let pb = M.value14bit(v.data[2], v.data[1]);
-      let diff = pb - status.tempPB;
-      status.tempPB = pb;
-      status.value = Math.round(clamp(0, 16383, status.value + diff * mod));
-      sout(M.cc14bit(cc, status.value));
-    },
-    onNoteOff: (v, status) => {
-      status.tempPB = 8192;
+const createToggle = curry((x, y, color_off, color_on, lambda, state) => adjustCell(x)(y)(() => ({
+  color: color_off,
+  data: false,
+  onNoteOn: (msg, state) => {
+    lambda();
+    return ownNote(x)(y)(x)(y)(adjustCell(x)(y)(cell => evolve({
+      color: () => cell.data ? color_off : color_on,
+      data: not
+    })(cell))(state));
+  },
+  onNoteOff: (msg, state) => disownNote(x)(y)(state)
+}))(state));
+const createRoutingMatrix = curry((x, y, w, h, color_off, color_on, matrix_state$, state) => {
+  let matrix_state = repeat(repeat(false)(w))(h);
+
+  for (let i = x; i < x + w; i++) {
+    for (let j = y; j < y + h; j++) {
+      state = createToggle(i)(j)(color_off)(color_on)(() => {
+        matrix_state = adjust(j - y)(adjust(i - x)(v => !v))(matrix_state);
+        matrix_state$.next(matrix_state);
+      })(state);
     }
-  };
+  }
+
   return state;
-});
+}); //const matrix_state_from_state = (x, y, width, height) => (state) => 
+//  R.map
+//    ((i) => 
+//      R.map 
+//        ((j) => state [i][j].data)
+//        (R.range (y, y + width)))
+//    (R.range (x, x + width))
+//
+//export const evolveState = (x, y, width, height, state) =>
+//  matrix_state_from_state (x, y, width, height)
+//
+//export const matrixCellOnNoteOn = 
+//  (i, j, color_off, color_on, evolve_state) =>
+//    (msg, current_state) => {
+//      const cell = current_state [i][j]
+//      const new_state = 
+//        changeCell
+//          (i, j, current_state, {
+//            ...cell,
+//            color: cell [i][j].data ? color_off : color_on
+//          })
+//      ls_state_out$.next (new_state)
+//      matrix_state_out$.next (
+//        matrix_state_from_state (x, y, width, height, state)
+//      )
+//    }
+//    }
+//
+//export const createMatrix = R.curry (
+//  (x, y, width, height,
+//   color_off, color_on,
+//   matrix_state_out$, ls_state_out$,
+//   state) =>
+//    R.reduce
+//      ((st, i) => 
+//        R.reduce
+//          ((st, j) => 
+//            changeCell 
+//              (i, j, st)
+//              ({
+//                color: color_off,
+//                data: false,
+//                onNoteOn: (msg, current_state) => {
+//                  const cell = current_state [i][j]
+//                  const new_state = 
+//                    changeCell
+//                      (i, j, current_state, {
+//                        ...cell,
+//                        color: cell [i][j].data ? color_off : color_on
+//                      })
+//                  ls_state_out$.next (new_state)
+//                  matrix_state_out$.next (
+//                    matrix_state_from_state (x, y, width, height, state)
+//                  )
+//                }
+//              }))
+//          (st)
+//          (R.range (y, y + height)))
+//      (state)
+//      (R.range (x, x + width)))
+//export const createLambdaToggle = R.curry (
+//  (x, y, color_off, color_on, lambda_on, lambda_off, lout, state) => {
+//    lout (setColor (x, y, color_off))
+//  
+//    state[x][y] = {
+//      status: { toggled: false },
+//      onNoteOn: (v, status) => {
+//        status.toggled = !status.toggled
+//  
+//        if (status.toggled) {
+//          lambda_on ()
+//          lout (setColor (x, y, color_on))
+//        } else {
+//          lambda_off ()
+//          lout (setColor (x, y, color_off))
+//        }
+//      }
+//    }
+//  
+//    return state
+//  })
+//
+//export const createToggle = R.curry (
+//  (x, y, color_off, color_on, msg_off, msg_on, lout, sout, state) =>
+//    createLambdaToggle 
+//      (x) (y) 
+//      (color_off) (color_on) 
+//      (() => sout (R.set (M.channel) (1) (msg_on))) 
+//      (() => sout (R.set (M.channel) (1) (msg_off))) 
+//      (lout) 
+//      (state))
+//  
+//export const createCC14bit = R.curry (
+//  (x, y, color, ch, cc, lout, sout, state) => {
+//    lout (setColor (x, y, color))
+//  
+//    state[x][y] = {
+//      status: { 
+//          value: 8192,
+//          tempPB: 8192,
+//          pressure: 0,
+//      },
+//      onPressure: (v, status) => {
+//        status.pressure = v.data [2]
+//      },
+//      onPitchBend: (v, status) => {
+//        let mod = status.pressure < 96 ? 0.01 : 1 //(status.pressure < 112 ? 1 : 12)
+//        let pb = M.value14bit (v.data [2], v.data [1])
+//  
+//        let diff = pb - status.tempPB
+//        status.tempPB = pb
+//  
+//        status.value = 
+//          Math.round (
+//            R.clamp (
+//              0, 
+//              16383, 
+//              status.value + diff * mod))
+//  
+//        sout (
+//          M.cc14bit (
+//            cc, 
+//            status.value))
+//      },
+//      onNoteOff: (v, status) => {
+//        status.tempPB = 8192
+//      }
+//    }
+//  
+//    return state
+//  })
+//const matrix_state_from_state = (x, y, width, height) => (state) => 
+//  R.map
+//    ((i) => 
+//      R.map 
+//        ((j) => state [i][j].data)
+//        (R.range (y, y + width)))
+//    (R.range (x, x + width))
+//
+//export const evolveState = (x, y, width, height, state) =>
+//  matrix_state_from_state (x, y, width, height)
+//
+//export const matrixCellOnNoteOn = 
+//  (i, j, color_off, color_on, evolve_state) =>
+//    (msg, current_state) => {
+//      const cell = current_state [i][j]
+//      const new_state = 
+//        changeCell
+//          (i, j, current_state, {
+//            ...cell,
+//            color: cell [i][j].data ? color_off : color_on
+//          })
+//      ls_state_out$.next (new_state)
+//      matrix_state_out$.next (
+//        matrix_state_from_state (x, y, width, height, state)
+//      )
+//    }
+//    }
+//
+//export const createMatrix = R.curry (
+//  (x, y, width, height,
+//   color_off, color_on,
+//   matrix_state_out$, ls_state_out$,
+//   state) =>
+//    R.reduce
+//      ((st, i) => 
+//        R.reduce
+//          ((st, j) => 
+//            changeCell 
+//              (i, j, st)
+//              ({
+//                color: color_off,
+//                data: false,
+//                onNoteOn: (msg, current_state) => {
+//                  const cell = current_state [i][j]
+//                  const new_state = 
+//                    changeCell
+//                      (i, j, current_state, {
+//                        ...cell,
+//                        color: cell [i][j].data ? color_off : color_on
+//                      })
+//                  ls_state_out$.next (new_state)
+//                  matrix_state_out$.next (
+//                    matrix_state_from_state (x, y, width, height, state)
+//                  )
+//                }
+//              }))
+//          (st)
+//          (R.range (y, y + height)))
+//      (state)
+//      (R.range (x, x + width)))
 
 // --- Durations ---
 const w = 96;
@@ -7967,4 +8404,4 @@ const MIDIDriver = graph$ => {
 
 const version = '1.1.3';
 
-export { A, A0, A1, A2, A3, A4, A5, A6, A7, AS_SETTINGS, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, BLUE, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, CYAN, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, GREEN, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, LIME, M2, M3, M6, M7, MAGENTA, MIDIDriver, OFF, ORANGE, P1, P4, P5, P8, PINK, RED, TT, WHITE, YELLOW, as, asNoteOff, asNoteOn, bpmChange, byteEq, byteEqBy, cc, cc14bit, changeState, channel, channelByKeyRange, clear, clock, cont, control, controlEq, cp, createLoop, createSequence, createState, dataEq, dataEqBy, decimationRate, deltaTime, e, et, filterEvents, frMeta, from$1 as from, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, restore, root, routing_matrix, rowSlide, rpn, rst, s, seamless_routing_matrix, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, setColor, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, userFirmwareMode, value, value14bit, valueEq, velocity, velocityEq, version, w, xData, yData, zData };
+export { A, A0, A1, A2, A3, A4, A5, A6, A7, AS_SETTINGS, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, BLUE, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, CYAN, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, GREEN, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, LIME, M2, M3, M6, M7, MAGENTA, MIDIDriver, OFF, ORANGE, P1, P4, P5, P8, PINK, RED, TT, WHITE, YELLOW, adjustCell, as, asNoteOff, asNoteOn, assocCell, bpmChange, byteEq, byteEqBy, cc, cc14bit, changeState, channel, channelByKeyRange, clear, clock, cont, control, controlEq, cp, createListener, createLoop, createRoutingMatrix, createSequence, createState, createToggle, dataEq, dataEqBy, decimationRate, deltaTime, dissocCell, e, et, evolveCell, filterEvents, frMeta, from$1 as from, fullUserFirmwareMode, getCell, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, restore, root, routing_matrix, rowSlide, rpn, rst, s, seamless_routing_matrix, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, setColor, spp, ss, st, start, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, userFirmwareMode, value, value14bit, valueEq, velocity, velocityEq, version, w, xData, yData, zData };

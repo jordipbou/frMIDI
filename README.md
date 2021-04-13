@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.1.4 [2021/04/14] - LinnStrument listener working. Added createToggle and createRoutingMatrix helpers.
 * 1.1.3 [2021/04/09] - Added changeState function on linnstrument component. 
 * 1.1.2 [2021/04/09] - Added linnstrument component.
 * 1.1.1 [2021/04/09] - Added seamless_routing_matrix component for allowing changes in topology but maintaining sounds until their corresponding notes off are received.

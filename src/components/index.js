@@ -27,7 +27,18 @@ export {
   yData,
   zData,
   decimationRate,
+  fullUserFirmwareMode,
 
   createState,
-  changeState
+  getCell,
+  adjustCell,
+  assocCell,
+  dissocCell,
+  evolveCell,
+  changeState,
+  
+  createToggle,
+  createRoutingMatrix,
+
+  createListener,
 } from './linnstrument.js'
