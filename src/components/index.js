@@ -1,6 +1,8 @@
 export {
   routing_matrix,
-  seamless_routing_matrix
+  seamless_routing_matrix,
+  CC14bitFromCCs,
+  CCsFromCC14bit
 } from './components.js'
 
 export {

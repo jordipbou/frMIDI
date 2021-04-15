@@ -7276,6 +7276,8 @@
     });
     return outputs;
   };
+  const CC14bitFromCCs = (cc_msb, cc_lsb, cc_out) => pipe$1(scan(([msb, lsb, _], msg) => cond([[controlEq(cc_msb), (msg, msb = view(value)(msg), ch = view(channel)(msg), ts = view(timeStamp)(msg)) => [msb, lsb, cc14bit(cc_out, value14bit(msb, lsb), ch, ts)]], [controlEq(cc_lsb), (msg, lsb = view(value)(msg), ch = view(channel)(msg), ts = view(timeStamp)(msg)) => [msb, lsb, cc14bit(cc_out, value14bit(msb, lsb), ch, ts)]], [T, always([msb, lsb, msg])]])(msg), [0, 0, null]), map$1(([_, __, cc14]) => cc14));
+  const CCsFromCC14bit = (cc_in, cc_msb, cc_lsb) => pipe$1(map$1(cond([[controlEq(cc_in), set$1(control)(cc_msb)], [controlEq(cc_in + 32), set$1(control)(cc_lsb)], [T, identity]])));
 
   // TODO: For some reason, withLatestFrom on noteon/noteoff/... subscribers
   const AS_SETTINGS = 0;
@@ -8408,7 +8410,7 @@
   //
   //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-  const version = '1.1.3';
+  const version = '1.1.5';
 
   exports.A = A;
   exports.A0 = A0;
@@ -8465,6 +8467,8 @@
   exports.C6 = C6;
   exports.C7 = C7;
   exports.C8 = C8;
+  exports.CC14bitFromCCs = CC14bitFromCCs;
+  exports.CCsFromCC14bit = CCsFromCC14bit;
   exports.CYAN = CYAN;
   exports.Cs = Cs;
   exports.Cs1 = Cs1;

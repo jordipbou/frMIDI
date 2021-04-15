@@ -135,6 +135,39 @@ test ('Seamless routing matrix', (t) => {
   t.deepEqual ([M.on (36), M.off (36), M.off (14), M.off (35)], rcvd2)
 })
 
+test ('CC14bitFromCCs', (t) => {
+  const st$ = X.of (M.cc (16), M.cc (14, 64), M.cc (15, 96))
+  let rcvd = []
+
+  st$.pipe (
+    M.CC14bitFromCCs (14, 15, 1)
+  ).subscribe ((msg) => rcvd = R.append (msg) (rcvd))
+ 
+  t.deepEqual (
+    rcvd, [
+      M.cc (16), 
+      M.from ([M.cc (1, 64), M.cc (33, 0)]),
+      M.from ([M.cc (1, 64), M.cc (33, 96)])
+    ])
+})
+
+test ('CCsFromCC14bit', (t) => {
+  const st$ = X.of (M.cc (16), M.cc (1, 64), M.cc (33, 96))
+  let rcvd = []
+  
+  st$.pipe (
+    M.CCsFromCC14bit (1, 14, 15)
+  ).subscribe ((msg) => rcvd = R.append (msg) (rcvd))
+
+  t.deepEqual (
+    rcvd,
+    [
+      M.cc (16),
+      M.cc (14, 64),
+      M.cc (15, 96)
+    ])
+})
+
 // --------------------------------------------- LinnStrument
 
 test ('createState', (t) => {
