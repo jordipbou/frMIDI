@@ -143,10 +143,14 @@ export const changeState = (state, old_state = state) =>
           (colorsFromState (state))
           (colorsFromState (old_state)))))
 
-// TODO: Create linnstrumentstatechanger
-// By sending itself last state, it can compare and its a lot faster!!!
-//export const LinnStrumentStateChanger = () => {
-//  const old_state$ = 
+export const stateChanger = () =>
+  X.pipe (
+    O.scan (
+      ([old_state, _], state) => [state, changeState (state, old_state)],
+      [undefined, null]
+    ),
+    O.map (([_, stateChanges]) => stateChanges)
+  )
   
 // -------------------------------------------------- State logic
 
@@ -258,7 +262,7 @@ export const listener = (state$, lsin$) => {
   const zDataListener = subscribeZData (laststate$, newstate$, lsin$)
 
   return {
-    newstate: laststate$,
+    newstate$: laststate$,
     unsubscribe: () => {
       newstateListener.unsubscribe ()
       noteOnListener.unsubscribe ()

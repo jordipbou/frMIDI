@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.1.6 [2021/04/17] - Added stateChanger for LinnStrument.
 * 1.1.5 [2021/04/16] - Added CC14bitFromCCs and CCsFromCC14bit to use two different knobs of a controller as one 14 bit knob.
 * 1.1.4 [2021/04/14] - LinnStrument listener working. Added createToggle and createRoutingMatrix helpers.
 * 1.1.3 [2021/04/09] - Added changeState function on linnstrument component. 

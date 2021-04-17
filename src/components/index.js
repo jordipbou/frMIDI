@@ -38,6 +38,7 @@ export {
   dissocCell,
   evolveCell,
   changeState,
+  stateChanger,
   
   createToggle,
   createRoutingMatrix,

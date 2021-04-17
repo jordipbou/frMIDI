@@ -7341,11 +7341,8 @@
   const dissocCell = curry((x, y, property, st) => adjustCell(x, y, dissoc(property), st));
   const evolveCell = curry((x, y, transformation, st) => adjustCell(x, y, evolve(transformation), st));
   const colorsFromState = state => flatten(addIndex(map)((column, i) => addIndex(map)((cell, j) => setColor(i, j, cell.color))(column))(state.cells));
-  const changeState = (state, old_state = state) => from$1(map(([a, b]) => a)(filter(([a, b]) => state === old_state || !equals(a, b))(zip(colorsFromState(state))(colorsFromState(old_state))))); // TODO: Create linnstrumentstatechanger
-  // By sending itself last state, it can compare and its a lot faster!!!
-  //export const LinnStrumentStateChanger = () => {
-  //  const old_state$ = 
-  // -------------------------------------------------- State logic
+  const changeState = (state, old_state = state) => from$1(map(([a, b]) => a)(filter(([a, b]) => state === old_state || !equals(a, b))(zip(colorsFromState(state))(colorsFromState(old_state)))));
+  const stateChanger = () => pipe$1(scan(([old_state, _], state) => [state, changeState(state, old_state)], [undefined, null]), map$1(([_, stateChanges]) => stateChanges)); // -------------------------------------------------- State logic
 
   const subscribeNotesOn = (state$, newstate$, lsin$) => lsin$.pipe(filter$1(isNoteOn), withLatestFrom(state$)).subscribe(([msg, state]) => {
     const x = view(note)(msg);
@@ -7418,7 +7415,7 @@
 
     const zDataListener = subscribeZData(laststate$, newstate$, lsin$);
     return {
-      newstate: laststate$,
+      newstate$: laststate$,
       unsubscribe: () => {
         newstateListener.unsubscribe();
         noteOnListener.unsubscribe();
@@ -8410,7 +8407,7 @@
   //
   //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
 
-  const version = '1.1.5';
+  const version = '1.1.6';
 
   exports.A = A;
   exports.A0 = A0;
@@ -8729,6 +8726,7 @@
   exports.ss = ss;
   exports.st = st;
   exports.start = start;
+  exports.stateChanger = stateChanger;
   exports.stop = stop;
   exports.syx = syx;
   exports.tc = tc;
