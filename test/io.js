@@ -61,6 +61,18 @@ test ('Log input/output ports to console', async (t) => {
     ['-out->  Output 1'])
 })
 
+test ('Log input/output ports to console with midiAccess as parameter', async (t) => {
+  const midiAccess = await initialize (false, custom_navigator)
+
+  t.deepEqual (
+    inputsAsText (midiAccess),
+    ['Input 1  -in->', 'Input 2  -in->'])
+
+  t.deepEqual (
+    outputsAsText (midiAccess),
+    ['-out->  Output 1'])
+})
+
 test ('Input creation', (t) => {
   let midi_input = []
   let subscriber = (v) => midi_input = concat (midi_input) ([v])
@@ -122,6 +134,32 @@ test ('Create input by name', async (t) => {
   t.deepEqual (d.version, 'dummy0.0')
 })
 
+test ('Create input by name with midiAccess as parameter', async (t) => {
+  const midiAccess = await initialize (false, custom_navigator)
+
+  // Take default (first one)
+  let in0 = input ('', midiAccess)
+  t.deepEqual (in0.name, 'Input 1')
+
+  // First that includes 2 in its name
+  let in2 = input ('2', midiAccess)
+  t.deepEqual (in2.name, 'Input 2')
+
+  // First that includes Input in its name
+  let in1 = input ('Input', midiAccess)
+  t.deepEqual (in1.name, 'Input 1')
+  t.deepEqual (in1.id, 'Input1')
+  t.deepEqual (in1.manufacturer, 'frmidi')
+  t.deepEqual (in1.version, 'mmiixx9')
+
+  // Return dummy input
+  let d = input ('dummy', midiAccess)
+  t.deepEqual (d.name, 'Dummy input')
+  t.deepEqual (d.id, 'DIn')
+  t.deepEqual (d.manufacturer, 'frMIDI')
+  t.deepEqual (d.version, 'dummy0.0')
+})
+
 test ('Send function', (t) => {
   let midi_output = []
   let output = {
@@ -157,6 +195,28 @@ test ('Output instantiation', async (t) => {
   await initialize (false, custom_navigator)
 
   let out = output ()
+  t.deepEqual (out.name, 'Output 1')
+  t.deepEqual (out.id, 'Output1')
+  t.deepEqual (out.manufacturer, 'frmidi')
+  t.deepEqual (out.version, 'mmiixx11')
+
+  out (on (64))
+  t.deepEqual (midi_output, [[144, 64, 96]])
+
+  //// Subscribing to a MIDI output (for testing)
+  let alt_midi_output = []
+  let receive = (msg) => alt_midi_output = concat (alt_midi_output) ([msg])
+  let ox = out.subscribe (receive)
+  out (off (64))
+  t.deepEqual (midi_output, [[144, 64, 96], [128, 64, 96]])
+  t.deepEqual (alt_midi_output, [off (64)])
+})
+
+test ('Output instantiation with midiAccess as parameter', async (t) => {
+  const midiAccess = await initialize (false, custom_navigator)
+  midi_output = []
+
+  let out = output ('', midiAccess)
   t.deepEqual (out.name, 'Output 1')
   t.deepEqual (out.id, 'Output1')
   t.deepEqual (out.manufacturer, 'frmidi')

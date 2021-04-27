@@ -11,7 +11,7 @@ import {
 
 import { isBrowser, isNode } from 'browser-or-node/src/index.js'
 
-let midiAccess = undefined
+let _midiAccess = undefined
 let _navigator
 let _now
 
@@ -29,7 +29,7 @@ if (isNode) {
 
 // ------------------- WebMidi initialization ----------------------
 
-// Initializes WebMIDI API and saves midiAccess object for later
+// Initializes WebMIDI API and saves _midiAccess object for later
 // use of frMIDI library.
 // MidiAccess object is also returned in the case it's needed by
 // the user (as a promise)
@@ -42,24 +42,24 @@ export const initialize = (sysex = false, custom_navigator = _navigator) => {
       return Promise.reject ("On node environment, custom navigator is needed.")
     }
 
-    if (midiAccess !== undefined) {
-      return Promise.resolve (midiAccess)
+    if (_midiAccess !== undefined) {
+      return Promise.resolve (_midiAccess)
     }
 
 		return custom_navigator
 			.requestMIDIAccess ({ sysex: sysex })
-			.then (m => midiAccess = m)
+			.then (m => _midiAccess = m)
 }
 
 // Writes every input and output port name to the console for reference
 // when instatiating input and output objects.
 
-export const inputsAsText = () =>
+export const inputsAsText = (midiAccess = _midiAccess) =>
 	R.map (
 		i => i [1].name + '  -in->', 
 		[...midiAccess.inputs.entries ()])
 
-export const outputsAsText = () =>
+export const outputsAsText = (midiAccess = _midiAccess) =>
 	R.map (
 		o => '-out->  ' + o [1].name, 
 		[...midiAccess.outputs.entries ()])
@@ -118,7 +118,7 @@ export const inputFrom = (i) => {
   }
 }
 
-export const input = (n = '') => 
+export const input = (n = '', midiAccess = _midiAccess) => 
   n === 'dummy' ?
     inputFrom ()
     : R.head (
@@ -176,7 +176,7 @@ export const outputFrom = (o) => {
   }
 }
 
-export const output = (n = '') =>
+export const output = (n = '', midiAccess = _midiAccess) =>
   n === 'dummy' ?
     outputFrom ()
     : R.head (
@@ -243,55 +243,3 @@ export const loadMIDIFile =	() => {
 
 	return promise
 }
-
-// ------------------ Cycle.js drivers ----------------------
-
-// MIDI Driver sources are both used to indicate state changes
-// on inputs/outputs and for receiving MIDI data from them.
-// MIDI Driver sinks are used to configure required input/
-// outputs and for sending MIDI data.
-
-// TODO: This should work with adapt, not directly with rxjs, but
-// it's not working (wrong version of rxjs -6- for adapt maybe?)
-// As I will be using this exclusively with rxjs, let's maintain this
-// like it is for now.
-
-export const MIDIDriver = (graph$) => {
-  let subscriptions = []
-
-  graph$.addListener ({
-    next: (g) => {
-      R.forEach ((s) => s.unsubscribe ()) (subscriptions)
-      subscriptions = 
-        R.map 
-          ((k) => {
-            if (isBrowser) {
-              return g [k].subscribe (output (k))
-            } else {
-              return g [k].pipe (
-                rxo.map ((v) => msg (v.data))
-              ).subscribe (output (k))
-            }
-          })
-          (R.keys (g))
-    }
-  })
-
-  return {
-    input: input
-  }
-}
-
-// Example, redirect Port-0 input to Port-1 output.
-
-//const main = (sources) => {
-//  const port0 = sources.MIDI.input ('Port-0')
-//  const outgraph$ = new X.BehaviorSubject ({ 'Port-1': port0 })
-//
-//  return {
-//    MIDI: outgraph$
-//  }
-//}
-//
-//M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
-

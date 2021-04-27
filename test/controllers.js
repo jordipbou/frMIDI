@@ -5,7 +5,7 @@ import * as O from 'rxjs/operators'
 import * as M from '../src/index.js'
 import { 
   colorsFromState, disownNote, getOwnerCell, ownNote, setColor 
-} from '../src/components/linnstrument.js'
+} from '../src/controllers/linnstrument.js'
 
 // --------------------------------Routing and Seamless routing matrix
 

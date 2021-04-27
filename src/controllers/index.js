@@ -3,7 +3,7 @@ export {
   seamless_routing_matrix,
   CC14bitFromCCs,
   CCsFromCC14bit
-} from './components.js'
+} from './controllers.js'
 
 export {
   AS_SETTINGS,
@@ -32,6 +32,8 @@ export {
   fullUserFirmwareMode,
 
   createState,
+  ownNote,
+  disownNote,
   getCell,
   adjustCell,
   assocCell,

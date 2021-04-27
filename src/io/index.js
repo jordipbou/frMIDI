@@ -3,10 +3,6 @@ export {
     logPorts,
     input,
     output,
-    loadMIDIFile,
-
-    // -------------- Cycle.js drivers ---------------------
-
-    MIDIDriver
+    loadMIDIFile
   } from './io.js'
 

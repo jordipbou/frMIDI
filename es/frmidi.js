@@ -7437,7 +7437,16 @@ const createToggle = curry((x, y, color_off, color_on, lambda, state) => adjustC
     })(cell))(state));
   },
   onNoteOff: (msg, state) => disownNote(x)(y)(state)
-}))(state));
+}))(state)); // Activating a button deactivates the others in the group,
+// like a track selector.
+
+const createRadioButtons = curry((x, y, w, h, color_off, color_on, lambda, state) => {// TODO
+}); // Creates a button with one option on press/release and one
+// option when sliding to a neighbouring cell.
+//export const createCircularButton =
+//export const createVerticalSlider =
+//export const createHorizontalSlider =
+
 const createRoutingMatrix = curry((x, y, w, h, color_off, color_on, matrix_state$, state) => {
   let matrix_state = repeat(repeat(false)(w))(h);
 
@@ -8180,7 +8189,7 @@ let _MidiParser = _global.MidiParser;
 // delete the global scope reference
 delete _global.MidiParser;
 
-let midiAccess = undefined;
+let _midiAccess = undefined;
 
 let _navigator;
 
@@ -8197,7 +8206,7 @@ if (isNode) {
     return (hr[0] * 1e9 + hr[1]) / 1e9;
   };
 } // ------------------- WebMidi initialization ----------------------
-// Initializes WebMIDI API and saves midiAccess object for later
+// Initializes WebMIDI API and saves _midiAccess object for later
 // use of frMIDI library.
 // MidiAccess object is also returned in the case it's needed by
 // the user (as a promise)
@@ -8211,18 +8220,18 @@ const initialize = (sysex = false, custom_navigator = _navigator) => {
     return Promise.reject("On node environment, custom navigator is needed.");
   }
 
-  if (midiAccess !== undefined) {
-    return Promise.resolve(midiAccess);
+  if (_midiAccess !== undefined) {
+    return Promise.resolve(_midiAccess);
   }
 
   return custom_navigator.requestMIDIAccess({
     sysex: sysex
-  }).then(m => midiAccess = m);
+  }).then(m => _midiAccess = m);
 }; // Writes every input and output port name to the console for reference
 // when instatiating input and output objects.
 
-const inputsAsText = () => map(i => i[1].name + '  -in->', [...midiAccess.inputs.entries()]);
-const outputsAsText = () => map(o => '-out->  ' + o[1].name, [...midiAccess.outputs.entries()]);
+const inputsAsText = (midiAccess = _midiAccess) => map(i => i[1].name + '  -in->', [...midiAccess.inputs.entries()]);
+const outputsAsText = (midiAccess = _midiAccess) => map(o => '-out->  ' + o[1].name, [...midiAccess.outputs.entries()]);
 const logPorts = () => {
   forEach(console.log)(inputsAsText());
   forEach(console.log)(outputsAsText());
@@ -8275,7 +8284,7 @@ const inputFrom = i => {
     return input;
   }
 };
-const input = (n = '') => n === 'dummy' ? inputFrom() : head(pipe(filter(([id, i]) => i.name.includes(n)), map(([id, i]) => inputFrom(i)))([...midiAccess.inputs.entries()])); // ------------------------- MIDI Output ---------------------------
+const input = (n = '', midiAccess = _midiAccess) => n === 'dummy' ? inputFrom() : head(pipe(filter(([id, i]) => i.name.includes(n)), map(([id, i]) => inputFrom(i)))([...midiAccess.inputs.entries()])); // ------------------------- MIDI Output ---------------------------
 // Send function accepts midi messages as:
 // - byte array
 // - MIDIMessage object
@@ -8320,7 +8329,7 @@ const outputFrom = o => {
     return output;
   }
 };
-const output = (n = '') => n === 'dummy' ? outputFrom() : head(pipe(map(([k, v]) => v), filter(({
+const output = (n = '', midiAccess = _midiAccess) => n === 'dummy' ? outputFrom() : head(pipe(map(([k, v]) => v), filter(({
   name
 }) => name.includes(n)), map(v => {
   v.open();
@@ -8362,45 +8371,8 @@ const loadMIDIFile = () => {
   let promise = new Promise((solve, reject) => _MidiParser.parse(input_file_element, midifile => solve(convertFromMidiParser(midifile))));
   input_file_element.click();
   return promise;
-}; // ------------------ Cycle.js drivers ----------------------
-// MIDI Driver sources are both used to indicate state changes
-// on inputs/outputs and for receiving MIDI data from them.
-// MIDI Driver sinks are used to configure required input/
-// outputs and for sending MIDI data.
-// TODO: This should work with adapt, not directly with rxjs, but
-// it's not working (wrong version of rxjs -6- for adapt maybe?)
-// As I will be using this exclusively with rxjs, let's maintain this
-// like it is for now.
+};
 
-const MIDIDriver = graph$ => {
-  let subscriptions = [];
-  graph$.addListener({
-    next: g => {
-      forEach(s => s.unsubscribe())(subscriptions);
-      subscriptions = map(k => {
-        if (isBrowser) {
-          return g[k].subscribe(output(k));
-        } else {
-          return g[k].pipe(map$1(v => msg(v.data))).subscribe(output(k));
-        }
-      })(keys(g));
-    }
-  });
-  return {
-    input: input
-  };
-}; // Example, redirect Port-0 input to Port-1 output.
-//const main = (sources) => {
-//  const port0 = sources.MIDI.input ('Port-0')
-//  const outgraph$ = new X.BehaviorSubject ({ 'Port-1': port0 })
-//
-//  return {
-//    MIDI: outgraph$
-//  }
-//}
-//
-//M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
+const version = '1.1.8';
 
-const version = '1.1.6';
-
-export { A, A0, A1, A2, A3, A4, A5, A6, A7, AS_SETTINGS, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, BLUE, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, CC14bitFromCCs, CCsFromCC14bit, CYAN, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, GREEN, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, LIME, M2, M3, M6, M7, MAGENTA, MIDIDriver, OFF, ORANGE, P1, P4, P5, P8, PINK, RED, TT, WHITE, YELLOW, adjustCell, as, asNoteOff, asNoteOn, assocCell, bpmChange, byteEq, byteEqBy, cc, cc14bit, changeState, channel, channelByKeyRange, clear, clock, cont, control, controlEq, cp, createListener, createLoop, createRoutingMatrix, createSequence, createState, createToggle, dataEq, dataEqBy, decimationRate, deltaTime, dissocCell, e, et, evolveCell, filterEvents, frMeta, from$1 as from, fullUserFirmwareMode, getCell, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, restore, root, routing_matrix, rowSlide, rpn, rst, s, seamless_routing_matrix, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, setColor, spp, ss, st, start, stateChanger, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, userFirmwareMode, value, value14bit, valueEq, velocity, velocityEq, version, w, xData, yData, zData };
+export { A, A0, A1, A2, A3, A4, A5, A6, A7, AS_SETTINGS, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, BLUE, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, CC14bitFromCCs, CCsFromCC14bit, CYAN, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, GREEN, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, LIME, M2, M3, M6, M7, MAGENTA, OFF, ORANGE, P1, P4, P5, P8, PINK, RED, TT, WHITE, YELLOW, adjustCell, as, asNoteOff, asNoteOn, assocCell, bpmChange, byteEq, byteEqBy, cc, cc14bit, changeState, channel, channelByKeyRange, clear, clock, cont, control, controlEq, cp, createListener, createLoop, createRoutingMatrix, createSequence, createState, createToggle, dataEq, dataEqBy, decimationRate, deltaTime, disownNote, dissocCell, e, et, evolveCell, filterEvents, frMeta, from$1 as from, fullUserFirmwareMode, getCell, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnChannel, isOnChannels, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, nrpn, off, on, output, ownNote, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, restore, root, routing_matrix, rowSlide, rpn, rst, s, seamless_routing_matrix, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, setColor, spp, ss, st, start, stateChanger, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, userFirmwareMode, value, value14bit, valueEq, velocity, velocityEq, version, w, xData, yData, zData };

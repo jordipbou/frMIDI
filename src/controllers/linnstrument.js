@@ -2,7 +2,9 @@
 // is not using last sent state on newstate$, 
 // but previous (or even initial) state only
 
-import * as M from '../index.js'
+import * as M from '../messages/index.js'
+import * as P from '../predicates/index.js'
+import * as L from '../lenses/index.js'
 import * as R from 'ramda'
 import * as X from 'rxjs'
 import * as O from 'rxjs/operators'
@@ -156,11 +158,11 @@ export const stateChanger = () =>
 
 export const subscribeNotesOn = (state$, newstate$, lsin$) =>
   lsin$.pipe (
-    O.filter (M.isNoteOn),
+    O.filter (P.isNoteOn),
     O.withLatestFrom (state$)
   ).subscribe (([msg, state]) => {
-    const x = R.view (M.note) (msg)
-    const y = R.view (M.channel) (msg)
+    const x = R.view (L.note) (msg)
+    const y = R.view (L.channel) (msg)
 
     const cell = getOwnerCell (x) (y) (state)
 
@@ -171,11 +173,11 @@ export const subscribeNotesOn = (state$, newstate$, lsin$) =>
 
 export const subscribeNotesOff = (state$, newstate$, lsin$) =>
   lsin$.pipe (
-    O.filter (M.isNoteOff),
+    O.filter (P.isNoteOff),
     O.withLatestFrom (state$)
   ).subscribe (([msg, state]) => {
-    const x = R.view (M.note) (msg)
-    const y = R.view (M.channel) (msg)
+    const x = R.view (L.note) (msg)
+    const y = R.view (L.channel) (msg)
 
     const cell = getOwnerCell (x) (y) (state)
 
@@ -186,11 +188,11 @@ export const subscribeNotesOff = (state$, newstate$, lsin$) =>
 
 export const subscribeRowSlide = (state$, newstate$, lsin$) =>
   lsin$.pipe (
-    O.filter (M.controlEq (119)),
+    O.filter (P.controlEq (119)),
     O.withLatestFrom (state$)
   ).subscribe (([msg, state]) => {
-    const x = R.view (M.note) (msg)
-    const y = R.view (M.channel) (msg)
+    const x = R.view (L.note) (msg)
+    const y = R.view (L.channel) (msg)
 
     const cell = getOwnerCell (x) (y) (state)
 
@@ -234,11 +236,11 @@ export const subscribeRowSlide = (state$, newstate$, lsin$) =>
 
 export const subscribeZData = (state$, newstate$, lsin$) =>
   lsin$.pipe (
-    O.filter (M.isPolyPressure),
+    O.filter (P.isPolyPressure),
     O.withLatestFrom (state$)
   ).subscribe (([msg, state]) => {
-    const x = R.view (M.note) (msg)
-    const y = R.view (M.channel) (msg)
+    const x = R.view (L.note) (msg)
+    const y = R.view (L.channel) (msg)
 
     const cell = getOwnerCell (x) (y) (state)
 
@@ -309,6 +311,21 @@ export const createToggle =
             (state)
       }))
       (state))
+
+// Activating a button deactivates the others in the group,
+// like a track selector.
+export const createRadioButtons = 
+  R.curry ((x, y, w, h, color_off, color_on, lambda, state) => {
+    // TODO
+  })
+
+// Creates a button with one option on press/release and one
+// option when sliding to a neighbouring cell.
+//export const createCircularButton =
+
+//export const createVerticalSlider =
+
+//export const createHorizontalSlider =
 
 export const createRoutingMatrix =
   R.curry ((x, y, w, h, color_off, color_on, matrix_state$, state) => {

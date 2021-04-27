@@ -7443,7 +7443,16 @@
       })(cell))(state));
     },
     onNoteOff: (msg, state) => disownNote(x)(y)(state)
-  }))(state));
+  }))(state)); // Activating a button deactivates the others in the group,
+  // like a track selector.
+
+  const createRadioButtons = curry((x, y, w, h, color_off, color_on, lambda, state) => {// TODO
+  }); // Creates a button with one option on press/release and one
+  // option when sliding to a neighbouring cell.
+  //export const createCircularButton =
+  //export const createVerticalSlider =
+  //export const createHorizontalSlider =
+
   const createRoutingMatrix = curry((x, y, w, h, color_off, color_on, matrix_state$, state) => {
     let matrix_state = repeat(repeat(false)(w))(h);
 
@@ -8186,7 +8195,7 @@
   // delete the global scope reference
   delete _global.MidiParser;
 
-  let midiAccess = undefined;
+  let _midiAccess = undefined;
 
   let _navigator;
 
@@ -8203,7 +8212,7 @@
       return (hr[0] * 1e9 + hr[1]) / 1e9;
     };
   } // ------------------- WebMidi initialization ----------------------
-  // Initializes WebMIDI API and saves midiAccess object for later
+  // Initializes WebMIDI API and saves _midiAccess object for later
   // use of frMIDI library.
   // MidiAccess object is also returned in the case it's needed by
   // the user (as a promise)
@@ -8217,18 +8226,18 @@
       return Promise.reject("On node environment, custom navigator is needed.");
     }
 
-    if (midiAccess !== undefined) {
-      return Promise.resolve(midiAccess);
+    if (_midiAccess !== undefined) {
+      return Promise.resolve(_midiAccess);
     }
 
     return custom_navigator.requestMIDIAccess({
       sysex: sysex
-    }).then(m => midiAccess = m);
+    }).then(m => _midiAccess = m);
   }; // Writes every input and output port name to the console for reference
   // when instatiating input and output objects.
 
-  const inputsAsText = () => map(i => i[1].name + '  -in->', [...midiAccess.inputs.entries()]);
-  const outputsAsText = () => map(o => '-out->  ' + o[1].name, [...midiAccess.outputs.entries()]);
+  const inputsAsText = (midiAccess = _midiAccess) => map(i => i[1].name + '  -in->', [...midiAccess.inputs.entries()]);
+  const outputsAsText = (midiAccess = _midiAccess) => map(o => '-out->  ' + o[1].name, [...midiAccess.outputs.entries()]);
   const logPorts = () => {
     forEach(console.log)(inputsAsText());
     forEach(console.log)(outputsAsText());
@@ -8281,7 +8290,7 @@
       return input;
     }
   };
-  const input = (n = '') => n === 'dummy' ? inputFrom() : head(pipe(filter(([id, i]) => i.name.includes(n)), map(([id, i]) => inputFrom(i)))([...midiAccess.inputs.entries()])); // ------------------------- MIDI Output ---------------------------
+  const input = (n = '', midiAccess = _midiAccess) => n === 'dummy' ? inputFrom() : head(pipe(filter(([id, i]) => i.name.includes(n)), map(([id, i]) => inputFrom(i)))([...midiAccess.inputs.entries()])); // ------------------------- MIDI Output ---------------------------
   // Send function accepts midi messages as:
   // - byte array
   // - MIDIMessage object
@@ -8326,7 +8335,7 @@
       return output;
     }
   };
-  const output = (n = '') => n === 'dummy' ? outputFrom() : head(pipe(map(([k, v]) => v), filter(({
+  const output = (n = '', midiAccess = _midiAccess) => n === 'dummy' ? outputFrom() : head(pipe(map(([k, v]) => v), filter(({
     name
   }) => name.includes(n)), map(v => {
     v.open();
@@ -8368,46 +8377,9 @@
     let promise = new Promise((solve, reject) => _MidiParser.parse(input_file_element, midifile => solve(convertFromMidiParser(midifile))));
     input_file_element.click();
     return promise;
-  }; // ------------------ Cycle.js drivers ----------------------
-  // MIDI Driver sources are both used to indicate state changes
-  // on inputs/outputs and for receiving MIDI data from them.
-  // MIDI Driver sinks are used to configure required input/
-  // outputs and for sending MIDI data.
-  // TODO: This should work with adapt, not directly with rxjs, but
-  // it's not working (wrong version of rxjs -6- for adapt maybe?)
-  // As I will be using this exclusively with rxjs, let's maintain this
-  // like it is for now.
+  };
 
-  const MIDIDriver = graph$ => {
-    let subscriptions = [];
-    graph$.addListener({
-      next: g => {
-        forEach(s => s.unsubscribe())(subscriptions);
-        subscriptions = map(k => {
-          if (isBrowser) {
-            return g[k].subscribe(output(k));
-          } else {
-            return g[k].pipe(map$1(v => msg(v.data))).subscribe(output(k));
-          }
-        })(keys(g));
-      }
-    });
-    return {
-      input: input
-    };
-  }; // Example, redirect Port-0 input to Port-1 output.
-  //const main = (sources) => {
-  //  const port0 = sources.MIDI.input ('Port-0')
-  //  const outgraph$ = new X.BehaviorSubject ({ 'Port-1': port0 })
-  //
-  //  return {
-  //    MIDI: outgraph$
-  //  }
-  //}
-  //
-  //M.initialize (false, J).then (() => run (main, { MIDI: M.MIDIDriver }))
-
-  const version = '1.1.6';
+  const version = '1.1.8';
 
   exports.A = A;
   exports.A0 = A0;
@@ -8562,7 +8534,6 @@
   exports.M6 = M6;
   exports.M7 = M7;
   exports.MAGENTA = MAGENTA;
-  exports.MIDIDriver = MIDIDriver;
   exports.OFF = OFF;
   exports.ORANGE = ORANGE;
   exports.P1 = P1;
@@ -8603,6 +8574,7 @@
   exports.dataEqBy = dataEqBy;
   exports.decimationRate = decimationRate;
   exports.deltaTime = deltaTime;
+  exports.disownNote = disownNote;
   exports.dissocCell = dissocCell;
   exports.e = e;
   exports.et = et;
@@ -8689,6 +8661,7 @@
   exports.off = off;
   exports.on = on;
   exports.output = output;
+  exports.ownNote = ownNote;
   exports.panic = panic;
   exports.pattern = pattern;
   exports.pb = pb;
