@@ -212,6 +212,15 @@ test ('Output instantiation', async (t) => {
   t.deepEqual (alt_midi_output, [off (64)])
 })
 
+test ('Calling output send function with next syntax', async (t) => {
+  await initialize (false, custom_navigator)
+
+  midi_output = []
+  let out = output ()
+  out.next (on (64))
+  t.deepEqual (midi_output, [[144, 64, 96]])
+})
+
 test ('Output instantiation with midiAccess as parameter', async (t) => {
   const midiAccess = await initialize (false, custom_navigator)
   midi_output = []

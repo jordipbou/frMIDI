@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.1.9 [2021/04/28] - Add .next function to midi output.
 * 1.1.8 [2021/04/28] - Exported ownNote and disownNote from linnstrument.js.
 * 1.1.7 [2021/04/19] - Functions that depend on midiAccess now allow it as a parameter.
 * 1.1.6 [2021/04/17] - Added stateChanger for LinnStrument.

@@ -161,6 +161,7 @@ export const outputFrom = (o) => {
     output.manufacturer = o.manufacturer
     output.version = o.version
     output.subscribe = R.bind (receiver.subscribe, receiver)
+    output.next = send (sendfn)
 
     return output
   } else {
@@ -171,6 +172,7 @@ export const outputFrom = (o) => {
     output.manufacturer = 'frMIDI'
     output.version = 'dummy0.0'
     output.subscribe = R.bind (receiver.subscribe, receiver)
+    output.next = send (sendfn)
 
     return output
   }

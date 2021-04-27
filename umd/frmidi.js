@@ -8320,6 +8320,7 @@
       output.manufacturer = o.manufacturer;
       output.version = o.version;
       output.subscribe = bind(receiver.subscribe, receiver);
+      output.next = send(sendfn);
       return output;
     } else {
       let sendfn = (d, t) => receiver.next(msg(d, t));
@@ -8332,6 +8333,7 @@
       output.manufacturer = 'frMIDI';
       output.version = 'dummy0.0';
       output.subscribe = bind(receiver.subscribe, receiver);
+      output.next = send(sendfn);
       return output;
     }
   };
@@ -8379,7 +8381,7 @@
     return promise;
   };
 
-  const version = '1.1.8';
+  const version = '1.1.9';
 
   exports.A = A;
   exports.A0 = A0;
