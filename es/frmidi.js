@@ -4390,6 +4390,7 @@ const hasNote = msg => either(isNote)(isPolyPressure)(msg);
 const noteEq = curry((n, msg) => both(hasNote)(byteEq(1)(n))(msg));
 const isControlChange = msg => isChannelVoiceMessageOfType(11)(msg);
 const controlEq = curry((c, msg) => both(isControlChange)(byteEq(1)(c))(msg));
+const controlIn = curry((controls, msg) => both(isControlChange)(_ => any(c => byteEq(1)(c)(msg))(controls))(msg));
 const valueEq = curry((v, msg) => both(isControlChange)(byteEq(2)(v))(msg)); // Some CC messages by name
 
 const isTimbreChange = msg => both(isControlChange)(controlEq(74))(msg);
@@ -5966,14 +5967,7 @@ function innerSubscribe(result, innerSubscriber) {
     if (result instanceof Observable) {
         return result.subscribe(innerSubscriber);
     }
-    var subscription;
-    try {
-        subscription = subscribeTo(result)(innerSubscriber);
-    }
-    catch (error) {
-        innerSubscriber.error(error);
-    }
-    return subscription;
+    return subscribeTo(result)(innerSubscriber);
 }
 
 /** PURE_IMPORTS_START tslib,_map,_observable_from,_innerSubscribe PURE_IMPORTS_END */

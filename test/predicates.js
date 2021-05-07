@@ -151,6 +151,12 @@ test ('controlEq', (t) => {
   t.true (P.controlEq (32) (msg ([176, 32, 18])))
 })
 
+test ('controlIn', (t) => {
+	t.false (P.controlIn ([32, 33, 34]) (msg ([144, 32, 18])))
+	t.false (P.controlIn ([32, 33, 34]) (msg ([176, 30, 18])))
+	t.true (P.controlIn ([32, 33, 34]) (msg ([176, 32, 18])))
+})
+
 test ('valueEq', (t) => {
   t.false (P.valueEq (18) (msg ([144, 32, 18])))
   t.true (P.valueEq (18) (msg ([176, 32, 18])))

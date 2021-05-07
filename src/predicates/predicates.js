@@ -1,5 +1,5 @@
 import { 
-    all, allPass, anyPass, both, cond, complement, curry, 
+    __, all, allPass, any, anyPass, both, cond, complement, curry, 
     either, equals, F, has, includes, is, isEmpty, 
     length,path, pathEq, propEq, propSatisfies, T
   } from 'ramda'
@@ -90,6 +90,11 @@ export const controlEq = curry((c, msg) =>
   both (isControlChange)
        (byteEq (1) (c))
        (msg))
+
+export const controlIn = curry((controls, msg) =>
+	both (isControlChange)
+			 ((_) => any ((c) => byteEq (1) (c) (msg)) (controls))
+			 (msg))
 
 export const valueEq = curry((v, msg) =>
   both (isControlChange)
