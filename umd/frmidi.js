@@ -8375,7 +8375,7 @@
     return promise;
   };
 
-  const version = '1.1.9';
+  const version = '1.1.11';
 
   exports.A = A;
   exports.A0 = A0;
@@ -8559,6 +8559,7 @@
   exports.cont = cont;
   exports.control = control;
   exports.controlEq = controlEq;
+  exports.controlIn = controlIn;
   exports.cp = cp;
   exports.createListener = createListener;
   exports.createLoop = createLoop;

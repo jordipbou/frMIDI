@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.1.11 [2021/05/07] - ControlIn was not exported.
 * 1.1.10 [2021/05/06] - Added controlIn to predicates.
 * 1.1.9 [2021/04/28] - Add .next function to midi output.
 * 1.1.8 [2021/04/28] - Exported ownNote and disownNote from linnstrument.js.

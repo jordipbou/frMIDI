@@ -24,6 +24,7 @@ export {
     noteEq,
     isControlChange,
     controlEq,
+		controlIn,
     valueEq,
     // Some CC messages by name ---
     isTimbreChange,
