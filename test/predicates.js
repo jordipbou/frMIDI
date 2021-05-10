@@ -141,6 +141,12 @@ test ('noteEq', (t) => {
   t.true (P.noteEq (64) (msg ([160, 64, 96])))
 })
 
+test ('noteIn', (t) => {
+	t.false (P.noteIn ([32, 33, 34]) (msg ([176, 32, 18])))
+	t.false (P.noteIn ([32, 33, 34]) (msg ([144, 30, 18])))
+	t.true (P.noteIn ([32, 33, 34]) (msg ([144, 32, 18])))
+})
+
 test ('isControlChange', (t) => {
   t.true (P.isControlChange (msg ([191, 32, 16])))
   t.false (P.isControlChange (msg ([192, 32, 16])))

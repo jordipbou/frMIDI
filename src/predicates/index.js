@@ -22,6 +22,7 @@ export {
     isPolyPressure,
     hasNote,
     noteEq,
+		noteIn,
     isControlChange,
     controlEq,
 		controlIn,

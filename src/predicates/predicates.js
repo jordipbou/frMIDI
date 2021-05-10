@@ -83,6 +83,11 @@ export const noteEq = curry((n, msg) =>
        (byteEq (1) (n))
        (msg))
 
+export const noteIn = curry ((notes, msg) =>
+	both (isNote)
+			 ((_) => any ((n) => byteEq (1) (n) (msg)) (notes))
+			 (msg))
+
 export const isControlChange = (msg) =>
   isChannelVoiceMessageOfType (11) (msg)
 

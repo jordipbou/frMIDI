@@ -4394,6 +4394,7 @@
   const isPolyPressure = msg => isChannelVoiceMessageOfType(10)(msg);
   const hasNote = msg => either(isNote)(isPolyPressure)(msg);
   const noteEq = curry((n, msg) => both(hasNote)(byteEq(1)(n))(msg));
+  const noteIn = curry((notes, msg) => both(isNote)(_ => any(n => byteEq(1)(n)(msg))(notes))(msg));
   const isControlChange = msg => isChannelVoiceMessageOfType(11)(msg);
   const controlEq = curry((c, msg) => both(isControlChange)(byteEq(1)(c))(msg));
   const controlIn = curry((controls, msg) => both(isControlChange)(_ => any(c => byteEq(1)(c)(msg))(controls))(msg));
@@ -8375,7 +8376,7 @@
     return promise;
   };
 
-  const version = '1.1.11';
+  const version = '1.1.12';
 
   exports.A = A;
   exports.A0 = A0;
@@ -8654,6 +8655,7 @@
   exports.msg = msg;
   exports.note = note;
   exports.noteEq = noteEq;
+  exports.noteIn = noteIn;
   exports.nrpn = nrpn;
   exports.off = off;
   exports.on = on;
