@@ -7301,11 +7301,11 @@
   const decimationRate = (rate = 12) => cc(13, rate);
   const fullUserFirmwareMode = enable => from$1([userFirmwareMode(enable), ...map(r => xData(r)(enable))(range(0, 8)), ...map(r => rowSlide(r)(enable))(range(0, 8)), ...map(r => yData(r)(enable))(range(0, 8)), ...map(r => zData(r)(enable))(range(0, 8))]); // -------- States (screens) for LinnStrument controller creation
 
-  const createState = (width = 17, height = 8) => ({
+  const createState = (width = 17, height = 8, data = {
+    color: OFF
+  }) => ({
     ownedNotes: [],
-    cells: map(x => map(y => ({
-      color: OFF
-    }))(range(0, height)))(range(0, width))
+    cells: map(x => map(y => data)(range(0, height)))(range(0, width))
   });
   const ownNote = curry((note, channel, x, y, state) => evolve({
     ownedNotes: append({
@@ -8376,7 +8376,7 @@
     return promise;
   };
 
-  const version = '1.1.12';
+  const version = '1.1.13';
 
   exports.A = A;
   exports.A0 = A0;

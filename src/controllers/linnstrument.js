@@ -73,12 +73,12 @@ export const fullUserFirmwareMode = (enable) =>
 
 // -------- States (screens) for LinnStrument controller creation
 
-export const createState = (width = 17, height = 8) => ({
+export const createState = (width = 17, height = 8, data = { color: OFF }) => ({
   ownedNotes: [],
   cells: R.map 
            ((x) => 
              R.map 
-               ((y) => ({ color: OFF })) 
+               ((y) => (data))
                (R.range (0, height))) 
            (R.range (0, width))
 })

@@ -195,6 +195,17 @@ test ('createState', (t) => {
         [ cell, cell, cell ]
       ]
     })
+
+	const cell2 = { blink: true, color: 8 }
+  t.deepEqual (
+    M.createState (2, 3, { blink: true, color: 8 }),
+    {
+      ownedNotes: [],
+      cells: [
+        [ cell2, cell2, cell2 ],
+        [ cell2, cell2, cell2 ]
+      ]
+    })
 })
 
 test ('ownNote', (t) => {
