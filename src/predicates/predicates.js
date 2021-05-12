@@ -106,6 +106,11 @@ export const valueEq = curry((v, msg) =>
        (byteEq (2) (v))
        (msg))
 
+export const valueIn = curry((values, msg) =>
+	both (isControlChange)
+			 ((_) => any ((c) => byteEq (2) (c) (msg)) (values))
+			 (msg))
+
 // Some CC messages by name
 export const isTimbreChange = (msg) =>
   both (isControlChange)

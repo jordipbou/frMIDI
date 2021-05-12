@@ -4398,7 +4398,8 @@
   const isControlChange = msg => isChannelVoiceMessageOfType(11)(msg);
   const controlEq = curry((c, msg) => both(isControlChange)(byteEq(1)(c))(msg));
   const controlIn = curry((controls, msg) => both(isControlChange)(_ => any(c => byteEq(1)(c)(msg))(controls))(msg));
-  const valueEq = curry((v, msg) => both(isControlChange)(byteEq(2)(v))(msg)); // Some CC messages by name
+  const valueEq = curry((v, msg) => both(isControlChange)(byteEq(2)(v))(msg));
+  const valueIn = curry((values, msg) => both(isControlChange)(_ => any(c => byteEq(2)(c)(msg))(values))(msg)); // Some CC messages by name
 
   const isTimbreChange = msg => both(isControlChange)(controlEq(74))(msg);
   const isProgramChange = msg => isChannelVoiceMessageOfType(12)(msg);
@@ -8376,7 +8377,7 @@
     return promise;
   };
 
-  const version = '1.1.13';
+  const version = '1.1.14';
 
   exports.A = A;
   exports.A0 = A0;

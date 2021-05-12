@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.1.14 [2021/05/13] - Added valueIn to predicates.
 * 1.1.13 [2021/05/11] - LinnStrument createState accepts default cell state.
 * 1.1.12 [2021/05/10] - Added noteIn to predicates.
 * 1.1.11 [2021/05/07] - ControlIn was not exported.

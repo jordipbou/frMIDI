@@ -168,6 +168,12 @@ test ('valueEq', (t) => {
   t.true (P.valueEq (18) (msg ([176, 32, 18])))
 })
 
+test ('valueIn', (t) => {
+	t.false (P.valueIn ([32, 33, 34]) (msg ([144, 64, 18])))
+	t.false (P.valueIn ([32, 33, 34]) (msg ([176, 64, 30])))
+	t.true (P.valueIn ([32, 33, 34]) (msg ([176, 64, 32])))
+})
+
 test ('isTimbreChange', (t) => {
   t.false (P.isTimbreChange (msg ([176, 50, 18])))
   t.true (P.isTimbreChange (msg ([176, 74, 18])))
