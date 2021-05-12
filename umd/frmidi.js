@@ -8377,7 +8377,7 @@
     return promise;
   };
 
-  const version = '1.1.14';
+  const version = '1.1.15';
 
   exports.A = A;
   exports.A0 = A0;
@@ -8715,6 +8715,7 @@
   exports.value = value;
   exports.value14bit = value14bit;
   exports.valueEq = valueEq;
+  exports.valueIn = valueIn;
   exports.velocity = velocity;
   exports.velocityEq = velocityEq;
   exports.version = version;
