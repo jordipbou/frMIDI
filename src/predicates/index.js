@@ -8,8 +8,8 @@ export {
     byteEqBy,
     // --------------------------------------Channel (Voice|Mode) Messages
     isChannelMessage,
-    isOnChannel,
-    isOnChannels,
+    channelEq,
+    channelIn,
     // -------------------------------------------- Channel Voice Messages
     isChannelVoice,
     isNoteOff,

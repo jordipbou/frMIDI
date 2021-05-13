@@ -19,7 +19,7 @@ import {
     controlEq, isActiveSensing,
     isContinue, isControlChange, isChannelPressure, 
     isMIDIClock, isMIDITimeCodeQuarterFrame, isNoteOff, 
-    isNoteOn, isNRPN, isOnChannel, isPolyPressure, isPitchBend, 
+    isNoteOn, isNRPN, channelEq, isPolyPressure, isPitchBend, 
     isProgramChange, isReset, isRPN, isSongPositionPointer, 
     isSongSelect, isStart, isStop,
     isSystemExclusive, isTuneRequest,
@@ -81,7 +81,7 @@ test ('14 bit value from msb and lsb', (t) => {
 
 test ('Note Off message creation', (t) => {
   let preds = (n, v, ch) => 
-    [isNoteOff, noteEq (n), velocityEq (v), isOnChannel (ch)]
+    [isNoteOff, noteEq (n), velocityEq (v), channelEq (ch)]
 
   t.true (allPass (preds (77, 96, 0)) (off (77)))
   t.true (allPass (preds (77, 127, 0)) (off (77, 127)))
@@ -92,7 +92,7 @@ test ('Note Off message creation', (t) => {
 
 test ('Note On message creation', (t) => {
   let preds = (n, v, ch) => 
-    [isNoteOn, noteEq (n), velocityEq (v), isOnChannel (ch)]
+    [isNoteOn, noteEq (n), velocityEq (v), channelEq (ch)]
 
   t.true (allPass (preds (77, 96, 0)) (on (77)))
   t.true (allPass (preds (77, 127, 0)) (on (77, 127)))
@@ -104,7 +104,7 @@ test ('Note On message creation', (t) => {
 test ('Poly Pressure message creation', (t) => {
   let preds = (n, v, ch) => 
     [isPolyPressure, noteEq (n), 
-     pressureEq (v), isOnChannel (ch)]
+     pressureEq (v), channelEq (ch)]
 
   t.true (allPass (preds (77, 96, 0)) (pp (77)))
   t.true (allPass (preds (77, 127, 0)) (pp (77, 127)))
@@ -116,7 +116,7 @@ test ('Poly Pressure message creation', (t) => {
 test ('Control Change message creation', (t) => {
   let preds = (n, v, ch) => 
     [isControlChange, controlEq (n), 
-     valueEq (v), isOnChannel (ch)]
+     valueEq (v), channelEq (ch)]
 
   t.true (allPass (preds (32, 127, 0)) (cc (32, 127)))
   t.true (allPass (preds (32, 127, 10)) (cc (32, 127, 10)))
@@ -137,7 +137,7 @@ test ('14 bit Control Change message creation', (t) => {
 
 test ('Program Change message creation', (t) => {
   let preds = (p, ch) => 
-    [isProgramChange, programEq (p), isOnChannel (ch)]
+    [isProgramChange, programEq (p), channelEq (ch)]
 
   t.true (allPass (preds (18, 0)) (pc (18)))
   t.true (allPass (preds (18, 10)) (pc (18, 10)))
@@ -147,7 +147,7 @@ test ('Program Change message creation', (t) => {
 
 test ('Channel Pressure message creation', (t) => {
   let preds = (p, ch) =>
-    [isChannelPressure, pressureEq (p), isOnChannel (ch)]
+    [isChannelPressure, pressureEq (p), channelEq (ch)]
 
   t.true (allPass (preds (96, 0)) (cp (96)))
   t.true (allPass (preds (96, 10)) (cp (96, 10)))
@@ -157,7 +157,7 @@ test ('Channel Pressure message creation', (t) => {
 
 test ('Pitch Bend message creation', (t) => {
   let preds = (pb, ch) =>
-    [isPitchBend, pitchBendEq (pb), isOnChannel (ch)]
+    [isPitchBend, pitchBendEq (pb), channelEq (ch)]
 
   t.true (allPass (preds (8192, 0)) (pb (8192)))
   t.true (allPass (preds (8192, 10)) (pb (8192, 10)))
@@ -167,7 +167,7 @@ test ('Pitch Bend message creation', (t) => {
 
 test ('RPN message creation', (t) => {
   let preds = (n, v, ch) =>
-    [isRPN, isOnChannel (ch)]
+    [isRPN, channelEq (ch)]
 
   t.true (allPass (preds (245, 1, 0)) (rpn (245, 1)))
   t.true (allPass (preds (245, 1, 3)) (rpn (245, 1, 3)))
@@ -177,7 +177,7 @@ test ('RPN message creation', (t) => {
 
 test ('NRPN message creation', (t) => {
   let preds = (n, v, ch) =>
-    [isNRPN, isOnChannel (ch)]
+    [isNRPN, channelEq (ch)]
 
   t.true (allPass (preds (245, 1, 0)) (nrpn (245, 1)))
   t.true (allPass (preds (245, 1, 3)) (nrpn (245, 1, 3)))
@@ -190,8 +190,8 @@ test ('NRPN message creation', (t) => {
 test ('Change channel modification helper', (t) => {
   let msg = on (64)
 
-  t.true (isOnChannel (0) (msg))
-  t.true (isOnChannel (5) (set (channel) (5) (msg)))
+  t.true (channelEq (0) (msg))
+  t.true (channelEq (5) (set (channel) (5) (msg)))
 })
 
 // -------------- System common messages generation ----------------

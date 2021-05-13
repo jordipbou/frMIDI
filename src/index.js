@@ -8,4 +8,4 @@ export * from './controllers'
 export * from './music_defs.js'
 export * from './io'
 
-export const version = '1.1.15'
+export const version = '1.1.16'

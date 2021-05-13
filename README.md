@@ -165,8 +165,9 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
-* 1.1.15 [2021/05/14] - Forgot to export valueIn.
-* 1.1.14 [2021/05/13] - Added valueIn to predicates.
+* 1.1.16 [2021/05/13] - Changed predicates isOnChannel and isOnChannels to channelEq and channelIn, for consistency with noteEq/noteIn and controlEq/controlIn.
+* 1.1.15 [2021/05/13] - Forgot to export valueIn.
+* 1.1.14 [2021/05/12] - Added valueIn to predicates.
 * 1.1.13 [2021/05/11] - LinnStrument createState accepts default cell state.
 * 1.1.12 [2021/05/10] - Added noteIn to predicates.
 * 1.1.11 [2021/05/07] - ControlIn was not exported.

@@ -257,15 +257,15 @@ test ('isChannelMessage', (t) => {
   t.false (P.isChannelMessage (msg ([248])))
 })
 
-test ('isOnChannel', (t) => {
-  t.false (P.isOnChannel (2) (msg ([128, 64, 96])))
-  t.true (P.isOnChannel (2) (msg ([130, 64, 96])))
+test ('channelEq', (t) => {
+  t.false (P.channelEq (2) (msg ([128, 64, 96])))
+  t.true (P.channelEq (2) (msg ([130, 64, 96])))
 })
 
-test ('isOnChannels', (t) => {
-  t.false (P.isOnChannels ([2, 5]) (msg ([128, 64, 96])))
-  t.true (P.isOnChannels ([2, 5]) (msg ([130, 64, 96])))
-  t.true (P.isOnChannels ([2, 5]) (msg ([133, 64, 96])))
+test ('channelIn', (t) => {
+  t.false (P.channelIn ([2, 5]) (msg ([128, 64, 96])))
+  t.true (P.channelIn ([2, 5]) (msg ([130, 64, 96])))
+  t.true (P.channelIn ([2, 5]) (msg ([133, 64, 96])))
 })
 
 // ----------------- System Common Messages ------------------------

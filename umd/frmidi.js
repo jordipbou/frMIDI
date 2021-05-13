@@ -4426,8 +4426,8 @@
   const isRPN = msg => allPass([seemsMessage, byteEq(1)(101), byteEq(4)(100), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
   const isNRPN = msg => allPass([seemsMessage, byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
   const isChannelMessage = msg => anyPass([isChannelMode, isChannelVoice, isRPN, isNRPN])(msg);
-  const isOnChannel = curry((ch, msg) => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg));
-  const isOnChannels = curry((chs, msg) => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg)); // ------------------ System Common message predicates -------------------
+  const channelEq = curry((ch, msg) => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg));
+  const channelIn = curry((chs, msg) => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg)); // ------------------ System Common message predicates -------------------
 
   const isSystemExclusive = msg => allPass([seemsMessage, byteEq(0)(240), byteEq(-1)(247)])(msg);
   const isMIDITimeCodeQuarterFrame = msg => both(seemsMessage)(byteEq(0)(241))(msg);
@@ -8377,7 +8377,7 @@
     return promise;
   };
 
-  const version = '1.1.15';
+  const version = '1.1.16';
 
   exports.A = A;
   exports.A0 = A0;
@@ -8556,6 +8556,8 @@
   exports.changeState = changeState;
   exports.channel = channel;
   exports.channelByKeyRange = channelByKeyRange;
+  exports.channelEq = channelEq;
+  exports.channelIn = channelIn;
   exports.clear = clear;
   exports.clock = clock;
   exports.cont = cont;
@@ -8613,8 +8615,6 @@
   exports.isNoteOn = isNoteOn;
   exports.isOmniModeOff = isOmniModeOff;
   exports.isOmniModeOn = isOmniModeOn;
-  exports.isOnChannel = isOnChannel;
-  exports.isOnChannels = isOnChannels;
   exports.isOnMasterChannel = isOnMasterChannel;
   exports.isOnZone = isOnZone;
   exports.isPitchBend = isPitchBend;

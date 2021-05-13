@@ -234,12 +234,12 @@ export const isChannelMessage = (msg) =>
   anyPass ([ isChannelMode, isChannelVoice, isRPN, isNRPN ])
           (msg)
 
-export const isOnChannel = curry((ch, msg) =>
+export const channelEq = curry((ch, msg) =>
   both (isChannelMessage)
        (byteEqBy (0) (v => (v & 0xF) === ch))
        (msg))
 
-export const isOnChannels = curry((chs, msg) =>
+export const channelIn = curry((chs, msg) =>
   both (isChannelMessage)
        (byteEqBy (0) (v => includes (v & 0xF, chs)))
        (msg))
