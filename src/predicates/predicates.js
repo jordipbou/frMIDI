@@ -1,7 +1,7 @@
 import { 
     __, all, allPass, any, anyPass, both, cond, complement, curry, 
     either, equals, F, has, includes, is, isEmpty, 
-    length,path, pathEq, propEq, propSatisfies, T
+    length,path, pathEq, propEq, propSatisfies, reduce, T, zip
   } from 'ramda'
 
 // ===================== MIDI Messages predicates ========================
@@ -20,9 +20,13 @@ export const seemsMessage = (msg) =>
 // ------- Utilities for comparing MIDI messages byte array values -------
 
 export const dataEq = curry ((data, msg) =>
-  seemsMessage (msg) ?
-    equals (data) (msg.data)
-    : false)
+	allPass ([
+		seemsMessage,
+		(msg) => equals (length (data)) (length (msg.data)),
+		(msg) => reduce ((acc, [a, b]) => acc && a === b) 
+		                (true) 
+										(zip (data) (msg.data))
+	]) (msg))
 
 export const byteEq = curry ((n, data, msg) =>
   seemsMessage (msg) ?

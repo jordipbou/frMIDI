@@ -4378,7 +4378,7 @@
 
   const seemsMessage = msg => msg !== null && msg !== undefined && typeof msg === 'object' && msg.type === 'midimessage' && msg.data !== null && msg.data !== undefined && (msg.data.constructor === Uint8Array || msg.data.constructor === Array) && msg.data.length > 0; // ------- Utilities for comparing MIDI messages byte array values -------
 
-  const dataEq = curry((data, msg) => seemsMessage(msg) ? equals(data)(msg.data) : false);
+  const dataEq = curry((data, msg) => allPass([seemsMessage, msg => equals(length(data))(length(msg.data)), msg => reduce((acc, [a, b]) => acc && a === b)(true)(zip(data)(msg.data))])(msg));
   const byteEq = curry((n, data, msg) => seemsMessage(msg) ? pathEq([n])(data)(msg.data) : false);
   const dataEqBy = curry((pred, msg) => seemsMessage(msg) ? pred(msg.data) : false);
   const byteEqBy = curry((n, pred, msg) => seemsMessage(msg) ? pred(path([n])(msg.data)) : false); // --------------------- Channel Voice Messages --------------------------
@@ -8377,7 +8377,7 @@
     return promise;
   };
 
-  const version = '1.1.16';
+  const version = '1.1.17';
 
   exports.A = A;
   exports.A0 = A0;

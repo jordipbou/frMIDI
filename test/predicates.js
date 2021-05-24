@@ -25,6 +25,7 @@ test ('seems a MIDI message', (t) => {
   t.false (P.seemsMessage ([248, {}]))
   t.true (P.seemsMessage (msg ([248])))
   t.true (P.seemsMessage (msg ([144, 64, 96])))
+	t.true (P.seemsMessage ({ type: 'midimessage', data: Uint8Array.from ([254]) }))
 })
 
 test ('dataEq', (t) => {
@@ -34,6 +35,8 @@ test ('dataEq', (t) => {
   t.false (P.dataEq ([144, 64, 96]) ({}))
   t.false (P.dataEq ([144, 64, 96]) ([248]))
   t.true (P.dataEq ([144, 64, 96]) (msg ([144, 64, 96])))
+	t.true (P.dataEq ([254]) ({ type: 'midimessage', data: Uint8Array.from ([254]) }))
+	t.true (P.dataEq ([144, 64, 96]) ({ type: 'midimessage', data: Uint8Array.from ([144, 64, 96]) }))
 })
 
 test ('byteEq', (t) => {

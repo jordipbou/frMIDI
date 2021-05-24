@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.1.17 [2021/05/24] - dataEq on predicates was not comparing correctly Arrays with Uint8Arrays.
 * 1.1.16 [2021/05/13] - Changed predicates isOnChannel and isOnChannels to channelEq and channelIn, for consistency with noteEq/noteIn and controlEq/controlIn.
 * 1.1.15 [2021/05/13] - Forgot to export valueIn.
 * 1.1.14 [2021/05/12] - Added valueIn to predicates.
