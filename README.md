@@ -165,6 +165,7 @@ frMIDI is open-sourced software licensed under GNU GPL-3.0 license.
 
 # Changelog
 
+* 1.1.19 [2021/07/09] - removed curry function from predicates and lenses as a way to gain performance.
 * 1.1.18 [2021/07/09] - removing seemsMessage from predicates and lenses as it takes too much time and makes not sense to use it. It's not necessary to check everything, messages should be well formed.
 * 1.1.17 [2021/05/24] - dataEq on predicates was not comparing correctly Arrays with Uint8Arrays.
 * 1.1.16 [2021/05/13] - Changed predicates isOnChannel and isOnChannels to channelEq and channelIn, for consistency with noteEq/noteIn and controlEq/controlIn.

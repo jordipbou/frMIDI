@@ -9,7 +9,7 @@ import {
 import { mc, off, on, timingEvent } from '../messages'
 import { QNPM2BPM, frScheduler } from '../utils.js'
 import { 
-    cond, complement, curry, isEmpty, last, length, prop, set, T, view
+    cond, complement, isEmpty, last, length, prop, set, T, view
   } from 'ramda'
 import { 
     BehaviorSubject as rx_BehaviorSubject, 

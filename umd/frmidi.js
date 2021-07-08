@@ -4390,25 +4390,25 @@
   const asNoteOff = msg => either(isNoteOff$1)(both(isNoteOn)(byteEq(2)(0)))(msg);
   const isNote = msg => either(isNoteOff$1)(isNoteOn)(msg);
   const hasVelocity = msg => isNote(msg);
-  const velocityEq = curry((v, msg) => both(hasVelocity)(byteEq(2)(v))(msg));
+  const velocityEq = v => msg => both(hasVelocity)(byteEq(2)(v))(msg);
   const isPolyPressure = msg => isChannelVoiceMessageOfType(10)(msg);
   const hasNote = msg => either(isNote)(isPolyPressure)(msg);
-  const noteEq = curry((n, msg) => both(hasNote)(byteEq(1)(n))(msg));
-  const noteIn = curry((notes, msg) => both(isNote)(_ => any(n => byteEq(1)(n)(msg))(notes))(msg));
+  const noteEq = n => msg => both(hasNote)(byteEq(1)(n))(msg);
+  const noteIn = notes => msg => both(isNote)(_ => any(n => byteEq(1)(n)(msg))(notes))(msg);
   const isControlChange = msg => isChannelVoiceMessageOfType(11)(msg);
-  const controlEq = curry((c, msg) => both(isControlChange)(byteEq(1)(c))(msg));
-  const controlIn = curry((controls, msg) => both(isControlChange)(_ => any(c => byteEq(1)(c)(msg))(controls))(msg));
-  const valueEq = curry((v, msg) => both(isControlChange)(byteEq(2)(v))(msg));
-  const valueIn = curry((values, msg) => both(isControlChange)(_ => any(c => byteEq(2)(c)(msg))(values))(msg)); // Some CC messages by name
+  const controlEq = c => msg => both(isControlChange)(byteEq(1)(c))(msg);
+  const controlIn = controls => msg => both(isControlChange)(_ => any(c => byteEq(1)(c)(msg))(controls))(msg);
+  const valueEq = v => msg => both(isControlChange)(byteEq(2)(v))(msg);
+  const valueIn = values => msg => both(isControlChange)(_ => any(c => byteEq(2)(c)(msg))(values))(msg); // Some CC messages by name
 
   const isTimbreChange = msg => both(isControlChange)(controlEq(74))(msg);
   const isProgramChange = msg => isChannelVoiceMessageOfType(12)(msg);
-  const programEq = curry((p, msg) => both(isProgramChange)(byteEq(1)(p))(msg));
+  const programEq = p => msg => both(isProgramChange)(byteEq(1)(p))(msg);
   const isChannelPressure = msg => isChannelVoiceMessageOfType(13)(msg);
   const hasPressure = msg => either(isPolyPressure)(isChannelPressure)(msg);
-  const pressureEq = curry((p, msg) => cond([[isPolyPressure, byteEq(2)(p)], [isChannelPressure, byteEq(1)(p)], [T, F]])(msg));
+  const pressureEq = p => msg => cond([[isPolyPressure, byteEq(2)(p)], [isChannelPressure, byteEq(1)(p)], [T, F]])(msg);
   const isPitchBend = msg => isChannelVoiceMessageOfType(14)(msg);
-  const pitchBendEq = curry((pb, msg) => allPass([isPitchBend, byteEq(1)(pb & 0x7F), byteEq(2)(pb >> 7)])(msg)); // --------------------- Channel Mode Messages ---------------------------
+  const pitchBendEq = pb => msg => allPass([isPitchBend, byteEq(1)(pb & 0x7F), byteEq(2)(pb >> 7)])(msg); // --------------------- Channel Mode Messages ---------------------------
 
   const isChannelModeMessage = (d1, d2) => msg => d2 === undefined ? both(isControlChange)(byteEq(1)(d1))(msg) : allPass([isControlChange, byteEq(1)(d1), byteEq(2)(d2)])(msg);
   const isAllSoundOff = msg => isChannelModeMessage(120, 0)(msg);
@@ -4428,8 +4428,8 @@
   const isNRPN = msg => allPass([//seemsMessage,
   byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
   const isChannelMessage = msg => anyPass([isChannelMode, isChannelVoice, isRPN, isNRPN])(msg);
-  const channelEq = curry((ch, msg) => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg));
-  const channelIn = curry((chs, msg) => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg)); // ------------------ System Common message predicates -------------------
+  const channelEq = ch => msg => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg);
+  const channelIn = chs => msg => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg); // ------------------ System Common message predicates -------------------
 
   const isSystemExclusive = msg => both(byteEq(0)(240))(byteEq(-1)(247))(msg);
   const isMIDITimeCodeQuarterFrame = msg => byteEq(0)(241)(msg);
@@ -6701,28 +6701,30 @@
     return from$1(panic_msgs);
   };
 
-  const getData = curry((n, msg) => msg.data[n]);
-  const setData = curry((n, v, msg) => evolve({
+  const getData = n => msg => msg.data[n];
+  const setData = n => v => msg => evolve({
     data: d => [...slice(0, n, d), v, ...slice(n + 1, Infinity, d)]
-  })(msg)); // ------------------------------ Lenses ---------------------------------
+  })(msg); // ------------------------------ Lenses ---------------------------------
   // Creates a lens object from the getter and the setter only if the 
   // received MIDI message passes the predicate.
 
-  const lensWhen = curry((p, v, s) => msg => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg)(msg));
+  const lensWhen = p => v => s => //(msg) =>
+  lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v)(msg) : msg); //(msg)
+
   const data0 = lens(getData(0))(setData(0));
   const timeStamp = lens(prop$1('timeStamp'))(assoc('timeStamp'));
   const deltaTime = lens(prop$1('deltaTime'))(assoc('deltaTime'));
   const time = lens(prop$1('time'))(assoc('time'));
-  const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)((v, m) => setData(0)((getData(0, m) & 0xF0) + v)(m));
+  const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)(v => m => setData(0)((getData(0)(m) & 0xF0) + v)(m));
   const note = lensWhen(hasNote)(getData(1))(setData(1));
   const velocity = lensWhen(hasVelocity)(getData(2))(setData(2));
-  const pressure = lensWhen(hasPressure)(ifElse(isPolyPressure)(getData(2))(getData(1)))((v, m) => isPolyPressure(m) ? setData(2)(v)(m) : setData(1)(v)(m));
+  const pressure = lensWhen(hasPressure)(ifElse(isPolyPressure)(getData(2))(getData(1)))(v => m => isPolyPressure(m) ? setData(2)(v)(m) : setData(1)(v)(m));
   const control = lensWhen(isControlChange)(getData(1))(setData(1));
   const value = lensWhen(isControlChange)(getData(2))(setData(2));
   const program = lensWhen(isProgramChange)(getData(1))(setData(1));
-  const pitchBend = lensWhen(isPitchBend)(m => (getData(2)(m) << 7) + getData(1)(m))((v, m) => setData(1)(v & 0x7F)(setData(2)(v >> 7)(m))); // ----------------------- Predicate helpers -----------------------------
+  const pitchBend = lensWhen(isPitchBend)(m => (getData(2)(m) << 7) + getData(1)(m))(v => m => setData(1)(v & 0x7F)(setData(2)(v >> 7)(m))); // ----------------------- Predicate helpers -----------------------------
 
-  const lensP = curry((lens, pred, v) => msg => pred(view(lens)(msg))(v)); // ------------------ Lenses for MIDI File Meta events -------------------
+  const lensP = lens => pred => v => msg => pred(view(lens)(msg))(v); // ------------------ Lenses for MIDI File Meta events -------------------
 
   const tempo = lensWhen(isTempoChange)(getData(0))(setData(0)); // -------------------- Lenses for frMIDI Meta events --------------------
 
@@ -8394,7 +8396,7 @@
     return promise;
   };
 
-  const version = '1.1.18';
+  const version = '1.1.19';
 
   exports.A = A;
   exports.A0 = A0;

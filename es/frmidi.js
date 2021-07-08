@@ -4384,25 +4384,25 @@ const asNoteOn = msg => both(isNoteOn)(complement(byteEq(2)(0)))(msg);
 const asNoteOff = msg => either(isNoteOff$1)(both(isNoteOn)(byteEq(2)(0)))(msg);
 const isNote = msg => either(isNoteOff$1)(isNoteOn)(msg);
 const hasVelocity = msg => isNote(msg);
-const velocityEq = curry((v, msg) => both(hasVelocity)(byteEq(2)(v))(msg));
+const velocityEq = v => msg => both(hasVelocity)(byteEq(2)(v))(msg);
 const isPolyPressure = msg => isChannelVoiceMessageOfType(10)(msg);
 const hasNote = msg => either(isNote)(isPolyPressure)(msg);
-const noteEq = curry((n, msg) => both(hasNote)(byteEq(1)(n))(msg));
-const noteIn = curry((notes, msg) => both(isNote)(_ => any(n => byteEq(1)(n)(msg))(notes))(msg));
+const noteEq = n => msg => both(hasNote)(byteEq(1)(n))(msg);
+const noteIn = notes => msg => both(isNote)(_ => any(n => byteEq(1)(n)(msg))(notes))(msg);
 const isControlChange = msg => isChannelVoiceMessageOfType(11)(msg);
-const controlEq = curry((c, msg) => both(isControlChange)(byteEq(1)(c))(msg));
-const controlIn = curry((controls, msg) => both(isControlChange)(_ => any(c => byteEq(1)(c)(msg))(controls))(msg));
-const valueEq = curry((v, msg) => both(isControlChange)(byteEq(2)(v))(msg));
-const valueIn = curry((values, msg) => both(isControlChange)(_ => any(c => byteEq(2)(c)(msg))(values))(msg)); // Some CC messages by name
+const controlEq = c => msg => both(isControlChange)(byteEq(1)(c))(msg);
+const controlIn = controls => msg => both(isControlChange)(_ => any(c => byteEq(1)(c)(msg))(controls))(msg);
+const valueEq = v => msg => both(isControlChange)(byteEq(2)(v))(msg);
+const valueIn = values => msg => both(isControlChange)(_ => any(c => byteEq(2)(c)(msg))(values))(msg); // Some CC messages by name
 
 const isTimbreChange = msg => both(isControlChange)(controlEq(74))(msg);
 const isProgramChange = msg => isChannelVoiceMessageOfType(12)(msg);
-const programEq = curry((p, msg) => both(isProgramChange)(byteEq(1)(p))(msg));
+const programEq = p => msg => both(isProgramChange)(byteEq(1)(p))(msg);
 const isChannelPressure = msg => isChannelVoiceMessageOfType(13)(msg);
 const hasPressure = msg => either(isPolyPressure)(isChannelPressure)(msg);
-const pressureEq = curry((p, msg) => cond([[isPolyPressure, byteEq(2)(p)], [isChannelPressure, byteEq(1)(p)], [T, F]])(msg));
+const pressureEq = p => msg => cond([[isPolyPressure, byteEq(2)(p)], [isChannelPressure, byteEq(1)(p)], [T, F]])(msg);
 const isPitchBend = msg => isChannelVoiceMessageOfType(14)(msg);
-const pitchBendEq = curry((pb, msg) => allPass([isPitchBend, byteEq(1)(pb & 0x7F), byteEq(2)(pb >> 7)])(msg)); // --------------------- Channel Mode Messages ---------------------------
+const pitchBendEq = pb => msg => allPass([isPitchBend, byteEq(1)(pb & 0x7F), byteEq(2)(pb >> 7)])(msg); // --------------------- Channel Mode Messages ---------------------------
 
 const isChannelModeMessage = (d1, d2) => msg => d2 === undefined ? both(isControlChange)(byteEq(1)(d1))(msg) : allPass([isControlChange, byteEq(1)(d1), byteEq(2)(d2)])(msg);
 const isAllSoundOff = msg => isChannelModeMessage(120, 0)(msg);
@@ -4422,8 +4422,8 @@ byteEq(1)(101), byteEq(4)(100), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), 
 const isNRPN = msg => allPass([//seemsMessage,
 byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
 const isChannelMessage = msg => anyPass([isChannelMode, isChannelVoice, isRPN, isNRPN])(msg);
-const channelEq = curry((ch, msg) => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg));
-const channelIn = curry((chs, msg) => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg)); // ------------------ System Common message predicates -------------------
+const channelEq = ch => msg => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg);
+const channelIn = chs => msg => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg); // ------------------ System Common message predicates -------------------
 
 const isSystemExclusive = msg => both(byteEq(0)(240))(byteEq(-1)(247))(msg);
 const isMIDITimeCodeQuarterFrame = msg => byteEq(0)(241)(msg);
@@ -6695,28 +6695,30 @@ const panic = (ts = 0) => {
   return from$1(panic_msgs);
 };
 
-const getData = curry((n, msg) => msg.data[n]);
-const setData = curry((n, v, msg) => evolve({
+const getData = n => msg => msg.data[n];
+const setData = n => v => msg => evolve({
   data: d => [...slice(0, n, d), v, ...slice(n + 1, Infinity, d)]
-})(msg)); // ------------------------------ Lenses ---------------------------------
+})(msg); // ------------------------------ Lenses ---------------------------------
 // Creates a lens object from the getter and the setter only if the 
 // received MIDI message passes the predicate.
 
-const lensWhen = curry((p, v, s) => msg => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg)(msg));
+const lensWhen = p => v => s => //(msg) =>
+lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v)(msg) : msg); //(msg)
+
 const data0 = lens(getData(0))(setData(0));
 const timeStamp = lens(prop$1('timeStamp'))(assoc('timeStamp'));
 const deltaTime = lens(prop$1('deltaTime'))(assoc('deltaTime'));
 const time = lens(prop$1('time'))(assoc('time'));
-const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)((v, m) => setData(0)((getData(0, m) & 0xF0) + v)(m));
+const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)(v => m => setData(0)((getData(0)(m) & 0xF0) + v)(m));
 const note = lensWhen(hasNote)(getData(1))(setData(1));
 const velocity = lensWhen(hasVelocity)(getData(2))(setData(2));
-const pressure = lensWhen(hasPressure)(ifElse(isPolyPressure)(getData(2))(getData(1)))((v, m) => isPolyPressure(m) ? setData(2)(v)(m) : setData(1)(v)(m));
+const pressure = lensWhen(hasPressure)(ifElse(isPolyPressure)(getData(2))(getData(1)))(v => m => isPolyPressure(m) ? setData(2)(v)(m) : setData(1)(v)(m));
 const control = lensWhen(isControlChange)(getData(1))(setData(1));
 const value = lensWhen(isControlChange)(getData(2))(setData(2));
 const program = lensWhen(isProgramChange)(getData(1))(setData(1));
-const pitchBend = lensWhen(isPitchBend)(m => (getData(2)(m) << 7) + getData(1)(m))((v, m) => setData(1)(v & 0x7F)(setData(2)(v >> 7)(m))); // ----------------------- Predicate helpers -----------------------------
+const pitchBend = lensWhen(isPitchBend)(m => (getData(2)(m) << 7) + getData(1)(m))(v => m => setData(1)(v & 0x7F)(setData(2)(v >> 7)(m))); // ----------------------- Predicate helpers -----------------------------
 
-const lensP = curry((lens, pred, v) => msg => pred(view(lens)(msg))(v)); // ------------------ Lenses for MIDI File Meta events -------------------
+const lensP = lens => pred => v => msg => pred(view(lens)(msg))(v); // ------------------ Lenses for MIDI File Meta events -------------------
 
 const tempo = lensWhen(isTempoChange)(getData(0))(setData(0)); // -------------------- Lenses for frMIDI Meta events --------------------
 
@@ -8388,6 +8390,6 @@ const loadMIDIFile = () => {
   return promise;
 };
 
-const version = '1.1.18';
+const version = '1.1.19';
 
 export { A, A0, A1, A2, A3, A4, A5, A6, A7, AS_SETTINGS, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, BLUE, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, CC14bitFromCCs, CCsFromCC14bit, CYAN, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, GREEN, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, LIME, M2, M3, M6, M7, MAGENTA, OFF, ORANGE, P1, P4, P5, P8, PINK, RED, TT, WHITE, YELLOW, adjustCell, as, asNoteOff, asNoteOn, assocCell, bpmChange, byteEq, byteEqBy, cc, cc14bit, changeState, channel, channelByKeyRange, channelEq, channelIn, clear, clock, cont, control, controlEq, controlIn, cp, createListener, createLoop, createRoutingMatrix, createSequence, createState, createToggle, dataEq, dataEqBy, decimationRate, deltaTime, disownNote, dissocCell, e, et, evolveCell, filterEvents, frMeta, from$1 as from, fullUserFirmwareMode, getCell, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, noteIn, nrpn, off, on, output, ownNote, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, restore, root, routing_matrix, rowSlide, rpn, rst, s, seamless_routing_matrix, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, setColor, spp, ss, st, start, stateChanger, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, userFirmwareMode, value, value14bit, valueEq, valueIn, velocity, velocityEq, version, w, xData, yData, zData };

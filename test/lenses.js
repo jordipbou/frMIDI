@@ -122,9 +122,9 @@ test ('pitch bend lens', (t) => {
 })
 
 test ('lens predicates', (t) => {
-  t.true (lensP (velocity, gt, 64) (on (54, 96)))
-  t.true (lensP (velocity, lt, 100) (on (54, 96)))
-  t.false (lensP (velocity, lt, 64) (on (54, 96)))
+  t.true (lensP (velocity) (gt) (64) (on (54, 96)))
+  t.true (lensP (velocity) (lt) (100) (on (54, 96)))
+  t.false (lensP (velocity) (lt) (64) (on (54, 96)))
 })
 
 test ('tempo change message: tempo lens', (t) => {
