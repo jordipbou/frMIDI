@@ -12,21 +12,21 @@ import { allPas } from 'ramda'
 import { from } from 'rxjs'
 import { filter } from 'rxjs/operators'
 
-test ('seems a MIDI message', (t) => {
-  t.false (P.seemsMessage (null))
-  t.false (P.seemsMessage (undefined))
-  t.false (P.seemsMessage ({}))
-  t.false (P.seemsMessage ({ type: 'midimessage' }))
-  t.false (P.seemsMessage ({ data: [144, 64, 96] }))
-  t.false (P.seemsMessage (msg ([])))
-  t.false (P.seemsMessage (['test']))
-  t.false (P.seemsMessage ([248, 'test']))
-  t.false (P.seemsMessage ([{}]))
-  t.false (P.seemsMessage ([248, {}]))
-  t.true (P.seemsMessage (msg ([248])))
-  t.true (P.seemsMessage (msg ([144, 64, 96])))
-	t.true (P.seemsMessage ({ type: 'midimessage', data: Uint8Array.from ([254]) }))
-})
+//test ('seems a MIDI message', (t) => {
+//  t.false (P.seemsMessage (null))
+//  t.false (P.seemsMessage (undefined))
+//  t.false (P.seemsMessage ({}))
+//  t.false (P.seemsMessage ({ type: 'midimessage' }))
+//  t.false (P.seemsMessage ({ data: [144, 64, 96] }))
+//  t.false (P.seemsMessage (msg ([])))
+//  t.false (P.seemsMessage (['test']))
+//  t.false (P.seemsMessage ([248, 'test']))
+//  t.false (P.seemsMessage ([{}]))
+//  t.false (P.seemsMessage ([248, {}]))
+//  t.true (P.seemsMessage (msg ([248])))
+//  t.true (P.seemsMessage (msg ([144, 64, 96])))
+//	t.true (P.seemsMessage ({ type: 'midimessage', data: Uint8Array.from ([254]) }))
+//})
 
 test ('dataEq', (t) => {
   t.false (P.dataEq ([144, 64, 96]) (null))

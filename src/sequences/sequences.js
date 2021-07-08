@@ -86,7 +86,7 @@ export const addTime = (v, t) =>
   cond ([
     [seemsSequence, mapTracks (addTime)],
     [seemsTrack, (v) => last (mapAccum (flip (addTime)) (0) (v))],
-    [seemsfrMessage, 
+    [seemsfrMessage,
       always ([ t + v.deltaTime, assoc ('time') (t + v.deltaTime) (v) ])]
   ]) (v)
 

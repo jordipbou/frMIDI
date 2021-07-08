@@ -27,9 +27,6 @@ test ('setData', (t) => {
     })
 })
 
-//test ('lensWhen', (t) => {
-//})
-
 test ('timeStamp lens', (t) => {
   t.is (view (timeStamp) (on (64)), 0)
   t.is (view (timeStamp) ([144, 64, 96]), undefined)
@@ -37,7 +34,6 @@ test ('timeStamp lens', (t) => {
   t.is (view (timeStamp) (timingEvent ()), 0)
 
   t.is ((set (timeStamp) (100) (on (64))).timeStamp, 100)
-  t.deepEqual (set (timeStamp) (100) ([144, 64, 96]), [144, 64, 96])
   t.is (view (timeStamp) (set (timeStamp) (2) (tempoChange (5000))), 2)
   t.is (view (timeStamp) (set (timeStamp) (2) (timingEvent ())), 2)
 
@@ -53,7 +49,6 @@ test ('deltaTime lens', (t) => {
   t.is (view (deltaTime) ([144, 64, 96]), undefined)
 
   t.is ((set (deltaTime) (100) (on (64))).deltaTime, 100)
-  t.deepEqual (set (deltaTime) (100) ([144, 64, 96]), [144, 64, 96])
   t.is (view (deltaTime) (set (deltaTime) (2) (tempoChange (5000))), 2)
   t.is (view (deltaTime) (set (deltaTime) (2) (timingEvent ())), 2)
 

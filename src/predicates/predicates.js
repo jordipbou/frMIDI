@@ -19,39 +19,41 @@ export const seemsMessage = (msg) =>
 
 // ------- Utilities for comparing MIDI messages byte array values -------
 
-export const dataEq = curry ((data, msg) =>
-	allPass ([
-		seemsMessage,
-		(msg) => equals (length (data)) (length (msg.data)),
-		(msg) => reduce ((acc, [a, b]) => acc && a === b) 
-		                (true) 
-										(zip (data) (msg.data))
-	]) (msg))
+export const dataEq = 
+  (data) => (msg) => 
+    msg === null || msg === undefined || msg.data === undefined ?
+      false
+      : reduce ((acc, [a, b]) => acc && a === b) 
+      	       (true) 
+      		     (zip (data) (msg.data))
 
-export const byteEq = curry ((n, data, msg) =>
-  seemsMessage (msg) ?
-    pathEq ([n]) (data) (msg.data)
-    : false)
+export const byteEq = 
+  (n) => (data) => (msg) =>
+    msg === null || msg === undefined || msg.data === undefined ?
+      false
+      : pathEq ([n]) (data) (msg.data)
 
-export const dataEqBy = curry ((pred, msg) =>
-  seemsMessage (msg) ? 
-    pred (msg.data)
-    : false)
+export const dataEqBy = 
+  (pred) => (msg) =>
+    msg === null || msg === undefined || msg.data === undefined ?
+      false
+      : pred (msg.data)
 
-export const byteEqBy = curry ((n, pred, msg) =>
-  seemsMessage (msg) ?
-    pred (path ([n]) (msg.data))
-    : false)
+export const byteEqBy = 
+  (n) => (pred) => (msg) =>
+    msg === null || msg === undefined || msg.data === undefined ?
+      false
+      : pred (path ([n]) (msg.data))
 
 
 // --------------------- Channel Voice Messages --------------------------
 
-export const isChannelVoiceMessageOfType = curry((type, msg) =>
-  both (seemsMessage)
-       (dataEqBy 
-         (p => includes (type, [8, 9, 10, 11, 14]) ?
-                 length (p) === 3 && p [0] >> 4 === type
-                 : length (p) === 2 && p [0] >> 4 === type)) (msg))
+export const isChannelVoiceMessageOfType = 
+  (type) => (msg) =>
+    dataEqBy 
+      (p => includes (type, [8, 9, 10, 11, 14]) ?
+              length (p) === 3 && p [0] >> 4 === type
+              : length (p) === 2 && p [0] >> 4 === type) (msg)
 
 export const isNoteOff = (msg) =>
   isChannelVoiceMessageOfType (8) (msg)
@@ -213,7 +215,7 @@ export const isChannelVoice = (msg) =>
 // ----------------------- RPN & NRPN predicates -------------------------
 
 export const isRPN = (msg) =>
-  allPass ([seemsMessage,
+  allPass ([//seemsMessage,
             byteEq (1) (101),
             byteEq (4) (100),
             byteEq (7) (6),
@@ -224,7 +226,7 @@ export const isRPN = (msg) =>
           (msg)
 
 export const isNRPN = (msg) =>
-  allPass ([seemsMessage,
+  allPass ([//seemsMessage,
             byteEq (1) (99),
             byteEq (4) (98),
             byteEq (7) (6),
@@ -251,42 +253,39 @@ export const channelIn = curry((chs, msg) =>
 // ------------------ System Common message predicates -------------------
 
 export const isSystemExclusive = (msg) =>
-  allPass ([seemsMessage,
-            byteEq (0) (240),
-            byteEq (-1) (247)])
-          (msg)
+  both (byteEq (0) (240)) (byteEq (-1) (247)) (msg)
 
 export const isMIDITimeCodeQuarterFrame = (msg) =>
-  both (seemsMessage) (byteEq (0) (241)) (msg)
+  byteEq (0) (241) (msg)
 
 export const isSongPositionPointer = (msg) =>
-  both (seemsMessage) (byteEq (0) (242)) (msg)
+  byteEq (0) (242) (msg)
 
 export const isSongSelect = (msg) =>
-  both (seemsMessage) (byteEq (0) (243)) (msg)
+  byteEq (0) (243) (msg)
 
 export const isTuneRequest = (msg) =>
-  both (seemsMessage) (dataEq ([246])) (msg)
+  dataEq ([246]) (msg)
 
 export const isEndOfExclusive = (msg) =>
-  both (seemsMessage) (dataEq ([247])) (msg)
+  dataEq ([247]) (msg)
 
 // ----------------- System Real Time message predicates -----------------
 
 export const isMIDIClock = (msg) =>
-  both (seemsMessage) (dataEq ([248])) (msg)
+  dataEq ([248]) (msg)
 
 export const isStart = (msg) =>
-  both (seemsMessage) (dataEq ([250])) (msg)
+  dataEq ([250]) (msg)
 
 export const isContinue = (msg) =>
-  both (seemsMessage) (dataEq ([251])) (msg)
+  dataEq ([251]) (msg)
 
 export const isStop = (msg) =>
-  both (seemsMessage) (dataEq ([252])) (msg)
+  dataEq ([252]) (msg)
 
 export const isActiveSensing = (msg) =>
-  both (seemsMessage) (dataEq ([254])) (msg)
+  dataEq ([254]) (msg)
 
 // Reset and MIDI File Meta Events have the same value on
 // their first byte: 0xFF.
@@ -296,6 +295,4 @@ export const isActiveSensing = (msg) =>
 // programmer responsability to only use isReset outside
 // MIDI Files and seemsMetaEvent inside MIDI Files.
 export const isReset = (msg) =>
-  both (seemsMessage)
-       (dataEq ([255]))
-       (msg)
+  dataEq ([255]) (msg)

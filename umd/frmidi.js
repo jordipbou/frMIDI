@@ -4378,12 +4378,12 @@
 
   const seemsMessage = msg => msg !== null && msg !== undefined && typeof msg === 'object' && msg.type === 'midimessage' && msg.data !== null && msg.data !== undefined && (msg.data.constructor === Uint8Array || msg.data.constructor === Array) && msg.data.length > 0; // ------- Utilities for comparing MIDI messages byte array values -------
 
-  const dataEq = curry((data, msg) => allPass([seemsMessage, msg => equals(length(data))(length(msg.data)), msg => reduce((acc, [a, b]) => acc && a === b)(true)(zip(data)(msg.data))])(msg));
-  const byteEq = curry((n, data, msg) => seemsMessage(msg) ? pathEq([n])(data)(msg.data) : false);
-  const dataEqBy = curry((pred, msg) => seemsMessage(msg) ? pred(msg.data) : false);
-  const byteEqBy = curry((n, pred, msg) => seemsMessage(msg) ? pred(path([n])(msg.data)) : false); // --------------------- Channel Voice Messages --------------------------
+  const dataEq = data => msg => msg === null || msg === undefined || msg.data === undefined ? false : reduce((acc, [a, b]) => acc && a === b)(true)(zip(data)(msg.data));
+  const byteEq = n => data => msg => msg === null || msg === undefined || msg.data === undefined ? false : pathEq([n])(data)(msg.data);
+  const dataEqBy = pred => msg => msg === null || msg === undefined || msg.data === undefined ? false : pred(msg.data);
+  const byteEqBy = n => pred => msg => msg === null || msg === undefined || msg.data === undefined ? false : pred(path([n])(msg.data)); // --------------------- Channel Voice Messages --------------------------
 
-  const isChannelVoiceMessageOfType = curry((type, msg) => both(seemsMessage)(dataEqBy(p => includes(type, [8, 9, 10, 11, 14]) ? length(p) === 3 && p[0] >> 4 === type : length(p) === 2 && p[0] >> 4 === type))(msg));
+  const isChannelVoiceMessageOfType = type => msg => dataEqBy(p => includes(type, [8, 9, 10, 11, 14]) ? length(p) === 3 && p[0] >> 4 === type : length(p) === 2 && p[0] >> 4 === type)(msg);
   const isNoteOff$1 = msg => isChannelVoiceMessageOfType(8)(msg);
   const isNoteOn = msg => isChannelVoiceMessageOfType(9)(msg);
   const asNoteOn = msg => both(isNoteOn)(complement(byteEq(2)(0)))(msg);
@@ -4423,24 +4423,26 @@
   const isChannelMode = msg => anyPass([isAllSoundOff, isResetAll, isLocalControlOff, isLocalControlOn, isAllNotesOff, isOmniModeOff, isOmniModeOn, isMonoModeOn, isPolyModeOn])(msg);
   const isChannelVoice = msg => anyPass([isNote, isPolyPressure, both(isControlChange)(complement(isChannelMode)), isProgramChange, isChannelPressure, isPitchBend])(msg); // ----------------------- RPN & NRPN predicates -------------------------
 
-  const isRPN = msg => allPass([seemsMessage, byteEq(1)(101), byteEq(4)(100), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
-  const isNRPN = msg => allPass([seemsMessage, byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
+  const isRPN = msg => allPass([//seemsMessage,
+  byteEq(1)(101), byteEq(4)(100), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
+  const isNRPN = msg => allPass([//seemsMessage,
+  byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
   const isChannelMessage = msg => anyPass([isChannelMode, isChannelVoice, isRPN, isNRPN])(msg);
   const channelEq = curry((ch, msg) => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg));
   const channelIn = curry((chs, msg) => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg)); // ------------------ System Common message predicates -------------------
 
-  const isSystemExclusive = msg => allPass([seemsMessage, byteEq(0)(240), byteEq(-1)(247)])(msg);
-  const isMIDITimeCodeQuarterFrame = msg => both(seemsMessage)(byteEq(0)(241))(msg);
-  const isSongPositionPointer = msg => both(seemsMessage)(byteEq(0)(242))(msg);
-  const isSongSelect = msg => both(seemsMessage)(byteEq(0)(243))(msg);
-  const isTuneRequest = msg => both(seemsMessage)(dataEq([246]))(msg);
-  const isEndOfExclusive = msg => both(seemsMessage)(dataEq([247]))(msg); // ----------------- System Real Time message predicates -----------------
+  const isSystemExclusive = msg => both(byteEq(0)(240))(byteEq(-1)(247))(msg);
+  const isMIDITimeCodeQuarterFrame = msg => byteEq(0)(241)(msg);
+  const isSongPositionPointer = msg => byteEq(0)(242)(msg);
+  const isSongSelect = msg => byteEq(0)(243)(msg);
+  const isTuneRequest = msg => dataEq([246])(msg);
+  const isEndOfExclusive = msg => dataEq([247])(msg); // ----------------- System Real Time message predicates -----------------
 
-  const isMIDIClock = msg => both(seemsMessage)(dataEq([248]))(msg);
-  const isStart = msg => both(seemsMessage)(dataEq([250]))(msg);
-  const isContinue = msg => both(seemsMessage)(dataEq([251]))(msg);
-  const isStop = msg => both(seemsMessage)(dataEq([252]))(msg);
-  const isActiveSensing = msg => both(seemsMessage)(dataEq([254]))(msg); // Reset and MIDI File Meta Events have the same value on
+  const isMIDIClock = msg => dataEq([248])(msg);
+  const isStart = msg => dataEq([250])(msg);
+  const isContinue = msg => dataEq([251])(msg);
+  const isStop = msg => dataEq([252])(msg);
+  const isActiveSensing = msg => dataEq([254])(msg); // Reset and MIDI File Meta Events have the same value on
   // their first byte: 0xFF.
   // Reset message is just one byte long and MIDI File Meta
   // Events are several bytes long. It's not possible to
@@ -4448,7 +4450,7 @@
   // programmer responsability to only use isReset outside
   // MIDI Files and seemsMetaEvent inside MIDI Files.
 
-  const isReset = msg => both(seemsMessage)(dataEq([255]))(msg);
+  const isReset = msg => dataEq([255])(msg);
 
   /* global window self */
 
@@ -5975,7 +5977,14 @@
       if (result instanceof Observable) {
           return result.subscribe(innerSubscriber);
       }
-      return subscribeTo(result)(innerSubscriber);
+      var subscription;
+      try {
+          subscription = subscribeTo(result)(innerSubscriber);
+      }
+      catch (error) {
+          innerSubscriber.error(error);
+      }
+      return subscription;
   }
 
   /** PURE_IMPORTS_START tslib,_map,_observable_from,_innerSubscribe PURE_IMPORTS_END */
@@ -6700,10 +6709,10 @@
   // received MIDI message passes the predicate.
 
   const lensWhen = curry((p, v, s) => msg => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg)(msg));
-  const data0 = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(getData(0))(setData(0));
-  const timeStamp = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('timeStamp'))(assoc('timeStamp'));
-  const deltaTime = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('deltaTime'))(assoc('deltaTime'));
-  const time = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('time'))(assoc('time'));
+  const data0 = lens(getData(0))(setData(0));
+  const timeStamp = lens(prop$1('timeStamp'))(assoc('timeStamp'));
+  const deltaTime = lens(prop$1('deltaTime'))(assoc('deltaTime'));
+  const time = lens(prop$1('time'))(assoc('time'));
   const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)((v, m) => setData(0)((getData(0, m) & 0xF0) + v)(m));
   const note = lensWhen(hasNote)(getData(1))(setData(1));
   const velocity = lensWhen(hasVelocity)(getData(2))(setData(2));
@@ -8294,8 +8303,16 @@
   // - array of MIDIMessage objects
   // - observable emitting any of the above
 
-  const send = sendfn => msg => seemsMessage(msg) ? sendfn(msg.data, msg.timeStamp) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) // Sometimes is (Observable) returns false, so...
-  : msg.constructor.name === 'Observable' && hasIn('subscribe')(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
+  const send = sendfn => msg => //seemsMessage (msg) ?
+  //  sendfn (msg.data, msg.timeStamp)
+  //  : R.is (rx.Observable) (msg) ?
+  //    msg.subscribe (send (sendfn))
+  //    // Sometimes is (Observable) returns false, so...
+  //    : msg.constructor.name === 'Observable' 
+  //      && R.hasIn ('subscribe') (msg) ?
+  //        msg.subscribe (send (sendfn))
+  //        : null
+  is(Observable)(msg) ? msg.subscribe(send(sendfn)) : msg.constructor.name === 'Observable' && hasIn('subscribe')(msg) ? msg.subscribe(send(sendfn)) : sendfn(msg.data, msg.timeStamp); // Sends first output that matches indicated name as argument and
   // returns send function instantiated with selected output.
   // Some properties are added for inspection purposes.
 
@@ -8377,7 +8394,7 @@
     return promise;
   };
 
-  const version = '1.1.17';
+  const version = '1.1.18';
 
   exports.A = A;
   exports.A0 = A0;

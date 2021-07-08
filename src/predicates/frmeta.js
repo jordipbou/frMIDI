@@ -20,7 +20,7 @@ export const seemsfrMetaEvent = (msg) =>
 
 export const seemsfrMessage = (msg) =>
   anyPass 
-    ([ seemsMessage, seemsMetaEvent, seemsfrMetaEvent ])
+    ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent ])
     (msg)
 
 // ------------------- frMIDI Meta Events definitions --------------------

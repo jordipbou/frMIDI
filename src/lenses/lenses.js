@@ -2,7 +2,6 @@ import {
     isChannelMessage, isControlChange,
     isPitchBend, isPolyPressure, isProgramChange,
     hasNote, hasPressure, hasVelocity,
-    seemsMessage
   } from '../predicates/predicates.js'
 import {
     isTempoChange, seemsMetaEvent
@@ -37,24 +36,16 @@ export const lensWhen = curry ((p, v, s) => (msg) =>
   ) (msg))
 
 export const data0 =
-  lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
-           (getData (0))
-           (setData (0))
+  lens (getData (0)) (setData (0))
 
 export const timeStamp =
-  lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
-           (prop ('timeStamp')) 
-           (assoc ('timeStamp'))
+  lens (prop ('timeStamp')) (assoc ('timeStamp'))
 
 export const deltaTime =
-  lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
-           (prop ('deltaTime'))
-           (assoc ('deltaTime'))
+  lens (prop ('deltaTime')) (assoc ('deltaTime'))
 
 export const time =
-  lensWhen (anyPass ([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))
-           (prop ('time'))
-           (assoc ('time'))
+  lens (prop ('time')) (assoc ('time'))
 
 export const channel =
   lensWhen (isChannelMessage) 

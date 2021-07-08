@@ -1,7 +1,7 @@
 import * as rx from 'rxjs'
 import * as rxo from 'rxjs/operators'
 import * as R from 'ramda'
-import { seemsMessage } from '../predicates/predicates.js'
+//import { seemsMessage } from '../predicates/predicates.js'
 import { isTempoChange } from '../predicates/meta.js'
 import { msg, from } from '../messages/messages.js'
 import { addTime } from '../sequences/sequences.js'
@@ -137,15 +137,21 @@ export const input = (n = '', midiAccess = _midiAccess) =>
 // - observable emitting any of the above
 
 export const send = (sendfn) => (msg) => 
-  seemsMessage (msg) ?
-    sendfn (msg.data, msg.timeStamp)
-    : R.is (rx.Observable) (msg) ?
-      msg.subscribe (send (sendfn))
-      // Sometimes is (Observable) returns false, so...
-      : msg.constructor.name === 'Observable' 
-        && R.hasIn ('subscribe') (msg) ?
-          msg.subscribe (send (sendfn))
-          : null
+  //seemsMessage (msg) ?
+  //  sendfn (msg.data, msg.timeStamp)
+  //  : R.is (rx.Observable) (msg) ?
+  //    msg.subscribe (send (sendfn))
+  //    // Sometimes is (Observable) returns false, so...
+  //    : msg.constructor.name === 'Observable' 
+  //      && R.hasIn ('subscribe') (msg) ?
+  //        msg.subscribe (send (sendfn))
+  //        : null
+  R.is (rx.Observable) (msg) ?
+    msg.subscribe (send (sendfn))
+    : msg.constructor.name === 'Observable'
+      && R.hasIn ('subscribe') (msg) ?
+        msg.subscribe (send (sendfn))
+        : sendfn (msg.data, msg.timeStamp)
 
 // Sends first output that matches indicated name as argument and
 // returns send function instantiated with selected output.

@@ -4372,12 +4372,12 @@ _curry2(function zip(a, b) {
 
 const seemsMessage = msg => msg !== null && msg !== undefined && typeof msg === 'object' && msg.type === 'midimessage' && msg.data !== null && msg.data !== undefined && (msg.data.constructor === Uint8Array || msg.data.constructor === Array) && msg.data.length > 0; // ------- Utilities for comparing MIDI messages byte array values -------
 
-const dataEq = curry((data, msg) => allPass([seemsMessage, msg => equals(length(data))(length(msg.data)), msg => reduce((acc, [a, b]) => acc && a === b)(true)(zip(data)(msg.data))])(msg));
-const byteEq = curry((n, data, msg) => seemsMessage(msg) ? pathEq([n])(data)(msg.data) : false);
-const dataEqBy = curry((pred, msg) => seemsMessage(msg) ? pred(msg.data) : false);
-const byteEqBy = curry((n, pred, msg) => seemsMessage(msg) ? pred(path([n])(msg.data)) : false); // --------------------- Channel Voice Messages --------------------------
+const dataEq = data => msg => msg === null || msg === undefined || msg.data === undefined ? false : reduce((acc, [a, b]) => acc && a === b)(true)(zip(data)(msg.data));
+const byteEq = n => data => msg => msg === null || msg === undefined || msg.data === undefined ? false : pathEq([n])(data)(msg.data);
+const dataEqBy = pred => msg => msg === null || msg === undefined || msg.data === undefined ? false : pred(msg.data);
+const byteEqBy = n => pred => msg => msg === null || msg === undefined || msg.data === undefined ? false : pred(path([n])(msg.data)); // --------------------- Channel Voice Messages --------------------------
 
-const isChannelVoiceMessageOfType = curry((type, msg) => both(seemsMessage)(dataEqBy(p => includes(type, [8, 9, 10, 11, 14]) ? length(p) === 3 && p[0] >> 4 === type : length(p) === 2 && p[0] >> 4 === type))(msg));
+const isChannelVoiceMessageOfType = type => msg => dataEqBy(p => includes(type, [8, 9, 10, 11, 14]) ? length(p) === 3 && p[0] >> 4 === type : length(p) === 2 && p[0] >> 4 === type)(msg);
 const isNoteOff$1 = msg => isChannelVoiceMessageOfType(8)(msg);
 const isNoteOn = msg => isChannelVoiceMessageOfType(9)(msg);
 const asNoteOn = msg => both(isNoteOn)(complement(byteEq(2)(0)))(msg);
@@ -4417,24 +4417,26 @@ const isPolyModeOn = msg => isChannelModeMessage(127, 0)(msg);
 const isChannelMode = msg => anyPass([isAllSoundOff, isResetAll, isLocalControlOff, isLocalControlOn, isAllNotesOff, isOmniModeOff, isOmniModeOn, isMonoModeOn, isPolyModeOn])(msg);
 const isChannelVoice = msg => anyPass([isNote, isPolyPressure, both(isControlChange)(complement(isChannelMode)), isProgramChange, isChannelPressure, isPitchBend])(msg); // ----------------------- RPN & NRPN predicates -------------------------
 
-const isRPN = msg => allPass([seemsMessage, byteEq(1)(101), byteEq(4)(100), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
-const isNRPN = msg => allPass([seemsMessage, byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
+const isRPN = msg => allPass([//seemsMessage,
+byteEq(1)(101), byteEq(4)(100), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
+const isNRPN = msg => allPass([//seemsMessage,
+byteEq(1)(99), byteEq(4)(98), byteEq(7)(6), byteEq(-5)(101), byteEq(-4)(127), byteEq(-2)(100), byteEq(-1)(127)])(msg);
 const isChannelMessage = msg => anyPass([isChannelMode, isChannelVoice, isRPN, isNRPN])(msg);
 const channelEq = curry((ch, msg) => both(isChannelMessage)(byteEqBy(0)(v => (v & 0xF) === ch))(msg));
 const channelIn = curry((chs, msg) => both(isChannelMessage)(byteEqBy(0)(v => includes(v & 0xF, chs)))(msg)); // ------------------ System Common message predicates -------------------
 
-const isSystemExclusive = msg => allPass([seemsMessage, byteEq(0)(240), byteEq(-1)(247)])(msg);
-const isMIDITimeCodeQuarterFrame = msg => both(seemsMessage)(byteEq(0)(241))(msg);
-const isSongPositionPointer = msg => both(seemsMessage)(byteEq(0)(242))(msg);
-const isSongSelect = msg => both(seemsMessage)(byteEq(0)(243))(msg);
-const isTuneRequest = msg => both(seemsMessage)(dataEq([246]))(msg);
-const isEndOfExclusive = msg => both(seemsMessage)(dataEq([247]))(msg); // ----------------- System Real Time message predicates -----------------
+const isSystemExclusive = msg => both(byteEq(0)(240))(byteEq(-1)(247))(msg);
+const isMIDITimeCodeQuarterFrame = msg => byteEq(0)(241)(msg);
+const isSongPositionPointer = msg => byteEq(0)(242)(msg);
+const isSongSelect = msg => byteEq(0)(243)(msg);
+const isTuneRequest = msg => dataEq([246])(msg);
+const isEndOfExclusive = msg => dataEq([247])(msg); // ----------------- System Real Time message predicates -----------------
 
-const isMIDIClock = msg => both(seemsMessage)(dataEq([248]))(msg);
-const isStart = msg => both(seemsMessage)(dataEq([250]))(msg);
-const isContinue = msg => both(seemsMessage)(dataEq([251]))(msg);
-const isStop = msg => both(seemsMessage)(dataEq([252]))(msg);
-const isActiveSensing = msg => both(seemsMessage)(dataEq([254]))(msg); // Reset and MIDI File Meta Events have the same value on
+const isMIDIClock = msg => dataEq([248])(msg);
+const isStart = msg => dataEq([250])(msg);
+const isContinue = msg => dataEq([251])(msg);
+const isStop = msg => dataEq([252])(msg);
+const isActiveSensing = msg => dataEq([254])(msg); // Reset and MIDI File Meta Events have the same value on
 // their first byte: 0xFF.
 // Reset message is just one byte long and MIDI File Meta
 // Events are several bytes long. It's not possible to
@@ -4442,7 +4444,7 @@ const isActiveSensing = msg => both(seemsMessage)(dataEq([254]))(msg); // Reset 
 // programmer responsability to only use isReset outside
 // MIDI Files and seemsMetaEvent inside MIDI Files.
 
-const isReset = msg => both(seemsMessage)(dataEq([255]))(msg);
+const isReset = msg => dataEq([255])(msg);
 
 /* global window self */
 
@@ -5969,7 +5971,14 @@ function innerSubscribe(result, innerSubscriber) {
     if (result instanceof Observable) {
         return result.subscribe(innerSubscriber);
     }
-    return subscribeTo(result)(innerSubscriber);
+    var subscription;
+    try {
+        subscription = subscribeTo(result)(innerSubscriber);
+    }
+    catch (error) {
+        innerSubscriber.error(error);
+    }
+    return subscription;
 }
 
 /** PURE_IMPORTS_START tslib,_map,_observable_from,_innerSubscribe PURE_IMPORTS_END */
@@ -6694,10 +6703,10 @@ const setData = curry((n, v, msg) => evolve({
 // received MIDI message passes the predicate.
 
 const lensWhen = curry((p, v, s) => msg => lens(msg => p(msg) ? v(msg) : undefined, (v, msg) => p(msg) ? s(v, msg) : msg)(msg));
-const data0 = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(getData(0))(setData(0));
-const timeStamp = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('timeStamp'))(assoc('timeStamp'));
-const deltaTime = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('deltaTime'))(assoc('deltaTime'));
-const time = lensWhen(anyPass([seemsMessage, seemsMetaEvent, seemsfrMetaEvent]))(prop$1('time'))(assoc('time'));
+const data0 = lens(getData(0))(setData(0));
+const timeStamp = lens(prop$1('timeStamp'))(assoc('timeStamp'));
+const deltaTime = lens(prop$1('deltaTime'))(assoc('deltaTime'));
+const time = lens(prop$1('time'))(assoc('time'));
 const channel = lensWhen(isChannelMessage)(m => getData(0)(m) & 0xF)((v, m) => setData(0)((getData(0, m) & 0xF0) + v)(m));
 const note = lensWhen(hasNote)(getData(1))(setData(1));
 const velocity = lensWhen(hasVelocity)(getData(2))(setData(2));
@@ -8288,8 +8297,16 @@ const input = (n = '', midiAccess = _midiAccess) => n === 'dummy' ? inputFrom() 
 // - array of MIDIMessage objects
 // - observable emitting any of the above
 
-const send = sendfn => msg => seemsMessage(msg) ? sendfn(msg.data, msg.timeStamp) : is(Observable)(msg) ? msg.subscribe(send(sendfn)) // Sometimes is (Observable) returns false, so...
-: msg.constructor.name === 'Observable' && hasIn('subscribe')(msg) ? msg.subscribe(send(sendfn)) : null; // Sends first output that matches indicated name as argument and
+const send = sendfn => msg => //seemsMessage (msg) ?
+//  sendfn (msg.data, msg.timeStamp)
+//  : R.is (rx.Observable) (msg) ?
+//    msg.subscribe (send (sendfn))
+//    // Sometimes is (Observable) returns false, so...
+//    : msg.constructor.name === 'Observable' 
+//      && R.hasIn ('subscribe') (msg) ?
+//        msg.subscribe (send (sendfn))
+//        : null
+is(Observable)(msg) ? msg.subscribe(send(sendfn)) : msg.constructor.name === 'Observable' && hasIn('subscribe')(msg) ? msg.subscribe(send(sendfn)) : sendfn(msg.data, msg.timeStamp); // Sends first output that matches indicated name as argument and
 // returns send function instantiated with selected output.
 // Some properties are added for inspection purposes.
 
@@ -8371,6 +8388,6 @@ const loadMIDIFile = () => {
   return promise;
 };
 
-const version = '1.1.17';
+const version = '1.1.18';
 
 export { A, A0, A1, A2, A3, A4, A5, A6, A7, AS_SETTINGS, Af, Af1, Af2, Af3, Af4, Af5, Af6, Af7, As, As0, As1, As2, As3, As4, As5, As6, As7, B, B0, B1, B2, B3, B4, B5, B6, B7, BLUE, Bb0, Bf, Bf1, Bf2, Bf3, Bf4, Bf5, Bf6, Bf7, C, C1, C2, C3, C4, C5, C6, C7, C8, CC14bitFromCCs, CCsFromCC14bit, CYAN, Cs, Cs1, Cs2, Cs3, Cs4, Cs5, Cs6, Cs7, D, D1, D2, D3, D4, D5, D6, D7, Df, Df1, Df2, Df3, Df4, Df5, Df6, Df7, Ds, Ds1, Ds2, Ds3, Ds4, Ds5, Ds6, Ds7, E, E1, E2, E3, E4, E5, E6, E7, Ef, Ef1, Ef2, Ef3, Ef4, Ef5, Ef6, Ef7, F$1 as F, F1, F2, F3, F4, F5, F6, F7, Fs, Fs1, Fs2, Fs3, Fs4, Fs5, Fs6, Fs7, G, G1, G2, G3, G4, G5, G6, G7, GREEN, Gf, Gf1, Gf2, Gf3, Gf4, Gf5, Gf6, Gf7, Gs, Gs1, Gs2, Gs3, Gs4, Gs5, Gs6, Gs7, LIME, M2, M3, M6, M7, MAGENTA, OFF, ORANGE, P1, P4, P5, P8, PINK, RED, TT, WHITE, YELLOW, adjustCell, as, asNoteOff, asNoteOn, assocCell, bpmChange, byteEq, byteEqBy, cc, cc14bit, changeState, channel, channelByKeyRange, channelEq, channelIn, clear, clock, cont, control, controlEq, controlIn, cp, createListener, createLoop, createRoutingMatrix, createSequence, createState, createToggle, dataEq, dataEqBy, decimationRate, deltaTime, disownNote, dissocCell, e, et, evolveCell, filterEvents, frMeta, from$1 as from, fullUserFirmwareMode, getCell, h, hasNote, hasPressure, hasVelocity, initialize, input, isActiveNote, isActiveSensing, isAllNotesOff, isAllSoundOff, isChannelMessage, isChannelMode, isChannelPressure, isChannelVoice, isContinue, isControlChange, isEndOfExclusive, isEndOfTrack, isLocalControlOff, isLocalControlOn, isLowerZone, isMIDIClock, isMIDITimeCodeQuarterFrame, isMonoModeOn, isNRPN, isNote, isNoteOff$1 as isNoteOff, isNoteOn, isOmniModeOff, isOmniModeOn, isOnMasterChannel, isOnZone, isPitchBend, isPolyModeOn, isPolyPressure, isProgramChange, isRPN, isReset, isResetAll, isSequenceEvent, isSongPositionPointer, isSongSelect, isStart, isStop, isSystemExclusive, isTempoChange, isTimbreChange, isTimingEvent, isTuneRequest, isUpperZone, leastNotesPerChannel, lensP, loadMIDIFile, logPorts, lookAhead, lsb, m2, m3, m6, m7, mc, mergeTracks, meta, meter, metronome, mpeNote, mpeZone, msb, msg, note, noteEq, noteIn, nrpn, off, on, output, ownNote, panic, pattern, pb, pc, pitchBend, pitchBendEq, pitchClass, play, player, pp, pressure, pressureEq, processMessage$1 as processMessage, program, programEq, q, recorder, rejectEvents, restore, root, routing_matrix, rowSlide, rpn, rst, s, seamless_routing_matrix, seemsActiveNote, seemsLoop, seemsMessage, seemsSequence, sequence, sequenceEvent, setColor, spp, ss, st, start, stateChanger, stop, syx, tc, tempo, tempoChange, timeDivisionEvent, timeStamp, timer$1 as timer, timing, timingEvent, tun, userFirmwareMode, value, value14bit, valueEq, valueIn, velocity, velocityEq, version, w, xData, yData, zData };
